@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>年度スケジュール・ガントチャート 操作マニュアル Ver1.0</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hiragino Sans','Yu Gothic UI',sans-serif;font-size:13px;color:#1a1a1a;background:#f7f8fa;line-height:1.7}
+/* ヘッダー */
+.header{background:linear-gradient(135deg,#185FA5 0%,#378ADD 100%);color:#fff;padding:36px 48px 28px;position:relative;overflow:hidden}
+.header::after{content:'';position:absolute;right:-40px;top:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
+.header h1{font-size:22px;font-weight:700;letter-spacing:.5px}
+.header .sub{font-size:12px;opacity:.8;margin-top:6px}
+.header .version{display:inline-block;background:rgba(255,255,255,.2);border-radius:12px;padding:2px 10px;font-size:11px;margin-top:8px}
+/* レイアウト */
+.container{display:flex;max-width:1100px;margin:0 auto;padding:28px 24px;gap:24px}
+/* 目次 */
+.toc{width:210px;flex-shrink:0}
+.toc-inner{background:#fff;border-radius:10px;border:0.5px solid #e0e0e0;padding:16px;position:sticky;top:20px}
+.toc h3{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #f0f0f0}
+.toc a{display:block;font-size:11px;color:#378ADD;text-decoration:none;padding:3px 0 3px 8px;border-left:2px solid transparent;transition:all .15s}
+.toc a:hover{border-left-color:#378ADD;color:#185FA5}
+.toc a.h2{padding-left:16px;color:#666;font-size:10.5px}
+/* メインコンテンツ */
+.main{flex:1;min-width:0}
+/* セクション */
+.section{background:#fff;border-radius:10px;border:0.5px solid #e0e0e0;padding:28px 32px;margin-bottom:20px}
+.section h2{font-size:16px;font-weight:700;color:#185FA5;padding-bottom:10px;border-bottom:2px solid #EAF3FB;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.section h2 .icon{width:28px;height:28px;border-radius:6px;background:#EAF3FB;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.section h3{font-size:13px;font-weight:700;color:#1a1a1a;margin:18px 0 8px;padding-left:8px;border-left:3px solid #378ADD}
+/* テーブル */
+table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+th{background:#f0f5fb;color:#185FA5;font-weight:700;padding:8px 12px;text-align:left;border:0.5px solid #dde8f3}
+td{padding:8px 12px;border:0.5px solid #e8e8e8;vertical-align:top}
+tr:nth-child(even) td{background:#fafcff}
+/* バッジ */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.badge-blue{background:#EAF3FB;color:#185FA5}
+.badge-green{background:#EAF7EE;color:#0E7A5C}
+.badge-orange{background:#FFF4E5;color:#BA7517}
+.badge-red{background:#FDF0EF;color:#A32D2D}
+.badge-purple{background:#F0EAF8;color:#533AB7}
+/* ヒント */
+.tip{background:#FFF9CC;border-left:3px solid #EF9F27;border-radius:0 6px 6px 0;padding:10px 14px;margin:10px 0;font-size:12px}
+.tip strong{color:#BA7517}
+.note{background:#EAF3FB;border-left:3px solid #378ADD;border-radius:0 6px 6px 0;padding:10px 14px;margin:10px 0;font-size:12px}
+.warn{background:#FDF0EF;border-left:3px solid #E74C3C;border-radius:0 6px 6px 0;padding:10px 14px;margin:10px 0;font-size:12px}
+/* ステップ */
+.steps{counter-reset:step;margin:10px 0}
+.step{display:flex;gap:14px;margin-bottom:12px;align-items:flex-start}
+.step-num{width:26px;height:26px;border-radius:50%;background:#378ADD;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-body{flex:1}
+/* UI要素の表現 */
+.btn-demo{display:inline-block;padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;border:0.5px solid}
+.btn-primary{background:#378ADD;color:#fff;border-color:#185FA5}
+.btn-normal{background:#f5f5f5;color:#333;border-color:#ccc}
+.btn-green{background:#1D9E75;color:#fff;border-color:#0E7A5C}
+.btn-red{background:#E74C3C;color:#fff;border-color:#c0392b}
+kbd{background:#f0f0f0;border:0.5px solid #ccc;border-radius:3px;padding:1px 5px;font-size:11px;font-family:monospace}
+/* WBSレベル表 */
+.level-table td:first-child{font-family:monospace;font-weight:700}
+/* 凡例カラー */
+.color-dot{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:4px}
+/* フッター */
+.footer{text-align:center;padding:24px;color:#999;font-size:11px}
+/* ロックバー模型 */
+.mock-lock{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;font-size:11px;border:0.5px solid}
+.mock-lock.green{background:#EAF7EE;border-color:#1D9E75;color:#0E7A5C}
+.mock-lock.red{background:#FDF0EF;border-color:#E74C3C;color:#A32D2D}
+.mock-lock.gray{background:#f5f5f5;border-color:#ccc;color:#666}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-green{background:#1D9E75}
+.dot-red{background:#E74C3C}
+.dot-gray{background:#aaa}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📅 年度スケジュール・ガントチャート</h1>
+  <div class="sub">ARIAFINA プロジェクト管理ツール 操作マニュアル</div>
+  <div class="version">Ver 1.0 ／ 2026年5月</div>
+</div>
+
+<div class="container">
+<!-- 目次 -->
+<div class="toc">
+  <div class="toc-inner">
+    <h3>目次</h3>
+    <a href="#overview">1. 概要</a>
+    <a href="#access">2. アクセス方法</a>
+    <a href="#screen">3. 画面構成</a>
+    <a href="#lock">4. 編集ロック機能</a>
+    <a href="#task">5. タスク管理</a>
+    <a class="h2" href="#task-add">タスク追加</a>
+    <a class="h2" href="#task-sub">サブタスク追加</a>
+    <a class="h2" href="#task-edit">タスク編集</a>
+    <a class="h2" href="#task-del">タスク削除</a>
+    <a class="h2" href="#task-move">タスク移動</a>
+    <a href="#wbs">6. WBS構造</a>
+    <a href="#gantt">7. ガントチャート操作</a>
+    <a href="#milestone">8. マイルストーン</a>
+    <a href="#filter">9. フィルター機能</a>
+    <a href="#dep">10. 依存関係</a>
+    <a href="#undo">11. UNDO機能</a>
+    <a href="#csv">12. CSV出力</a>
+    <a href="#github">13. GitHubへの反映</a>
+  </div>
+</div>
+
+<!-- メイン -->
+<div class="main">
+
+<!-- 1. 概要 -->
+<div class="section" id="overview">
+  <h2><span class="icon">📋</span>1. 概要</h2>
+  <p>このツールはARIAFINAプロジェクトのスケジュール管理用ガントチャートです。ブラウザで動作し、インターネット経由で複数人が閲覧・編集できます。</p>
+  <h3>主な機能</h3>
+  <table>
+    <tr><th>機能</th><th>説明</th></tr>
+    <tr><td>ガントチャート表示</td><td>年間スケジュールをバー形式で可視化。土日・祝日を自動色分け</td></tr>
+    <tr><td>WBS 4階層管理</td><td>プロジェクト→サブ成果物→ワークパッケージ→補助ワークの4段階</td></tr>
+    <tr><td>マイルストーン</td><td>開始日と終了日が同じタスクを◆アイコンで表示</td></tr>
+    <tr><td>依存関係</td><td>先行タスクを設定し、終了日変更時に自動連動</td></tr>
+    <tr><td>編集ロック</td><td>Firebase連携による複数人編集ロック機能</td></tr>
+    <tr><td>UNDO</td><td>タスク追加・削除・編集を最大20件まで取り消し可能</td></tr>
+    <tr><td>CSV出力</td><td>Excelで開けるCSVファイルを出力</td></tr>
+  </table>
+</div>
+
+<!-- 2. アクセス方法 -->
+<div class="section" id="access">
+  <h2><span class="icon">🌐</span>2. アクセス方法</h2>
+  <p>以下のURLをブラウザで開いてください。Chrome / Edge / Safari の最新版を推奨します。</p>
+  <div class="note" style="margin-top:12px;font-family:monospace;font-size:12px">
+    https://katayose0001-rgb.github.io/ariafina-schedule/annual_gantt_schedule_github_v2.html
+  </div>
+  <div class="tip" style="margin-top:10px"><strong>💡 ヒント：</strong>ブックマークに登録しておくと便利です。</div>
+</div>
+
+<!-- 3. 画面構成 -->
+<div class="section" id="screen">
+  <h2><span class="icon">🖥️</span>3. 画面構成</h2>
+  <h3>ツールバー（上部）</h3>
+  <table>
+    <tr><th>項目</th><th>説明</th></tr>
+    <tr><td>編集ロックバー</td><td>現在の編集状態を表示。名前を入力して「編集開始」をクリック</td></tr>
+    <tr><td>年度</td><td>表示年度を切り替え（2024〜2028年）</td></tr>
+    <tr><td>期間</td><td>全期間 / Q1〜Q4 で絞り込み表示</td></tr>
+    <tr><td>担当者</td><td>担当者でタスクを絞り込み</td></tr>
+    <tr><td>タスク</td><td>特定のタスクとその子孫のみ表示</td></tr>
+    <tr><td>▶ 今日</td><td>今日の日付列へ自動スクロール</td></tr>
+    <tr><td>⇢ 依存関係を表示</td><td>依存関係の矢印の表示/非表示を切り替え</td></tr>
+    <tr><td>◆ マイルストーンのみ</td><td>マイルストーンのみ表示するフィルター</td></tr>
+    <tr><td>＋ タスク追加</td><td>新しいタスクを追加</td></tr>
+    <tr><td>＋ サブタスク</td><td>サブタスクを追加</td></tr>
+    <tr><td>担当者管理</td><td>担当者の登録・削除</td></tr>
+    <tr><td>CSV出力</td><td>現在のデータをCSVファイルに出力</td></tr>
+  </table>
+
+  <h3>左パネル（タスク一覧）</h3>
+  <table>
+    <tr><th>列</th><th>説明</th></tr>
+    <tr><td>WBS</td><td>自動採番（1 / 1.1 / 1.1.1 / 1.1.1.1）。ダブルクリックで編集パネルを開く</td></tr>
+    <tr><td>タスク名</td><td>タスク名。ダブルクリックで編集パネルを開き開始日へスクロール。右クリックでメニュー表示</td></tr>
+    <tr><td>担当者</td><td>ドロップダウンで担当者を変更</td></tr>
+    <tr><td>日数</td><td>実働日数（土日・祝日を除く）</td></tr>
+    <tr><td>開始日</td><td>クリックでカレンダーを表示</td></tr>
+    <tr><td>終了日</td><td>クリックでカレンダーを表示</td></tr>
+  </table>
+
+  <h3>右パネル（ガントチャート）</h3>
+  <p>横スクロールでタイムラインを確認できます。</p>
+  <table>
+    <tr><th>色</th><th>意味</th></tr>
+    <tr><td><span class="color-dot" style="background:#E6F1FB"></span>薄青</td><td>Q1（1〜3月）</td></tr>
+    <tr><td><span class="color-dot" style="background:#EAF3DE"></span>薄緑</td><td>Q2（4〜6月）</td></tr>
+    <tr><td><span class="color-dot" style="background:#FAEEDA"></span>薄橙</td><td>Q3（7〜9月）</td></tr>
+    <tr><td><span class="color-dot" style="background:#FBEAF0"></span>薄ピンク</td><td>Q4（10〜12月）</td></tr>
+    <tr><td><span class="color-dot" style="background:#F1EFE8"></span>ベージュ</td><td>土日</td></tr>
+    <tr><td><span class="color-dot" style="background:#FAECE7"></span>薄赤</td><td>祝日</td></tr>
+    <tr><td><span class="color-dot" style="background:#FFF9CC;border:0.5px solid #EF9F27"></span>黄</td><td>今日</td></tr>
+  </table>
+
+  <h3>UNDOバー（画面下部・常時表示）</h3>
+  <p>直前の操作を取り消せます。操作履歴がある場合は「↩ 元に戻す」ボタンが活性化します。</p>
+</div>
+
+<!-- 4. 編集ロック機能 -->
+<div class="section" id="lock">
+  <h2><span class="icon">🔒</span>4. 編集ロック機能</h2>
+  <p>Firebase Realtime Databaseを使い、複数人が同時に編集しないようロック管理を行います。</p>
+
+  <h3>編集を開始するには</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body">ツールバー左端の入力欄に自分の名前を入力してEnterで保存（次回以降は自動入力）</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><span class="btn-demo btn-green">編集開始</span> ボタンをクリック</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body">表示が <span class="mock-lock green"><span class="dot dot-green"></span>✏️ 片寄（編集中）</span> に変わり編集可能になります</div></div>
+  </div>
+
+  <h3>編集を終了するには</h3>
+  <p><span class="btn-demo btn-red">編集終了</span> ボタンをクリックするとロックが解放されます。</p>
+
+  <h3>ロック状態の見方</h3>
+  <table>
+    <tr><th>表示</th><th>状態</th><th>できること</th></tr>
+    <tr>
+      <td><span class="mock-lock gray"><span class="dot dot-gray"></span>編集可能</span></td>
+      <td>誰も編集していない</td>
+      <td>「編集開始」をクリックして編集を開始</td>
+    </tr>
+    <tr>
+      <td><span class="mock-lock green"><span class="dot dot-green"></span>✏️ 自分（編集中）</span></td>
+      <td>自分が編集中</td>
+      <td>全機能が使用可能</td>
+    </tr>
+    <tr>
+      <td><span class="mock-lock red"><span class="dot dot-red"></span>🔒 ○○が編集中</span></td>
+      <td>他の人が編集中</td>
+      <td>閲覧のみ（編集不可）</td>
+    </tr>
+  </table>
+
+  <div class="warn"><strong>⚠️ 注意：</strong>「強制解放」ボタンは緊急時のみ使用してください。相手が編集中の場合、データが失われる可能性があります。</div>
+  <div class="tip"><strong>💡 自動解放：</strong>ブラウザを閉じる・タブを閉じる・ネット切断時は自動的にロックが解放されます。</div>
+</div>
+
+<!-- 5. タスク管理 -->
+<div class="section" id="task">
+  <h2><span class="icon">📝</span>5. タスク管理</h2>
+
+  <h3 id="task-add">タスクの追加</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body">ツールバーの <span class="btn-demo btn-primary">＋ タスク追加</span> をクリック</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body">右側パネルに入力フォームが表示されます</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body">タスク名（必須）・親タスク・挿入位置・担当者・日数・開始日・表示色・先行タスクを設定</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><span class="btn-demo btn-primary">追加</span> をクリック</div></div>
+  </div>
+  <div class="tip"><strong>💡 親タスクを指定すると</strong>サブタスクとして追加され、WBSが自動的に採番されます。</div>
+
+  <h3 id="task-sub">サブタスクの追加（右クリックメニュー）</h3>
+  <p>タスク名を<strong>右クリック</strong>するとメニューが表示されます。</p>
+  <table>
+    <tr><th>メニュー項目</th><th>動作</th></tr>
+    <tr><td>✏️ タスクを編集</td><td>右パネルで編集画面を開く</td></tr>
+    <tr><td>➕ サブタスクを追加 Lv○</td><td>そのタスクの子として追加パネルを開く</td></tr>
+    <tr><td>🗑️ 削除</td><td>タスクと子孫をすべて削除</td></tr>
+  </table>
+
+  <h3 id="task-edit">タスクの編集</h3>
+  <p>以下のいずれかの操作で編集パネルを開きます：</p>
+  <table>
+    <tr><th>操作</th><th>動作</th></tr>
+    <tr><td>タスク名を<strong>ダブルクリック</strong></td><td>編集パネルを開き、開始日列へ自動スクロール</td></tr>
+    <tr><td>WBS番号を<strong>ダブルクリック</strong></td><td>編集パネルを開き、開始日列へ自動スクロール</td></tr>
+    <tr><td>ガントバーを<strong>クリック</strong></td><td>編集パネルを開く</td></tr>
+    <tr><td>タスク名を<strong>右クリック</strong>→「タスクを編集」</td><td>編集パネルを開く</td></tr>
+  </table>
+  <div class="tip"><strong>💡 編集パネルの項目：</strong>タスク名（太字）・WBS（自動）・担当者・日数・開始日・終了日・表示色・レベル・親タスク・位置の移動・先行タスク</div>
+
+  <h3 id="task-del">タスクの削除</h3>
+  <p>編集パネル下部の <span class="btn-demo" style="background:#FDF0EF;color:#A32D2D;border-color:#E74C3C">削除</span> ボタンをクリック。</p>
+  <div class="warn"><strong>⚠️ 注意：</strong>親タスクを削除すると子孫タスクもすべて削除されます。削除後はUNDOで復元できます。</div>
+
+  <h3 id="task-move">タスクの移動（上下）</h3>
+  <p>編集パネルの「位置の移動」で <span class="btn-demo btn-normal">▲ 上へ</span> <span class="btn-demo btn-normal">▼ 下へ</span> をクリックすると、同じ親を持つ兄弟タスクの中で順序を入れ替えられます。子孫タスクも一緒に移動します。</p>
+</div>
+
+<!-- 6. WBS構造 -->
+<div class="section" id="wbs">
+  <h2><span class="icon">🗂️</span>6. WBS構造（4階層）</h2>
+  <p>タスクは4段階の階層で管理されます。WBS番号は自動採番されます。</p>
+  <table class="level-table">
+    <tr><th>レベル</th><th>WBS例</th><th>意味</th><th>行の色</th></tr>
+    <tr><td>Lv1</td><td>1</td><td>プロジェクト成果物</td><td><span class="color-dot" style="background:#378ADD;border-radius:50%"></span>青ボーダー・太字</td></tr>
+    <tr><td>Lv2</td><td>1.1</td><td>主要サブ成果物</td><td><span class="color-dot" style="background:#1D9E75;border-radius:50%"></span>緑ボーダー・薄灰</td></tr>
+    <tr><td>Lv3</td><td>1.1.1</td><td>ワークパッケージ</td><td><span class="color-dot" style="background:#BA7517;border-radius:50%"></span>橙ボーダー</td></tr>
+    <tr><td>Lv4</td><td>1.1.1.1</td><td>補助ワーク</td><td><span class="color-dot" style="background:#A32D2D;border-radius:50%"></span>赤ボーダー</td></tr>
+  </table>
+  <div class="note"><strong>📌 折りたたみ：</strong>タスク名左の ▼ ボタンをクリックすると子孫タスクを非表示にできます。もう一度クリックで展開します。</div>
+
+  <h3>挿入位置の指定</h3>
+  <p>タスク追加時に「挿入位置」で「〇〇の前に挿入」を選ぶと、指定したタスクの直前に追加できます。WBSは自動的に繰り下がります。</p>
+</div>
+
+<!-- 7. ガントチャート操作 -->
+<div class="section" id="gantt">
+  <h2><span class="icon">📊</span>7. ガントチャート操作</h2>
+
+  <h3>ガントバーの操作</h3>
+  <table>
+    <tr><th>操作</th><th>動作</th></tr>
+    <tr><td>バーをクリック</td><td>タスク編集パネルを開く</td></tr>
+    <tr><td>バー左端をドラッグ</td><td>開始日を変更（日数は自動再計算）</td></tr>
+    <tr><td>バー右端をドラッグ</td><td>終了日を変更（日数は自動再計算）</td></tr>
+  </table>
+
+  <h3>日付の設定</h3>
+  <table>
+    <tr><th>方法</th><th>説明</th></tr>
+    <tr><td>開始日ボタンをクリック</td><td>カレンダーポップアップで日付を選択</td></tr>
+    <tr><td>開始日を変更</td><td>日数をもとに終了日が自動計算</td></tr>
+    <tr><td>終了日を変更</td><td>日数が逆算されて更新</td></tr>
+  </table>
+  <div class="tip"><strong>💡 実働日数：</strong>土日・祝日を除いた実働日数でカウントします。カレンダーポップアップで「実働日のみ」モードに切り替えも可能です。</div>
+
+  <h3>タスク名列の幅変更</h3>
+  <p>ヘッダーの「タスク名」列の右端にカーソルを当てると <kbd>↔</kbd> カーソルに変わります。ドラッグして幅を自由に調整できます（設定は自動保存）。</p>
+
+  <h3>今日の位置へ移動</h3>
+  <p>ツールバーの <span class="btn-demo btn-normal">▶ 今日</span> ボタンをクリックすると今日の列へスクロールします。起動時も自動的に今日へジャンプします。</p>
+</div>
+
+<!-- 8. マイルストーン -->
+<div class="section" id="milestone">
+  <h2><span class="icon">◆</span>8. マイルストーン</h2>
+  <p>開始日と終了日が同じ日付のタスクは自動的にマイルストーンとして表示されます。</p>
+  <table>
+    <tr><th>項目</th><th>説明</th></tr>
+    <tr><td>表示形式</td><td>◆（ひし形）アイコン＋タスク名をガント上に表示</td></tr>
+    <tr><td>色</td><td>タスクの表示色を引き継ぎ</td></tr>
+    <tr><td>作成方法</td><td>タスク編集で開始日と終了日に同じ日付を設定するだけ</td></tr>
+    <tr><td>フィルター</td><td>ツールバーの「◆ マイルストーンのみ」トグルでマイルストーンだけ表示</td></tr>
+  </table>
+  <div class="note"><strong>📌 マイルストーンのみ表示：</strong>ツールバーのトグルをONにすると、マイルストーン（開始日＝終了日）のタスクのみが表示されます。OFFで全タスク表示に戻ります。</div>
+</div>
+
+<!-- 9. フィルター機能 -->
+<div class="section" id="filter">
+  <h2><span class="icon">🔍</span>9. フィルター機能</h2>
+  <table>
+    <tr><th>フィルター</th><th>説明</th></tr>
+    <tr><td>年度</td><td>2024〜2028年を切り替え</td></tr>
+    <tr><td>期間</td><td>全期間 / Q1（1〜3月）/ Q2（4〜6月）/ Q3（7〜9月）/ Q4（10〜12月）</td></tr>
+    <tr><td>担当者</td><td>特定の担当者のタスクのみ表示</td></tr>
+    <tr><td>タスク</td><td>特定のタスクとその子孫のみ表示</td></tr>
+    <tr><td>マイルストーンのみ</td><td>マイルストーンのみ表示（トグルスイッチ）</td></tr>
+  </table>
+</div>
+
+<!-- 10. 依存関係 -->
+<div class="section" id="dep">
+  <h2><span class="icon">⇢</span>10. 依存関係</h2>
+  <p>タスクに「先行タスク」を設定すると、先行タスクの終了翌営業日が開始日として連動します。</p>
+
+  <h3>設定方法</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body">タスク編集パネルを開く</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body">「先行タスク（依存）」のドロップダウンから先行タスクを選択</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body">「保存」をクリック（または「依存適用」ボタンで開始日を即時補正）</div></div>
+  </div>
+
+  <table>
+    <tr><th>機能</th><th>説明</th></tr>
+    <tr><td>自動連動</td><td>先行タスクの終了日が変わると後続タスクの開始日が翌営業日に自動移動</td></tr>
+    <tr><td>連鎖伝播</td><td>A→B→Cのように複数段階の依存も自動更新</td></tr>
+    <tr><td>循環検知</td><td>A→BかつB→Aのような循環依存は自動的に防止</td></tr>
+    <tr><td>矢印表示</td><td>ガント上に紫の破線矢印で依存関係を可視化</td></tr>
+    <tr><td>表示切替</td><td>ツールバーの「⇢ 依存関係を表示/非表示」で切り替え</td></tr>
+  </table>
+</div>
+
+<!-- 11. UNDO機能 -->
+<div class="section" id="undo">
+  <h2><span class="icon">↩</span>11. UNDO機能</h2>
+  <p>画面下部のUNDOバーは常時表示されています。</p>
+  <table>
+    <tr><th>対応操作</th><th>説明</th></tr>
+    <tr><td>タスク追加</td><td>追加を取り消してタスクを削除</td></tr>
+    <tr><td>タスク削除</td><td>削除を取り消してタスクを復元</td></tr>
+    <tr><td>タスク編集・保存</td><td>保存前の状態に戻す</td></tr>
+    <tr><td>担当者管理の更新</td><td>変更前の担当者リストに戻す</td></tr>
+    <tr><td>全タスク削除</td><td>全削除を取り消して全タスクを復元</td></tr>
+  </table>
+  <div class="note"><strong>📌 最大20件：</strong>操作履歴は最大20件まで保持されます。「↩ 元に戻す」を繰り返し押すことで複数回遡れます。</div>
+</div>
+
+<!-- 12. CSV出力 -->
+<div class="section" id="csv">
+  <h2><span class="icon">📥</span>12. CSV出力</h2>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body">ツールバーの <span class="btn-demo btn-normal">CSV出力</span> をクリック</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><code>schedule_2026_v7.csv</code> がダウンロードされます</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body">Excelで開くと文字化けなく表示されます（BOM付きUTF-8）</div></div>
+  </div>
+  <p>出力される列：WBS・タスク名・担当者・日数・開始日・終了日・レベル・表示色</p>
+</div>
+
+<!-- 13. GitHubへの反映 -->
+<div class="section" id="github">
+  <h2><span class="icon">🚀</span>13. ファイル更新時のGitHubへの反映</h2>
+  <p>ファイルを修正した場合、以下のコマンドでGitHubに反映できます。</p>
+
+  <h3>手順</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body">デスクトップの <code>ariafina_schedule</code> フォルダ内でコマンドプロンプトを開く（アドレスバーに <kbd>cmd</kbd> と入力）</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body">以下を順番に実行：
+      <div style="background:#1a1a1a;color:#f0f0f0;border-radius:6px;padding:12px 16px;margin-top:8px;font-family:monospace;font-size:11px;line-height:2">
+        git add annual_gantt_schedule_github_v2.html<br>
+        git commit -m "更新内容のメモ"<br>
+        git push
+      </div>
+    </div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body">1〜2分後にGitHub Pagesに反映されます</div></div>
+  </div>
+  <div class="tip"><strong>💡 確認：</strong>反映後は <code>Ctrl+Shift+R</code>（強制リロード）でキャッシュをクリアして最新版を確認してください。</div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /container -->
+
+<div class="footer">
+  年度スケジュール・ガントチャート 操作マニュアル Ver1.0 ／ ARIAFINA プロジェクト管理ツール
+</div>
+
+</body>
+</html>
