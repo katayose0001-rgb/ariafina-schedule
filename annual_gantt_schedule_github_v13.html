@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v16</title>
+<title>年度スケジュール・ガントチャート v18</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -199,7 +199,14 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .ctx-item:hover{background:var(--color-background-secondary)}
 .ctx-item .ctx-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0}
 .ctx-sep{height:0.5px;background:var(--color-border-secondary);margin:3px 0}
-.move-btn-row{display:flex;gap:6px;margin-top:4px}
+/* ── マイルストーントグル ── */
+.ms-toggle-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;user-select:none;transition:background .15s}
+.ms-toggle-row:hover{background:var(--color-background-secondary)}
+.ms-toggle-row.ms-on{background:#F0EAF8;border-color:#7B5DC4}
+.ms-toggle-chk{width:15px;height:15px;accent-color:#533AB7;cursor:pointer;flex-shrink:0}
+.ms-diamond-icon-sm{width:12px;height:12px;background:#533AB7;transform:rotate(45deg);border-radius:2px;flex-shrink:0}
+.ms-toggle-lbl{font-size:11px;font-weight:500;color:var(--color-text-primary)}
+/* ── 上下移動ボタン ── */
 .move-btn{flex:1;height:30px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);font-size:12px;cursor:pointer;transition:background .12s}
 .move-btn:hover:not(:disabled){background:var(--color-background-secondary)}
 .move-btn:disabled{opacity:.35;cursor:default}
@@ -432,7 +439,17 @@ async function loadData(){
     if(window._fbLoadData){
       const fbData = await window._fbLoadData();
       if(fbData){
-        if(fbData.tasks)tasks=fbData.tasks;
+        if(fbData.tasks){
+          tasks=fbData.tasks;
+          // FirebaseはIDを文字列化するため数値に正規化
+          tasks=tasks.map(t=>({
+            ...t,
+            id:+t.id,
+            parentId:t.parentId!=null?+t.parentId:null,
+            predecessorId:t.predecessorId!=null?+t.predecessorId:null,
+            level:t.level?+t.level:1
+          }));
+        }
         if(fbData.assignees)assignees=fbData.assignees;
         if(fbData.year)currentYear=+fbData.year;
         if(fbData.collapsed)collapsedIds=new Set(fbData.collapsed);
@@ -889,14 +906,26 @@ function openSide(mode,id){
       <div class="sf"><label>親タスク</label><select id="s_parent_id" onchange="onAddParentChange()">${parentOpts}</select><div class="sf-dep-note">親を選ぶとサブタスクとして追加</div></div>
       <div class="sf" id="s_insert_wrap"><label>挿入位置（ルート内）</label><select id="s_insert_pos">${insertOpts}</select></div>
       <div class="sf"><label>担当者</label><select id="s_asgn">${assignees.map(a=>`<option>${escH(a)}</option>`).join('')}</select></div>
+      <div class="sf">
+        <label>種別</label>
+        <label class="ms-toggle-row" id="s_ms_row">
+          <input type="checkbox" id="s_ms" class="ms-toggle-chk" onchange="onMsToggle()">
+          <span class="ms-diamond-icon-sm"></span>
+          <span class="ms-toggle-lbl">◆ マイルストーン（1日）</span>
+        </label>
+      </div>
       <div class="sf" id="s_days_wrap"><label>日数</label><input id="s_days" type="number" min="1" value="5" oninput="calcSideEnd()"></div>
       <div class="sf"><label>開始日</label>
         <div class="date-field-wrap">
-          <input id="s_start" placeholder="${currentYear}-04-01" oninput="calcSideEnd()">
+          <input id="s_start" placeholder="${currentYear}-04-01" oninput="onMsStartChange()">
           <button class="date-field-btn" onclick="openSideCal(event,'s_start','s_end','s_days','start')">📅</button>
         </div>
       </div>
-      <div class="sf" id="s_end_wrap"><label>終了日（自動）</label><input id="s_end" readonly style="background:var(--color-background-secondary)"></div>
+      <div class="sf" id="s_end_wrap"><label>終了日</label>
+        <div class="date-field-wrap">
+          <input id="s_end" id="s_end" readonly style="background:var(--color-background-secondary)">
+        </div>
+      </div>
       <div class="sf"><label>表示色</label>${buildColorPalette(COLORS[getNextId()%COLORS.length],'s_color')}</div>
       <div class="sf">
         <label>先行タスク（依存）</label>
@@ -926,17 +955,25 @@ function openSide(mode,id){
       <div class="sf"><label>タスク名</label><input id="s_title" value="${escH(t.title)}" style="font-weight:700;font-size:13px"></div>
       <div class="sf"><label>WBS番号（自動）</label><input id="s_wbs" value="${escH(t.wbs)}" readonly style="background:var(--color-background-secondary);color:var(--color-text-secondary)"></div>
       <div class="sf"><label>担当者</label><select id="s_asgn">${assignees.map(a=>`<option${a===t.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></div>
-      <div class="sf"><label>日数</label><input id="s_days" type="number" min="1" value="${t.days}" oninput="calcSideEndEdit()"></div>
+      <div class="sf">
+        <label>種別</label>
+        <label class="ms-toggle-row${isMilestone?' ms-on':''}" id="s_ms_row">
+          <input type="checkbox" id="s_ms" class="ms-toggle-chk"${isMilestone?' checked':''} onchange="onMsToggle()">
+          <span class="ms-diamond-icon-sm"></span>
+          <span class="ms-toggle-lbl">◆ マイルストーン（1日）</span>
+        </label>
+      </div>
+      <div class="sf" id="s_days_wrap"${isMilestone?' style="display:none"':''}><label>日数</label><input id="s_days" type="number" min="1" value="${t.days}" oninput="calcSideEndEdit()"></div>
       <div class="sf"><label>開始日</label>
         <div class="date-field-wrap">
-          <input id="s_start" value="${t.start||''}" oninput="calcSideEndEdit()">
+          <input id="s_start" value="${t.start||''}" oninput="onMsStartChange()">
           <button class="date-field-btn" onclick="openSideCal(event,'s_start','s_end','s_days','start')">📅</button>
         </div>
       </div>
-      <div class="sf"><label>終了日${isMilestone?' <span style="font-size:10px;color:#533AB7">◆ マイルストーン</span>':''}</label>
+      <div class="sf" id="s_end_wrap"><label>終了日</label>
         <div class="date-field-wrap">
-          <input id="s_end" value="${t.end||''}" oninput="calcSideDaysEdit()">
-          <button class="date-field-btn" onclick="openSideCal(event,'s_end','s_start','s_days','end')">📅</button>
+          <input id="s_end" value="${t.end||''}"${isMilestone?' readonly style="background:var(--color-background-secondary)"':''} oninput="calcSideDaysEdit()">
+          <button class="date-field-btn"${isMilestone?' style="display:none"':''} onclick="openSideCal(event,'s_end','s_start','s_days','end')">📅</button>
         </div>
       </div>
       <div class="sf"><label>表示色</label>${buildColorPalette(t.color||COLORS[0],'s_color')}</div>
@@ -1168,12 +1205,13 @@ function saveNewTask(){
   const id=getNextId();
   const start=document.getElementById('s_start')?.value||'';
   const h=hs(currentYear);
-  const days=Math.max(1,+document.getElementById('s_days')?.value||5);
+  const isMsChk=document.getElementById('s_ms')?.checked||false;
+  const days=isMsChk?1:Math.max(1,+document.getElementById('s_days')?.value||5);
   const predSel=document.getElementById('s_pred');
   const predId=predSel?.value?parseInt(predSel.value):null;
   let actualStart=start;
   if(predId){const pred=tasks.find(t=>t.id===predId);if(pred&&pred.end)actualStart=fmt(nextWorkDay(parseD(pred.end),h));}
-  const end=actualStart?fmt(addWD(parseD(actualStart),days,h)):'';
+  const end=isMsChk?actualStart:(actualStart?fmt(addWD(parseD(actualStart),days,h)):'');
   const parentSelVal=document.getElementById('s_parent_id')?.value||'';
   const parentId=parentSelVal?parseInt(parentSelVal):null;
   const parentTask=parentId?tasks.find(t=>t.id===parentId):null;
@@ -1207,7 +1245,38 @@ function saveNewTask(){
   }
   reNumberWbs();saveData();closeSide();render();
 }
-// ── タスク名カラム幅リサイズ ──
+// ── マイルストーントグル ──
+window.onMsToggle=function(){
+  const chk=document.getElementById('s_ms');if(!chk)return;
+  const row=document.getElementById('s_ms_row');
+  const daysWrap=document.getElementById('s_days_wrap');
+  const endInput=document.getElementById('s_end');
+  const endBtn=document.getElementById('s_end_wrap')?.querySelector('.date-field-btn');
+  if(chk.checked){
+    if(row)row.classList.add('ms-on');
+    if(daysWrap)daysWrap.style.display='none';
+    // 終了日を開始日と同じに固定
+    const sv=document.getElementById('s_start')?.value||'';
+    if(endInput){endInput.value=sv;endInput.readOnly=true;endInput.style.background='var(--color-background-secondary)';}
+    if(endBtn)endBtn.style.display='none';
+  }else{
+    if(row)row.classList.remove('ms-on');
+    if(daysWrap)daysWrap.style.display='';
+    if(endInput){endInput.readOnly=false;endInput.style.background='';}
+    if(endBtn)endBtn.style.display='';
+    calcSideEnd();calcSideEndEdit();
+  }
+}
+window.onMsStartChange=function(){
+  const chk=document.getElementById('s_ms');
+  if(chk?.checked){
+    const sv=document.getElementById('s_start')?.value||'';
+    const endInput=document.getElementById('s_end');
+    if(endInput)endInput.value=sv;
+  }else{
+    calcSideEnd();calcSideEndEdit();
+  }
+}
 function initColResize(e){
   e.preventDefault();
   const handle=e.target;handle.classList.add('dragging');
@@ -1387,10 +1456,17 @@ function saveEditTask(id){
   const t=tasks.find(t=>t.id===id);if(!t)return;
   pushUndo(`タスク編集「${t.title}」`);
   const h=hs(currentYear);
+  const isMsChk=document.getElementById('s_ms')?.checked||false;
   t.title=document.getElementById('s_title').value;
-  t.assignee=document.getElementById('s_asgn').value;t.days=Math.max(1,+document.getElementById('s_days').value||1);
-  t.start=document.getElementById('s_start').value;t.end=document.getElementById('s_end').value;
-  if(t.start&&!t.end)t.end=fmt(addWD(parseD(t.start),t.days,h));
+  t.assignee=document.getElementById('s_asgn').value;
+  t.start=document.getElementById('s_start').value;
+  if(isMsChk){
+    t.end=t.start;t.days=1;
+  }else{
+    t.days=Math.max(1,+document.getElementById('s_days').value||1);
+    t.end=document.getElementById('s_end').value;
+    if(t.start&&!t.end)t.end=fmt(addWD(parseD(t.start),t.days,h));
+  }
   t.color=document.getElementById('s_color').value;
   const newLevel=+document.getElementById('s_level').value;
   t.level=newLevel;
@@ -1556,7 +1632,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v16.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v18.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
@@ -1572,7 +1648,15 @@ async function init(){
   window._appInitialized=true;
   // 他のPCからの変更を自動反映
   window.addEventListener('fbDataUpdated',()=>{
-    if(window._currentTasks)tasks=window._currentTasks;
+    if(window._currentTasks){
+      tasks=window._currentTasks.map(t=>({
+        ...t,
+        id:+t.id,
+        parentId:t.parentId!=null?+t.parentId:null,
+        predecessorId:t.predecessorId!=null?+t.predecessorId:null,
+        level:t.level?+t.level:1
+      }));
+    }
     if(window._currentAssignees)assignees=window._currentAssignees;
     if(window._currentYear)currentYear=window._currentYear;
     if(window._currentCollapsed)collapsedIds=new Set(window._currentCollapsed);
