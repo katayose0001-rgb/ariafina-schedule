@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v12</title>
+<title>年度スケジュール・ガントチャート v13</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -814,22 +814,24 @@ function jumpToToday(){
 
 // FIX: タスク名専用の更新関数（UNDOを壊さないようrendar()を呼ばない）
 function uTaskTitle(id, val){
+  if(!_isEditing)return;
   const t=tasks.find(t=>t.id===id);if(!t)return;
-  if(t.title===val)return; // 変更なし
+  if(t.title===val)return;
   t.title=val;
   saveData();
-  // ガントバーのラベルのみ更新（フルrenderを避ける）
   const bar=document.querySelector(`#rightTable tr[data-tid="${id}"] .gantt-bar-lbl`);
   if(bar)bar.textContent=val;
 }
 
 function uTask(id,field,val){
+  if(!_isEditing)return;
   const t=tasks.find(t=>t.id===id);if(!t)return;
   t[field]=val;
   if(field==='days'&&t.start){const h=hs(currentYear);t.end=fmt(addWD(parseD(t.start),+val,h));propagateDeps(id);}
   saveData();render();
 }
 function uDays(id,val){
+  if(!_isEditing)return;
   const n=Math.max(1,+val||1),t=tasks.find(t=>t.id===id);if(!t)return;
   t.days=n;if(t.start){const h=hs(currentYear);t.end=fmt(addWD(parseD(t.start),n,h));propagateDeps(id);}
   saveData();render();
@@ -859,6 +861,12 @@ function deleteTask(id){
 
 // ── SIDE PANEL ──
 function openSide(mode,id){
+  // 追加・編集・担当者管理は編集権限が必要
+  if(!_isEditing && mode!=='editTask'){
+    alert('操作するには「編集開始」ボタンを押して編集権限を取得してください。');
+    return;
+  }
+  // 閲覧（editTask）は編集権限なしでも開けるが保存・削除はできない
   sideMode=mode;editId=id||null;
   document.getElementById('sidePanel').classList.add('open');
   const titles={addTask:'タスク追加',addSub:'サブタスク追加',editTask:'タスク編集',assignees:'担当者管理'};
@@ -1136,6 +1144,7 @@ function renderAssigneePanel(){
 }
 function addAssRow(){const li=document.getElementById('assList');const n=li.children.length;const d=document.createElement('div');d.className='ass-row';d.innerHTML=`<input id="as_${n}" value=""><button class="btn rm-btn" onclick="this.closest('.ass-row').remove()">×</button>`;li.appendChild(d)}
 function saveAssignees(){
+  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
   pushUndo('担当者管理を更新');
   const newList=[...document.querySelectorAll('#assList input')].map(i=>i.value.trim()).filter(Boolean);
   // 削除された担当者が割り当てられているタスクは先頭の担当者に変更
@@ -1151,6 +1160,7 @@ function calcSideEndEdit(){const s=document.getElementById('s_start')?.value;con
 function calcSideDaysEdit(){const s=parseD(document.getElementById('s_start')?.value);const e=parseD(document.getElementById('s_end')?.value);const h=hs(currentYear);if(s&&e&&e>=s){const el=document.getElementById('s_days');if(el)el.value=countWD(s,e,h)}}
 
 function saveNewTask(){
+  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
   const id=getNextId();
   const start=document.getElementById('s_start')?.value||'';
   const h=hs(currentYear);
@@ -1270,6 +1280,7 @@ window.closeCtxMenu=closeCtxMenu;
 
 // 右クリックからサブタスクを追加（サイドパネルを親指定済みで開く）
 function addChildTask(parentId){
+  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
   const parent=tasks.find(t=>t.id===parentId);if(!parent)return;
   if((parent.level||1)>=4){alert('Lv4以上にはサブタスクを追加できません');return;}
   sideMode='addTask';editId=null;
@@ -1367,6 +1378,7 @@ function isDescendantOf(id,ancestorId){
   return false;
 }
 function saveEditTask(id){
+  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
   const t=tasks.find(t=>t.id===id);if(!t)return;
   pushUndo(`タスク編集「${t.title}」`);
   const h=hs(currentYear);
@@ -1537,7 +1549,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v12.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v13.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
