@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v19</title>
+<title>年度スケジュール・ガントチャート v20</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -38,12 +38,14 @@ window._fbSessionId = sessionId;
 // ── データ保存（Firebaseへ）──
 window._fbSaveData = async function(payload){
   try{
+    const updatedAt = new Date().toISOString();
+    _lastSaveAt = updatedAt;
     await set(dataRef, {
       tasks: payload.tasks,
       assignees: payload.assignees,
       year: payload.year,
       collapsed: payload.collapsed,
-      updatedAt: new Date().toISOString()
+      updatedAt
     });
   }catch(e){ console.warn('Firebase save error:', e); }
 };
@@ -65,6 +67,7 @@ onValue(lockRef, (snapshot) => {
 });
 
 // ── データ変更をリアルタイム監視（他のPCの変更を自動反映）──
+let _lastSaveAt='';
 onValue(dataRef, (snapshot) => {
   // 自分が編集中の場合は上書きしない
   if(window._fbSessionId && window._fbLockData?.sessionId === window._fbSessionId) return;
@@ -72,11 +75,13 @@ onValue(dataRef, (snapshot) => {
   if(!data) return;
   // メイン画面が初期化済みの場合のみ反映
   if(!window._appInitialized) return;
+  // 直前に自分が保存したデータは無視（自分の操作による再発火を防ぐ）
+  if(data.updatedAt && data.updatedAt === _lastSaveAt) return;
   try{
     if(data.tasks) window._currentTasks = data.tasks;
     if(data.assignees) window._currentAssignees = data.assignees;
     if(data.year) window._currentYear = data.year;
-    if(data.collapsed) window._currentCollapsed = data.collapsed;
+    if(data.collapsed != null) window._currentCollapsed = data.collapsed;
     window.dispatchEvent(new Event('fbDataUpdated'));
   }catch(e){}
 });
@@ -617,12 +622,12 @@ function getVisibleTasks(){
     return true;
   });
 }
-let _collapseTimer=null;
+let _collapseGuard=false;
 function toggleCollapse(id,event){
   if(event){event.stopPropagation();event.preventDefault();}
-  // debounce: 連続クリックを防ぐ
-  if(_collapseTimer)return;
-  _collapseTimer=setTimeout(()=>{_collapseTimer=null;},300);
+  if(_collapseGuard)return;
+  _collapseGuard=true;
+  setTimeout(()=>{_collapseGuard=false;},500);
   if(collapsedIds.has(id))collapsedIds.delete(id);else collapsedIds.add(id);
   saveData();render();
 }
@@ -698,7 +703,7 @@ function render(){
     lb+=`<td style="width:52px;text-align:center"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:center;cursor:pointer;background:transparent;border:none"></td>`;
     // 折りたたみトグル
     const toggleHtml=hasCh
-      ?`<span class="toggle-btn${collapsedIds.has(task.id)?' collapsed':''}" onclick="toggleCollapse(${task.id},event)">▼</span>`
+      ?`<button class="toggle-btn${collapsedIds.has(task.id)?' collapsed':''}" onclick="event.stopPropagation();event.preventDefault();toggleCollapse(${task.id},event)" type="button">▼</button>`
       :`<span style="width:21px;display:inline-block"></span>`;
     const depIcon=hasPred?`<span title="先行タスクあり" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
     lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden"><div style="display:flex;align-items:center;height:100%">${toggleHtml}<input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div></td>`;
@@ -1640,7 +1645,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v19.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v20.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
