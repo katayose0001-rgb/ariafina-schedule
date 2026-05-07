@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v9</title>
+<title>年度スケジュール・ガントチャート v10</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -1498,7 +1498,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v9.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v10.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
@@ -1511,7 +1511,17 @@ async function init(){
   setTimeout(jumpToToday,100);
   document.getElementById('depToggle').style.background='#E0D0F8';
 }
-init();
+// Firebase接続を待ってからinit実行
+function waitForFbAndInit(){
+  if(window._fbLoadData){
+    init();
+  }else{
+    window.addEventListener('fbReady',()=>init(),{once:true});
+    // 3秒待ってもFirebase接続できなければlocalStorageで起動
+    setTimeout(()=>{if(!window._fbLoadData)init();},3000);
+  }
+}
+waitForFbAndInit();
 
 // ── Firebase 編集ロック ──
 let _isEditing = false;
