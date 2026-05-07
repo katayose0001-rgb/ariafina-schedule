@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v13</title>
+<title>年度スケジュール・ガントチャート v14</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -861,12 +861,11 @@ function deleteTask(id){
 
 // ── SIDE PANEL ──
 function openSide(mode,id){
-  // 追加・編集・担当者管理は編集権限が必要
-  if(!_isEditing && mode!=='editTask'){
+  // 編集権限チェック（閲覧専用時はすべてのパネルを開かない）
+  if(!_isEditing){
     alert('操作するには「編集開始」ボタンを押して編集権限を取得してください。');
     return;
   }
-  // 閲覧（editTask）は編集権限なしでも開けるが保存・削除はできない
   sideMode=mode;editId=id||null;
   document.getElementById('sidePanel').classList.add('open');
   const titles={addTask:'タスク追加',addSub:'サブタスク追加',editTask:'タスク編集',assignees:'担当者管理'};
@@ -1321,6 +1320,7 @@ function addChildTask(parentId){
 }
 window.addChildTask=addChildTask;
 function moveTask(id, dir){
+  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
   const t=tasks.find(t=>t.id===id);if(!t)return;
   const parentId=t.parentId??null;
 
@@ -1447,6 +1447,7 @@ window.onHexInput=function(inp, prevId){
 
 // ── テーブル上のカレンダー（左パネルの開始日・終了日ボタン）──
 function openCal(e,id,mode){
+  if(!_isEditing)return;
   e.stopPropagation();document.querySelectorAll('.cal-popup').forEach(p=>p.remove());
   const task=tasks.find(t=>t.id===id);if(!task)return;
   showCal(e.target,parseD(mode==='start'?task.start:task.end)||t0,id,mode);
@@ -1495,6 +1496,7 @@ function showCal(anchor,initD,taskId,mode){
 // ── Resize ──
 let RS=null;
 function initRS(e,id,side){
+  if(!_isEditing)return;
   e.preventDefault();e.stopPropagation();const t=tasks.find(t=>t.id===id);if(!t)return;
   const h=hs(currentYear),days=yearDays(currentYear,filt.month);
   RS={id,side,sx:e.clientX,os:t.start,oe:t.end,fmts:days.map(d=>fmt(d)),h};
@@ -1549,7 +1551,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v13.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v14.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
