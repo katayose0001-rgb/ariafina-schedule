@@ -3,11 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>年度スケジュール・ガントチャート v7</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>年度スケジュール・ガントチャート v9</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, onValue, onDisconnect, remove, serverTimestamp }
+import { getDatabase, ref, set, get, onValue, onDisconnect, remove }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 const firebaseConfig = {
@@ -23,25 +26,42 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const lockRef = ref(db, 'lock');
-
-// セッションID（タブごとに固有）
+const dataRef = ref(db, 'scheduleData');
 const sessionId = Math.random().toString(36).slice(2);
 
-// ローカルに保存した自分の名前
-let myName = localStorage.getItem('gt5_editor_name') || '';
-
-// ロック状態をwindowに公開（通常スクリプトから呼べるように）
+// ── ロック管理をwindowに公開 ──
 window._fbLockRef = lockRef;
 window._fbSet = set;
 window._fbRemove = remove;
-window._fbServerTimestamp = serverTimestamp;
 window._fbSessionId = sessionId;
 
-// ロック状態を監視
+// ── データ保存（Firebaseへ）──
+window._fbSaveData = async function(payload){
+  try{
+    await set(dataRef, {
+      tasks: payload.tasks,
+      assignees: payload.assignees,
+      year: payload.year,
+      collapsed: payload.collapsed,
+      updatedAt: new Date().toISOString()
+    });
+  }catch(e){ console.warn('Firebase save error:', e); }
+};
+
+// ── データ読み込み（Firebaseから）──
+window._fbLoadData = async function(){
+  try{
+    const snap = await get(dataRef);
+    if(snap.exists()) return snap.val();
+  }catch(e){ console.warn('Firebase load error:', e); }
+  return null;
+};
+
+// ── ロック状態を監視 ──
 onValue(lockRef, (snapshot) => {
   const data = snapshot.val();
   window._fbLockData = data;
-  window._updateLockUI(data);
+  if(window._updateLockUI) window._updateLockUI(data);
 });
 
 // ブラウザを閉じたら自動解放
@@ -376,8 +396,27 @@ let collapsedIds=new Set();
 let calWorkdayOnly=false;
 let showDeps=true;
 
-function loadData(){
+async function loadData(){
   try{
+    // まずFirebaseから読み込み
+    if(window._fbLoadData){
+      const fbData = await window._fbLoadData();
+      if(fbData){
+        if(fbData.tasks)tasks=fbData.tasks;
+        if(fbData.assignees)assignees=fbData.assignees;
+        if(fbData.year)currentYear=+fbData.year;
+        if(fbData.collapsed)collapsedIds=new Set(fbData.collapsed);
+        // localStorageにも同期
+        localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
+        localStorage.setItem('gt5_asgn',JSON.stringify(assignees));
+        localStorage.setItem('gt5_year',String(currentYear));
+        localStorage.setItem('gt5_col',JSON.stringify([...collapsedIds]));
+        tasks.forEach(t=>{if(t.predecessorId===undefined)t.predecessorId=null});
+        if(!tasks.length)initSample();
+        return;
+      }
+    }
+    // Firebaseにデータがなければlocalストレージから読み込み（移行）
     const t=localStorage.getItem('gt5_tasks');if(t)tasks=JSON.parse(t);
     const a=localStorage.getItem('gt5_asgn');if(a)assignees=JSON.parse(a);
     const y=localStorage.getItem('gt5_year');if(y)currentYear=+y;
@@ -388,10 +427,20 @@ function loadData(){
 }
 function saveData(){
   try{
+    // localStorageに保存
     localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
     localStorage.setItem('gt5_asgn',JSON.stringify(assignees));
     localStorage.setItem('gt5_year',String(currentYear));
     localStorage.setItem('gt5_col',JSON.stringify([...collapsedIds]));
+    // Firebaseにも保存（非同期）
+    if(window._fbSaveData){
+      window._fbSaveData({
+        tasks,
+        assignees,
+        year: currentYear,
+        collapsed: [...collapsedIds]
+      });
+    }
   }catch(e){}
 }
 function initSample(){
@@ -1449,16 +1498,16 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v7.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v9.csv`;a.click();URL.revokeObjectURL(url);
 }
-function init(){
+async function init(){
   const ys=document.getElementById('yearSel');
   [2024,2025,2026,2027,2028].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===currentYear)o.selected=true;ys.appendChild(o)});
   ys.onchange=()=>{currentYear=+ys.value;saveData();render()};
   document.getElementById('monthSel').onchange=function(){filt.month=+this.value;render()};
   document.getElementById('filterAsgn').onchange=function(){filt.assignee=this.value;render()};
   document.getElementById('filterParent').onchange=function(){filt.parent=this.value;render()};
-  loadData();reNumberWbs();render();
+  await loadData();reNumberWbs();render();
   setTimeout(jumpToToday,100);
   document.getElementById('depToggle').style.background='#E0D0F8';
 }
@@ -1537,6 +1586,15 @@ function startEditing() {
 
 function stopEditing() {
   if(!window._fbLockRef) return;
+  // 編集終了前にデータを確実に保存
+  if(window._fbSaveData){
+    window._fbSaveData({
+      tasks,
+      assignees,
+      year: currentYear,
+      collapsed: [...collapsedIds]
+    });
+  }
   window._fbRemove(window._fbLockRef);
   _isEditing = false;
 }
