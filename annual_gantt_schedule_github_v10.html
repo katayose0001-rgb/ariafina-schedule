@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v14</title>
+<title>年度スケジュール・ガントチャート v15</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -176,8 +176,8 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .g-resize-l{left:0}.g-resize-r{right:0}
 .dep-badge{position:absolute;top:4px;right:-18px;height:26px;width:17px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#533AB7;pointer-events:none;z-index:3}
 /* ── 同期通知 ── */
-.sync-notice{position:fixed;top:16px;right:16px;background:#1D9E75;color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:9999;transform:translateY(-60px);transition:transform .3s ease;pointer-events:none}
-.sync-notice.show{transform:translateY(0)}
+.sync-notice{position:fixed;bottom:60px;right:16px;background:#1D9E75;color:#fff;padding:8px 16px;border-radius:20px;font-size:11px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:9999;transform:translateY(80px);opacity:0;transition:transform .3s ease,opacity .3s ease;pointer-events:none}
+.sync-notice.show{transform:translateY(0);opacity:1}
 .lock-bar{display:flex;align-items:center;gap:8px;padding:0 10px;height:28px;border-radius:var(--border-radius-md);font-size:11px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary)}
 .lock-bar.editing{background:#EAF7EE;border-color:#1D9E75;color:#0E7A5C}
 .lock-bar.locked{background:#FDF0EF;border-color:#E74C3C;color:#A32D2D}
@@ -375,7 +375,7 @@ function showSyncNotice(){
   const el=document.getElementById('syncNotice');if(!el)return;
   el.classList.add('show');
   clearTimeout(_syncTimer);
-  _syncTimer=setTimeout(()=>el.classList.remove('show'),3000);
+  _syncTimer=setTimeout(()=>el.classList.remove('show'),4000);
 }
 
 function updateUndoBar(){
@@ -1551,7 +1551,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v14.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v15.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
