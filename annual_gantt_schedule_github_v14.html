@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v18</title>
+<title>年度スケジュール・ガントチャート v19</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -452,7 +452,10 @@ async function loadData(){
         }
         if(fbData.assignees)assignees=fbData.assignees;
         if(fbData.year)currentYear=+fbData.year;
-        if(fbData.collapsed)collapsedIds=new Set(fbData.collapsed);
+        if(fbData.collapsed){
+          const col=Array.isArray(fbData.collapsed)?fbData.collapsed:Object.values(fbData.collapsed);
+          collapsedIds=new Set(col.map(v=>+v));
+        }
         // localStorageにも同期
         localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
         localStorage.setItem('gt5_asgn',JSON.stringify(assignees));
@@ -614,7 +617,12 @@ function getVisibleTasks(){
     return true;
   });
 }
-function toggleCollapse(id){
+let _collapseTimer=null;
+function toggleCollapse(id,event){
+  if(event){event.stopPropagation();event.preventDefault();}
+  // debounce: 連続クリックを防ぐ
+  if(_collapseTimer)return;
+  _collapseTimer=setTimeout(()=>{_collapseTimer=null;},300);
   if(collapsedIds.has(id))collapsedIds.delete(id);else collapsedIds.add(id);
   saveData();render();
 }
@@ -690,7 +698,7 @@ function render(){
     lb+=`<td style="width:52px;text-align:center"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:center;cursor:pointer;background:transparent;border:none"></td>`;
     // 折りたたみトグル
     const toggleHtml=hasCh
-      ?`<span class="toggle-btn${collapsedIds.has(task.id)?' collapsed':''}" onclick="toggleCollapse(${task.id})">▼</span>`
+      ?`<span class="toggle-btn${collapsedIds.has(task.id)?' collapsed':''}" onclick="toggleCollapse(${task.id},event)">▼</span>`
       :`<span style="width:21px;display:inline-block"></span>`;
     const depIcon=hasPred?`<span title="先行タスクあり" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
     lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden"><div style="display:flex;align-items:center;height:100%">${toggleHtml}<input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div></td>`;
@@ -1632,7 +1640,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v18.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v19.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
@@ -1658,8 +1666,14 @@ async function init(){
       }));
     }
     if(window._currentAssignees)assignees=window._currentAssignees;
-    if(window._currentYear)currentYear=window._currentYear;
-    if(window._currentCollapsed)collapsedIds=new Set(window._currentCollapsed);
+    if(window._currentYear)currentYear=+window._currentYear;
+    // collapsedIdsを数値Setに確実に変換
+    if(window._currentCollapsed!=null){
+      collapsedIds=new Set(
+        (Array.isArray(window._currentCollapsed)?window._currentCollapsed:Object.values(window._currentCollapsed))
+        .map(v=>+v)
+      );
+    }
     tasks.forEach(t=>{if(t.predecessorId===undefined)t.predecessorId=null});
     reNumberWbs();render();
     showSyncNotice();
