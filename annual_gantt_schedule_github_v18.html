@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v21</title>
+<title>年度スケジュール・ガントチャート v23</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -622,14 +622,9 @@ function getVisibleTasks(){
     return true;
   });
 }
-let _collapseGuard=false;
 function toggleCollapse(id,event){
+  // 折りたたみ機能は一時保留
   if(event){event.stopPropagation();event.preventDefault();}
-  if(_collapseGuard)return;
-  _collapseGuard=true;
-  setTimeout(()=>{_collapseGuard=false;},500);
-  if(collapsedIds.has(id))collapsedIds.delete(id);else collapsedIds.add(id);
-  saveData();render();
 }
 function toggleDepView(){
   showDeps=!showDeps;
@@ -703,7 +698,7 @@ function render(){
     lb+=`<td style="width:52px;text-align:center"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:center;cursor:pointer;background:transparent;border:none"></td>`;
     // 折りたたみトグル
     const toggleHtml=hasCh
-      ?`<button class="toggle-btn${collapsedIds.has(task.id)?' collapsed':''}" onclick="event.stopPropagation();event.preventDefault();toggleCollapse(${task.id},event)" type="button">▼</button>`
+      ?`<span style="width:21px;display:inline-block"></span>`
       :`<span style="width:21px;display:inline-block"></span>`;
     const depIcon=hasPred?`<span title="先行タスクあり" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
     lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden"><div style="display:flex;align-items:center;height:100%">${toggleHtml}<input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div></td>`;
@@ -1645,7 +1640,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v21.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v23.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
@@ -1769,20 +1764,13 @@ function startEditing() {
 
 function stopEditing() {
   if(!window._fbLockRef) return;
-  // 編集終了前にデータを確実に保存
   if(window._fbSaveData){
     window._fbSaveData({
-      tasks,
-      assignees,
-      year: currentYear,
-      collapsed: [...collapsedIds]
+      tasks, assignees, year: currentYear, collapsed: [...collapsedIds]
     });
   }
   window._fbRemove(window._fbLockRef);
   _isEditing = false;
-  // 編集終了直後は2秒間Firebase再renderをブロック（ちかちか防止）
-  window._appInitialized = false;
-  setTimeout(()=>{ window._appInitialized = true; }, 2000);
 }
 
 function forceUnlock() {
