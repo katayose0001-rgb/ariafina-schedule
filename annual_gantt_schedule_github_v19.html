@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v34</title>
+<title>年度スケジュール・ガントチャート v37</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -177,7 +177,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .ass-row input{flex:1;height:28px;padding:0 7px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:12px;background:var(--color-background-primary);color:var(--color-text-primary)}
 .ass-row .rm-btn{width:26px;height:26px;padding:0;font-size:13px;flex-shrink:0;color:var(--color-text-danger)}
 .left-table,.right-table{border-collapse:collapse;table-layout:fixed}
-.left-table th,.left-table td,.right-table th,.right-table td{border:0.5px solid var(--color-border-tertiary);padding:0;white-space:nowrap;vertical-align:middle}.left-table th,.right-table th{height:34px}
+.left-table th,.left-table td,.right-table th,.right-table td{border:0.5px solid var(--color-border-tertiary);padding:0;white-space:nowrap;vertical-align:middle;box-sizing:border-box}.left-table th,.right-table th{height:34px}.left-table td,.right-table td{overflow:hidden}
 .left-table th,.right-table th{background:var(--color-background-secondary);font-weight:500;font-size:10px;text-align:center}
 .left-table tbody tr:hover td,.right-table tbody tr:hover td{background:rgba(55,138,221,.05)!important}
 .q1{background:#E6F1FB!important}.q2{background:#EAF3DE!important}.q3{background:#FAEEDA!important}.q4{background:#FBEAF0!important}
@@ -454,6 +454,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 <div class="sync-notice" id="syncNotice">🔄 データが更新されました</div>
 <script>
 const DAY_W=18,ROW_H=34;
+let rowH2Map={}; // 行高さマップ（render()で更新・全体から参照可）
 const today=new Date();
 const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
 // ── 32色パレット ──
@@ -1021,6 +1022,13 @@ function render(){
       return`<th style="width:${w}px;position:relative">${c.l}${handle}</th>`;
     }).join('')}</tr></thead></table>`;
 
+  // ── rowH2 を一括計算（左右テーブルで同じ値を参照するため）──
+  rowH2Map={}; // モジュールスコープの変数をリセット
+  visT.forEach(t=>{
+    const enT=t.titleEn||lookupDict(t.title);
+    rowH2Map[t.id]=enT?50:ROW_H;
+  });
+
   let lb=`<table class="left-table" style="width:${getLeftW()}px" id="leftTable"><tbody>`;
   visT.forEach(task=>{
     const lv=task.level||1;
@@ -1033,14 +1041,14 @@ function render(){
     const depIcon=hasPred?`<span title="先行タスクあり" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
     const _enText=task.titleEn||lookupDict(task.title);
     const enSub=_enText?`<div class="en-sub">${escH(_enText)}</div>`:'';
-    const rowH2=_enText?50:ROW_H;
+    const rowH2=rowH2Map[task.id]||ROW_H;
     lb+=`<tr class="${lvClass}${isHL?' parent-highlight':''}" data-tid="${task.id}" style="height:${rowH2}px">`;
-    lb+=`<td style="width:52px;text-align:center"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:center;cursor:pointer;background:transparent;border:none"></td>`;
-    lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden"><div style="display:flex;align-items:center;height:100%">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:1px"><div style="display:flex;align-items:center"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`;
-    lb+=`<td style="width:86px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`;
-    lb+=`<td style="width:46px;text-align:center"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" style="text-align:center;width:40px"></td>`;
-    lb+=`<td style="width:84px"><button class="date-btn" onclick="openCal(event,${task.id},'start')">${task.start||'選択'}</button></td>`;
-    lb+=`<td style="width:84px"><button class="date-btn" onclick="openCal(event,${task.id},'end')">${task.end||'選択'}</button></td>`;
+    lb+=`<td style="width:52px;text-align:center;height:${rowH2}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:center;cursor:pointer;background:transparent;border:none"></td>`;
+    lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:${rowH2}px"><div style="display:flex;align-items:center;height:100%">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:1px"><div style="display:flex;align-items:center"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`;
+    lb+=`<td style="width:86px;height:${rowH2}px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`;
+    lb+=`<td style="width:46px;text-align:center;height:${rowH2}px"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" style="text-align:center;width:40px"></td>`;
+    lb+=`<td style="width:84px;height:${rowH2}px"><button class="date-btn" onclick="openCal(event,${task.id},'start')">${task.start||'選択'}</button></td>`;
+    lb+=`<td style="width:84px;height:${rowH2}px"><button class="date-btn" onclick="openCal(event,${task.id},'end')">${task.end||'選択'}</button></td>`;
     lb+=`</tr>`;
   });
   document.getElementById('leftBody').innerHTML=lb+`</tbody></table>`;
@@ -1049,8 +1057,8 @@ function render(){
   let rb=`<table class="right-table" id="rightTable" style="width:${totalW+54}px"><tbody>`;
   visT.forEach((task,ri)=>{
     const hasPred=task.predecessorId!=null;
-    const rowH2=(task.titleEn||lookupDict(task.title))?50:ROW_H;
-    rb+=`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${rowH2}px"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;position:relative;padding:0">`;
+    const rowH2=rowH2Map[task.id]||ROW_H;
+    rb+=`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${rowH2}px"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;height:${rowH2}px;position:relative;padding:0">`;
     rb+=`<div style="position:relative;width:${totalW}px;height:${rowH2}px;overflow:hidden">`;
     days.forEach((d,di)=>{
       const w=d.getDay(),hol=isHol(d,h);
@@ -1093,7 +1101,7 @@ function render(){
         }
       }
     }
-    rb+=`</div></td><td style="width:54px;text-align:center;padding:0 4px"><button class="btn del-btn" onclick="deleteTask(${task.id})">削除</button></td></tr>`;
+    rb+=`</div></td><td style="width:54px;height:${rowH2}px;text-align:center;padding:0 4px"><button class="btn del-btn" onclick="deleteTask(${task.id})">削除</button></td></tr>`;
   });
   document.getElementById('rightBody').innerHTML=rb+`</tbody></table><svg id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:5;overflow:visible"></svg>`;
   syncScroll();
@@ -1116,7 +1124,7 @@ function drawDepArrows(){
   if(!rb)return;
   const totalW=days.length*DAY_W;
   svg.style.width=totalW+'px';
-  svg.style.height=(visT.reduce((s,t)=>s+((t.titleEn||lookupDict(t.title))?50:ROW_H),0))+'px';
+  svg.style.height=(visT.reduce((s,t)=>s+(rowH2Map[t.id]||ROW_H),0))+'px';
 
   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
   const marker=document.createElementNS('http://www.w3.org/2000/svg','marker');
@@ -1139,10 +1147,10 @@ function drawDepArrows(){
     if(predEi===undefined||succSi===undefined)return;
 
     const x1=(predEi+1)*DAY_W;
-    const getRowY=(rowIdx)=>visT.slice(0,rowIdx).reduce((s,t)=>s+((t.titleEn||lookupDict(t.title))?50:ROW_H),0);
-    const y1=getRowY(fromRow)+((pred.titleEn||lookupDict(pred.title))?50:ROW_H)/2;
+    const getRowY=(rowIdx)=>visT.slice(0,rowIdx).reduce((s,t)=>s+(rowH2Map[t.id]||ROW_H),0);
+    const y1=getRowY(fromRow)+(rowH2Map[pred.id]||ROW_H)/2;
     const x2=succSi*DAY_W;
-    const y2=getRowY(toRow)+((succ.titleEn||lookupDict(succ.title))?50:ROW_H)/2;
+    const y2=getRowY(toRow)+(rowH2Map[succ.id]||ROW_H)/2;
 
     const midX=(x1+x2)/2;
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -1165,6 +1173,25 @@ function drawDepArrows(){
 function syncScroll(){
   const lb=document.getElementById('leftBody'),rb=document.getElementById('rightBody'),rh=document.getElementById('rightHeader');
   if(lb&&rb)rb.onscroll=()=>{lb.scrollTop=rb.scrollTop;rh.scrollLeft=rb.scrollLeft;drawDepArrows()};
+  // 行高さを左右で強制同期
+  syncRowHeights();
+}
+
+function syncRowHeights(){
+  const lt=document.getElementById('leftTable'),rt=document.getElementById('rightTable');
+  if(!lt||!rt)return;
+  const lRows=lt.querySelectorAll('tbody tr');
+  const rRows=rt.querySelectorAll('tbody tr');
+  lRows.forEach((lr,i)=>{
+    const rr=rRows[i];if(!rr)return;
+    const tid=lr.dataset.tid;
+    const h=(tid&&rowH2Map[+tid])||ROW_H;
+    lr.style.height=h+'px';
+    rr.style.height=h+'px';
+    // td にも height を強制セット
+    lr.querySelectorAll('td').forEach(td=>td.style.height=h+'px');
+    rr.querySelectorAll('td').forEach(td=>td.style.height=h+'px');
+  });
 }
 
 function renderStats(){
@@ -2002,7 +2029,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v34.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v37.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
