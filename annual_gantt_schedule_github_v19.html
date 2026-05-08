@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v30</title>
+<title>年度スケジュール・ガントチャート v31</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -314,6 +314,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
       <button class="btn" onclick="openSide('addSub')">＋ サブタスク</button>
       <button class="btn" onclick="openSide('assignees')">担当者管理</button>
       <button class="btn" id="bulkTranslateBtn" onclick="bulkTranslateAll()" style="color:#185FA5;border-color:#378ADD;font-weight:600" title="英語タイトル未入力のタスクをAIで一括翻訳">🌐 一括翻訳</button>
+      <button class="btn" onclick="promptApiKey()" style="color:#666;font-size:10px" title="Anthropic APIキーを設定">🔑 APIキー</button>
       <button class="btn" onclick="exportCSV()">CSV出力</button>
     </div>
   </div>
@@ -543,6 +544,27 @@ function autoTranslate(jaTitle){
 // 翻訳キャッシュ（同じタスク名は再度APIを呼ばない）
 const _translateCache = {};
 
+// ── Anthropic APIキー管理 ──
+function getApiKey(){
+  return localStorage.getItem('gt5_anthropic_key')||'';
+}
+function setApiKey(key){
+  localStorage.setItem('gt5_anthropic_key', key.trim());
+}
+function promptApiKey(){
+  const current = getApiKey();
+  const key = prompt(
+    'Anthropic APIキーを入力してください。\n' +
+    '（設定後はブラウザに保存されます）\n\n' +
+    '現在の設定: ' + (current ? '設定済み（****）' : '未設定'),
+    current
+  );
+  if(key !== null){
+    setApiKey(key);
+    if(key.trim()) alert('APIキーを保存しました。');
+  }
+}
+
 async function translateWithAI(jaTitle){
   if(!jaTitle)return '';
   // キャッシュヒット
@@ -552,9 +574,20 @@ async function translateWithAI(jaTitle){
   if(dict){ _translateCache[jaTitle]=dict; return dict; }
   // Claude API呼び出し
   try{
+    const apiKey = getApiKey();
+    if(!apiKey){
+      const ok = confirm('Anthropic APIキーが未設定です。\n今すぐ設定しますか？');
+      if(ok) promptApiKey();
+      return '';
+    }
     const res = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
       body: JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:60,
@@ -562,11 +595,17 @@ async function translateWithAI(jaTitle){
         messages:[{role:'user',content:jaTitle}]
       })
     });
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      console.warn('Translation API error:', res.status, err);
+      return '';
+    }
     const data = await res.json();
     const en = data?.content?.[0]?.text?.trim()||'';
     if(en) _translateCache[jaTitle]=en;
     return en;
   }catch(e){
+    console.warn('Translation fetch error:', e);
     return '';
   }
 }
@@ -1818,7 +1857,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v30.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v31.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
