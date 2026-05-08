@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v28</title>
+<title>年度スケジュール・ガントチャート v30</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -229,6 +229,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .milestone-wrap:hover .milestone-diamond{opacity:.78}
 .milestone-wrap.active .milestone-diamond{outline:2px solid #185FA5;outline-offset:2px}
 .milestone-lbl{margin-left:6px;font-size:10px;font-weight:600;white-space:nowrap;pointer-events:none;text-shadow:0 0 4px var(--color-background-primary),0 0 4px var(--color-background-primary),0 0 4px var(--color-background-primary)}
+.milestone-en-lbl{margin-left:6px;font-size:8px;font-weight:400;white-space:nowrap;pointer-events:none;opacity:.75;letter-spacing:.3px}
 .lvl1 td{font-weight:500;border-left:3px solid transparent}
 .lvl2 td{background:var(--color-background-secondary)!important;border-left:3px solid transparent}
 .lvl3 td{background:color-mix(in srgb,var(--color-background-secondary) 50%,var(--color-background-primary))!important;border-left:3px solid transparent}
@@ -312,6 +313,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
       <button class="btn primary" onclick="openSide('addTask')">＋ タスク追加</button>
       <button class="btn" onclick="openSide('addSub')">＋ サブタスク</button>
       <button class="btn" onclick="openSide('assignees')">担当者管理</button>
+      <button class="btn" id="bulkTranslateBtn" onclick="bulkTranslateAll()" style="color:#185FA5;border-color:#378ADD;font-weight:600" title="英語タイトル未入力のタスクをAIで一括翻訳">🌐 一括翻訳</button>
       <button class="btn" onclick="exportCSV()">CSV出力</button>
     </div>
   </div>
@@ -382,11 +384,13 @@ function pushUndo(label){
 }
 // ── 同期通知 ──
 let _syncTimer=null;
-function showSyncNotice(){
+function showSyncNotice(msg){
   const el=document.getElementById('syncNotice');if(!el)return;
+  if(msg) el.textContent=msg;
+  else el.textContent='🔄 データが更新されました';
   el.classList.add('show');
   clearTimeout(_syncTimer);
-  _syncTimer=setTimeout(()=>el.classList.remove('show'),4000);
+  _syncTimer=setTimeout(()=>{el.classList.remove('show');el.textContent='🔄 データが更新されました';},4000);
 }
 
 function updateUndoBar(){
@@ -529,11 +533,82 @@ const JA_EN_DICT = {
 function autoTranslate(jaTitle){
   if(!jaTitle)return '';
   if(JA_EN_DICT[jaTitle])return JA_EN_DICT[jaTitle];
-  // 部分一致（前方）
   for(const [ja,en] of Object.entries(JA_EN_DICT)){
     if(jaTitle.includes(ja))return en;
   }
   return '';
+}
+
+// ── Claude APIによるリアルタイム翻訳 ──
+// 翻訳キャッシュ（同じタスク名は再度APIを呼ばない）
+const _translateCache = {};
+
+async function translateWithAI(jaTitle){
+  if(!jaTitle)return '';
+  // キャッシュヒット
+  if(_translateCache[jaTitle])return _translateCache[jaTitle];
+  // 辞書ヒット
+  const dict = autoTranslate(jaTitle);
+  if(dict){ _translateCache[jaTitle]=dict; return dict; }
+  // Claude API呼び出し
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:60,
+        system:'You are a translation assistant for a Japanese kitchen appliance company called ARIAFINA (a joint venture between Fujioh and Elica). Translate the Japanese project task name into concise English (5 words or less). Reply with ONLY the English translation, no explanation.',
+        messages:[{role:'user',content:jaTitle}]
+      })
+    });
+    const data = await res.json();
+    const en = data?.content?.[0]?.text?.trim()||'';
+    if(en) _translateCache[jaTitle]=en;
+    return en;
+  }catch(e){
+    return '';
+  }
+}
+
+// 編集パネルの「自動翻訳」ボタンから呼ばれる
+async function clickAutoTranslate(){
+  const btn = document.getElementById('autoTranslateBtn');
+  const titleVal = document.getElementById('s_title')?.value?.trim();
+  if(!titleVal)return;
+  btn.textContent='翻訳中...';
+  btn.disabled=true;
+  const result = await translateWithAI(titleVal);
+  if(result){
+    document.getElementById('s_titleEn').value=result;
+  }else{
+    btn.textContent='該当なし';
+    setTimeout(()=>{btn.textContent='自動翻訳';btn.disabled=false;},1500);
+    return;
+  }
+  btn.textContent='自動翻訳';
+  btn.disabled=false;
+}
+
+// 全タスクの titleEn を一括自動翻訳して保存
+async function bulkTranslateAll(){
+  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
+  const targets = tasks.filter(t=>!t.titleEn && t.title);
+  if(!targets.length){alert('翻訳が必要なタスクはありません。');return;}
+  const btn = document.getElementById('bulkTranslateBtn');
+  btn.disabled=true;
+  let done=0;
+  for(const t of targets){
+    btn.textContent=`翻訳中… ${++done}/${targets.length}`;
+    const en = await translateWithAI(t.title);
+    if(en) t.titleEn=en;
+    // レート制限を避けるため少し待機
+    await new Promise(r=>setTimeout(r,300));
+  }
+  saveData(); render();
+  btn.textContent='一括翻訳';
+  btn.disabled=false;
+  showSyncNotice('翻訳完了：'+done+'件');
 }
 
 let currentYear=today.getFullYear();
@@ -812,11 +887,15 @@ function render(){
         if(task.start===task.end){
           // ── マイルストーン表示 ──
           const cx=si*DAY_W+(DAY_W/2);
-          const top=(rowH2-20)/2;
-          rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="openSide('editTask',${task.id})">`;
-          rb+=`<div class="milestone-diamond" style="background:${col}"></div>`;
+          const _enTMs=task.titleEn||autoTranslate(task.title);
+          const msH=_enTMs?32:20;
+          const top=_enTMs?Math.max(2,(rowH2-msH)/2):(rowH2-20)/2;
+          rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:${msH}px;align-items:flex-start" onclick="openSide('editTask',${task.id})">`;
+          rb+=`<div class="milestone-diamond" style="background:${col};margin-top:${_enTMs?'0':'0'}px"></div>`;
+          rb+=`<div style="display:flex;flex-direction:column;justify-content:center">`;
           rb+=`<span class="milestone-lbl" style="color:${col}">${escH(task.title)}</span>`;
-          rb+=`</div>`;
+          if(_enTMs) rb+=`<span class="milestone-en-lbl" style="color:${col}">${escH(_enTMs)}</span>`;
+          rb+=`</div></div>`;
         }else{
           // ── 通常ガントバー ──
           const L=si*DAY_W,W2=(ei-si+1)*DAY_W;
@@ -1051,7 +1130,7 @@ function openSide(mode,id){
         <label style="color:var(--color-text-secondary)">英語タイトル（任意）</label>
         <div style="display:flex;gap:4px;align-items:center">
           <input id="s_titleEn" value="${escH(t.titleEn||'')}" placeholder="English title (optional)" style="flex:1;font-size:11px;color:var(--color-text-secondary)">
-          <button type="button" onclick="(function(){const s=autoTranslate(document.getElementById('s_title').value);if(s)document.getElementById('s_titleEn').value=s;else alert('辞書に該当なし');})();" style="font-size:10px;padding:2px 6px;border:0.5px solid var(--color-border-secondary);border-radius:3px;background:var(--color-background-secondary);cursor:pointer;white-space:nowrap;flex-shrink:0">自動翻訳</button>
+          <button type="button" id="autoTranslateBtn" onclick="clickAutoTranslate()" style="font-size:10px;padding:2px 6px;border:0.5px solid #378ADD;border-radius:3px;background:#EAF3FB;color:#185FA5;cursor:pointer;white-space:nowrap;flex-shrink:0;font-weight:600">自動翻訳</button>
         </div>
       </div>
       <div class="sf"><label>WBS番号（自動）</label><input id="s_wbs" value="${escH(t.wbs)}" readonly style="background:var(--color-background-secondary);color:var(--color-text-secondary)"></div>
@@ -1710,12 +1789,17 @@ function renderBarsOnly(){
       const col=task.color||COLORS[0];
       if(task.start===task.end){
         const ms=document.createElement('div');ms.className='milestone-wrap';ms.dataset.tid=task.id;
-        const cx=si*DAY_W+(DAY_W/2);const top=(ROW_H-20)/2;
-        ms.style.cssText=`left:${cx-10}px;top:${top}px;height:20px`;
+        const _enTD=task.titleEn||autoTranslate(task.title);
+        const msH2=_enTD?32:20;
+        const cx=si*DAY_W+(DAY_W/2);const top=_enTD?Math.max(2,(ROW_H-msH2)/2):(ROW_H-20)/2;
+        ms.style.cssText=`left:${cx-10}px;top:${top}px;height:${msH2}px;align-items:flex-start`;
         ms.onclick=()=>openSide('editTask',task.id);
         const dm=document.createElement('div');dm.className='milestone-diamond';dm.style.background=col;
+        const lblWrap=document.createElement('div');lblWrap.style.cssText='display:flex;flex-direction:column;justify-content:center';
         const lb=document.createElement('span');lb.className='milestone-lbl';lb.style.color=col;lb.textContent=task.title;
-        ms.append(dm,lb);wrap.appendChild(ms);
+        lblWrap.appendChild(lb);
+        if(_enTD){const en=document.createElement('span');en.className='milestone-en-lbl';en.style.color=col;en.textContent=_enTD;lblWrap.appendChild(en);}
+        ms.append(dm,lblWrap);wrap.appendChild(ms);
       }else{
         const bar=document.createElement('div');bar.className=`gantt-bar${task.predecessorId?' dep-child':''}`;bar.dataset.tid=task.id;
         bar.style.cssText=`left:${si*DAY_W}px;width:${(ei-si+1)*DAY_W}px;background:${col}`;
@@ -1734,7 +1818,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v28.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v30.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
