@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v31</title>
+<title>年度スケジュール・ガントチャート v32</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -27,6 +27,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const lockRef = ref(db, 'lock');
 const dataRef = ref(db, 'scheduleData');
+const userDictRef = ref(db, 'userDict');
 const sessionId = Math.random().toString(36).slice(2);
 
 // ── ロック管理をwindowに公開 ──
@@ -84,6 +85,18 @@ onValue(dataRef, (snapshot) => {
     window.dispatchEvent(new Event('fbDataUpdated'));
   }catch(e){}
 });
+
+// ── ユーザー辞書の保存・読み込み ──
+window._fbSaveUserDict = async function(dict){
+  try{ await set(userDictRef, dict); }catch(e){ console.warn('UserDict save error:', e); }
+};
+window._fbLoadUserDict = async function(){
+  try{
+    const snap = await get(userDictRef);
+    if(snap.exists()) return snap.val();
+  }catch(e){ console.warn('UserDict load error:', e); }
+  return {};
+};
 
 // ブラウザを閉じたら自動解放
 onDisconnect(lockRef).remove();
@@ -540,6 +553,51 @@ function autoTranslate(jaTitle){
   return '';
 }
 
+// ── ユーザー辞書（手入力した翻訳を蓄積・Firebase共有）──
+let _userDict = {};  // { '施工スケジュール': 'Construction Schedule', ... }
+
+// 起動時にFirebaseからユーザー辞書を読み込む
+async function loadUserDict(){
+  try{
+    // localStorageから先行読み込み（即時反映）
+    const local = localStorage.getItem('gt5_userDict');
+    if(local) _userDict = JSON.parse(local);
+    // Firebaseから最新版を取得
+    if(window._fbLoadUserDict){
+      const fb = await window._fbLoadUserDict();
+      if(fb && Object.keys(fb).length){
+        _userDict = {..._userDict, ...fb};
+        localStorage.setItem('gt5_userDict', JSON.stringify(_userDict));
+      }
+    }
+  }catch(e){}
+}
+
+// ユーザー辞書に登録（手入力時に自動呼び出し）
+function registerUserDict(jaTitle, enTitle){
+  if(!jaTitle || !enTitle) return;
+  jaTitle = jaTitle.trim();
+  enTitle = enTitle.trim();
+  if(!jaTitle || !enTitle) return;
+  if(_userDict[jaTitle] === enTitle) return; // 変化なしはスキップ
+  _userDict[jaTitle] = enTitle;
+  // localStorageに即時保存
+  localStorage.setItem('gt5_userDict', JSON.stringify(_userDict));
+  // Firebaseにも非同期保存
+  if(window._fbSaveUserDict) window._fbSaveUserDict(_userDict);
+}
+
+// ユーザー辞書を含めた翻訳参照（優先順位: ユーザー辞書 > 内蔵辞書）
+function lookupDict(jaTitle){
+  if(!jaTitle) return '';
+  if(_userDict[jaTitle]) return _userDict[jaTitle];
+  // 部分一致（ユーザー辞書）
+  for(const [ja, en] of Object.entries(_userDict)){
+    if(jaTitle.includes(ja)) return en;
+  }
+  return autoTranslate(jaTitle); // 内蔵辞書へフォールバック
+}
+
 // ── Claude APIによるリアルタイム翻訳 ──
 // 翻訳キャッシュ（同じタスク名は再度APIを呼ばない）
 const _translateCache = {};
@@ -569,8 +627,8 @@ async function translateWithAI(jaTitle){
   if(!jaTitle)return '';
   // キャッシュヒット
   if(_translateCache[jaTitle])return _translateCache[jaTitle];
-  // 辞書ヒット
-  const dict = autoTranslate(jaTitle);
+  // ユーザー辞書・内蔵辞書を参照
+  const dict = lookupDict(jaTitle);
   if(dict){ _translateCache[jaTitle]=dict; return dict; }
   // Claude API呼び出し
   try{
@@ -602,7 +660,10 @@ async function translateWithAI(jaTitle){
     }
     const data = await res.json();
     const en = data?.content?.[0]?.text?.trim()||'';
-    if(en) _translateCache[jaTitle]=en;
+    if(en){
+      _translateCache[jaTitle]=en;
+      registerUserDict(jaTitle, en); // AI翻訳結果もユーザー辞書に蓄積
+    }
     return en;
   }catch(e){
     console.warn('Translation fetch error:', e);
@@ -889,7 +950,7 @@ function render(){
     // インデントスペーサー（折りたたみ機能なし）
     const toggleHtml=`<span style="width:21px;display:inline-block"></span>`;
     const depIcon=hasPred?`<span title="先行タスクあり" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
-    const _enText=task.titleEn||autoTranslate(task.title);
+    const _enText=task.titleEn||lookupDict(task.title);
     const enSub=_enText?`<div class="en-sub">${escH(_enText)}</div>`:'';
     const rowH2=_enText?50:ROW_H;
     lb+=`<tr class="${lvClass}${isHL?' parent-highlight':''}" data-tid="${task.id}" style="height:${rowH2}px">`;
@@ -907,7 +968,7 @@ function render(){
   let rb=`<table class="right-table" id="rightTable" style="width:${totalW+54}px"><tbody>`;
   visT.forEach((task,ri)=>{
     const hasPred=task.predecessorId!=null;
-    const rowH2=(task.titleEn||autoTranslate(task.title))?50:ROW_H;
+    const rowH2=(task.titleEn||lookupDict(task.title))?50:ROW_H;
     rb+=`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${rowH2}px"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;position:relative;padding:0">`;
     rb+=`<div style="position:relative;width:${totalW}px;height:${rowH2}px;overflow:hidden">`;
     days.forEach((d,di)=>{
@@ -926,7 +987,7 @@ function render(){
         if(task.start===task.end){
           // ── マイルストーン表示 ──
           const cx=si*DAY_W+(DAY_W/2);
-          const _enTMs=task.titleEn||autoTranslate(task.title);
+          const _enTMs=task.titleEn||lookupDict(task.title);
           const msH=_enTMs?32:20;
           const top=_enTMs?Math.max(2,(rowH2-msH)/2):(rowH2-20)/2;
           rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:${msH}px;align-items:flex-start" onclick="openSide('editTask',${task.id})">`;
@@ -938,7 +999,7 @@ function render(){
         }else{
           // ── 通常ガントバー ──
           const L=si*DAY_W,W2=(ei-si+1)*DAY_W;
-          const _enT=task.titleEn||autoTranslate(task.title);
+          const _enT=task.titleEn||lookupDict(task.title);
           const barH=_enT?22:26;
           const enTop=barH+6;
           rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}" data-tid="${task.id}" style="left:${L}px;top:4px;width:${W2}px;height:${barH}px;background:${col}" onclick="openSide('editTask',${task.id})">`;
@@ -974,7 +1035,7 @@ function drawDepArrows(){
   if(!rb)return;
   const totalW=days.length*DAY_W;
   svg.style.width=totalW+'px';
-  svg.style.height=(visT.reduce((s,t)=>s+((t.titleEn||autoTranslate(t.title))?50:ROW_H),0))+'px';
+  svg.style.height=(visT.reduce((s,t)=>s+((t.titleEn||lookupDict(t.title))?50:ROW_H),0))+'px';
 
   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
   const marker=document.createElementNS('http://www.w3.org/2000/svg','marker');
@@ -997,10 +1058,10 @@ function drawDepArrows(){
     if(predEi===undefined||succSi===undefined)return;
 
     const x1=(predEi+1)*DAY_W;
-    const getRowY=(rowIdx)=>visT.slice(0,rowIdx).reduce((s,t)=>s+((t.titleEn||autoTranslate(t.title))?50:ROW_H),0);
-    const y1=getRowY(fromRow)+((pred.titleEn||autoTranslate(pred.title))?50:ROW_H)/2;
+    const getRowY=(rowIdx)=>visT.slice(0,rowIdx).reduce((s,t)=>s+((t.titleEn||lookupDict(t.title))?50:ROW_H),0);
+    const y1=getRowY(fromRow)+((pred.titleEn||lookupDict(pred.title))?50:ROW_H)/2;
     const x2=succSi*DAY_W;
-    const y2=getRowY(toRow)+((succ.titleEn||autoTranslate(succ.title))?50:ROW_H)/2;
+    const y2=getRowY(toRow)+((succ.titleEn||lookupDict(succ.title))?50:ROW_H)/2;
 
     const midX=(x1+x2)/2;
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -1677,7 +1738,10 @@ function saveEditTask(id){
   const h=hs(currentYear);
   const isMsChk=document.getElementById('s_ms')?.checked||false;
   t.title=document.getElementById('s_title').value;
-  t.titleEn=document.getElementById('s_titleEn')?.value.trim()||'';
+  const _newEn = document.getElementById('s_titleEn')?.value.trim()||'';
+  t.titleEn = _newEn;
+  // 手入力した英語タイトルをユーザー辞書に自動登録
+  if(_newEn) registerUserDict(t.title, _newEn);
   t.assignee=document.getElementById('s_asgn').value;
   t.start=document.getElementById('s_start').value;
   if(isMsChk){
@@ -1828,7 +1892,7 @@ function renderBarsOnly(){
       const col=task.color||COLORS[0];
       if(task.start===task.end){
         const ms=document.createElement('div');ms.className='milestone-wrap';ms.dataset.tid=task.id;
-        const _enTD=task.titleEn||autoTranslate(task.title);
+        const _enTD=task.titleEn||lookupDict(task.title);
         const msH2=_enTD?32:20;
         const cx=si*DAY_W+(DAY_W/2);const top=_enTD?Math.max(2,(ROW_H-msH2)/2):(ROW_H-20)/2;
         ms.style.cssText=`left:${cx-10}px;top:${top}px;height:${msH2}px;align-items:flex-start`;
@@ -1857,9 +1921,10 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v31.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v32.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
+  await loadUserDict(); // ユーザー辞書をFirebaseから読み込み
   const ys=document.getElementById('yearSel');
   [2024,2025,2026,2027,2028].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===currentYear)o.selected=true;ys.appendChild(o)});
   ys.onchange=()=>{currentYear=+ys.value;saveData();render()};
