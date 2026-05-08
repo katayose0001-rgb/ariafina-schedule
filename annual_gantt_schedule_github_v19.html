@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v41</title>
+<title>年度スケジュール・ガントチャート v42</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -1066,18 +1066,16 @@ function render(){
       const si=dayIdx[task.start],ei=dayIdx[task.end];
       if(si!==undefined&&ei!==undefined&&ei>=si){
         const col=task.color||COLORS[0];
-        if(task.start===task.end){
+        const isMsTask = task.start===task.end && task.days===1;
+        if(isMsTask){
           // ── マイルストーン表示 ──
           const cx=si*DAY_W+(DAY_W/2);
           const _enTMs=task.titleEn||lookupDict(task.title);
-          const msH=_enTMs?30:20;
-          const top=Math.max(2,(ROW_H-msH)/2);
-          rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:${msH}px;align-items:flex-start" onclick="openSide('editTask',${task.id})">`;
+          const top=(ROW_H-20)/2;
+          rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="openSide('editTask',${task.id})">`;
           rb+=`<div class="milestone-diamond" style="background:${col}"></div>`;
-          rb+=`<div style="display:flex;flex-direction:column;justify-content:center">`;
           rb+=`<span class="milestone-lbl" style="color:${col}">${escH(task.title)}</span>`;
-          if(_enTMs) rb+=`<span class="milestone-en-lbl" style="color:${col}">${escH(_enTMs)}</span>`;
-          rb+=`</div></div>`;
+          rb+=`</div>`;
         }else{
           // ── 通常ガントバー ──
           const L=si*DAY_W,W2=(ei-si+1)*DAY_W;
@@ -2005,19 +2003,15 @@ function renderBarsOnly(){
     wrap.querySelectorAll('.gantt-bar,.milestone-wrap').forEach(el=>el.remove());
     if(task.start&&task.end){const si=dayIdx[task.start],ei=dayIdx[task.end];if(si!==undefined&&ei!==undefined&&ei>=si){
       const col=task.color||COLORS[0];
-      if(task.start===task.end){
+      const isMsDrag = task.start===task.end && task.days===1;
+      if(isMsDrag){
         const ms=document.createElement('div');ms.className='milestone-wrap';ms.dataset.tid=task.id;
-        const _enTD=task.titleEn||lookupDict(task.title);
-        const msH2=_enTD?32:20;
-        const cx=si*DAY_W+(DAY_W/2);const top=_enTD?Math.max(2,(ROW_H-msH2)/2):(ROW_H-20)/2;
-        ms.style.cssText=`left:${cx-10}px;top:${top}px;height:${msH2}px;align-items:flex-start`;
+        const cx=si*DAY_W+(DAY_W/2);const msTop=(ROW_H-20)/2;
+        ms.style.cssText=`left:${cx-10}px;top:${msTop}px;height:20px;align-items:center`;
         ms.onclick=()=>openSide('editTask',task.id);
         const dm=document.createElement('div');dm.className='milestone-diamond';dm.style.background=col;
-        const lblWrap=document.createElement('div');lblWrap.style.cssText='display:flex;flex-direction:column;justify-content:center';
         const lb=document.createElement('span');lb.className='milestone-lbl';lb.style.color=col;lb.textContent=task.title;
-        lblWrap.appendChild(lb);
-        if(_enTD){const en=document.createElement('span');en.className='milestone-en-lbl';en.style.color=col;en.textContent=_enTD;lblWrap.appendChild(en);}
-        ms.append(dm,lblWrap);wrap.appendChild(ms);
+        ms.append(dm,lb);wrap.appendChild(ms);
       }else{
         const bar=document.createElement('div');bar.className=`gantt-bar${task.predecessorId?' dep-child':''}`;bar.dataset.tid=task.id;
         bar.style.cssText=`left:${si*DAY_W}px;width:${(ei-si+1)*DAY_W}px;background:${col}`;
@@ -2036,7 +2030,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v41.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v42.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
