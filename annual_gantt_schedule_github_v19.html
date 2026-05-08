@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v23</title>
+<title>年度スケジュール・ガントチャート v28</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -44,7 +44,6 @@ window._fbSaveData = async function(payload){
       tasks: payload.tasks,
       assignees: payload.assignees,
       year: payload.year,
-      collapsed: payload.collapsed,
       updatedAt
     });
   }catch(e){ console.warn('Firebase save error:', e); }
@@ -160,19 +159,21 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .ass-row input{flex:1;height:28px;padding:0 7px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:12px;background:var(--color-background-primary);color:var(--color-text-primary)}
 .ass-row .rm-btn{width:26px;height:26px;padding:0;font-size:13px;flex-shrink:0;color:var(--color-text-danger)}
 .left-table,.right-table{border-collapse:collapse;table-layout:fixed}
-.left-table th,.left-table td,.right-table th,.right-table td{border:0.5px solid var(--color-border-tertiary);padding:0;white-space:nowrap;vertical-align:middle;height:34px}
+.left-table th,.left-table td,.right-table th,.right-table td{border:0.5px solid var(--color-border-tertiary);padding:0;white-space:nowrap;vertical-align:middle}.left-table th,.right-table th{height:34px}
 .left-table th,.right-table th{background:var(--color-background-secondary);font-weight:500;font-size:10px;text-align:center}
 .left-table tbody tr:hover td,.right-table tbody tr:hover td{background:rgba(55,138,221,.05)!important}
 .q1{background:#E6F1FB!important}.q2{background:#EAF3DE!important}.q3{background:#FAEEDA!important}.q4{background:#FBEAF0!important}
 .wknd{background:#F1EFE8!important}.hday{background:#FAECE7!important}.tday{background:#FFF9CC!important}
 .dow-sat{color:#185FA5;font-weight:500}.dow-sun{color:#A32D2D;font-weight:500}
-.cell-input{width:100%;height:100%;border:none;background:transparent;font-size:11px;padding:2px 4px;color:var(--color-text-primary);font-family:inherit}
+.cell-input{width:100%;height:26px;border:none;background:transparent;font-size:11px;padding:2px 4px;color:var(--color-text-primary);font-family:inherit}
 .cell-input:focus{outline:2px solid #378ADD;outline-offset:-2px;background:var(--color-background-primary)}
+.en-sub{font-size:9px;color:var(--color-text-tertiary);font-weight:400;letter-spacing:.3px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;padding:0 4px;margin-top:0px}
 .assignee-sel{width:100%;height:100%;border:none;background:transparent;font-size:10px;padding:0 2px;color:var(--color-text-primary);font-family:inherit;cursor:pointer}
 .date-btn{width:100%;height:100%;border:none;background:transparent;font-size:10px;padding:2px 4px;color:var(--color-text-primary);cursor:pointer;text-align:left;font-family:inherit}
 .date-btn:hover{background:rgba(55,138,221,.08)}
 .gantt-cell-td{position:relative;padding:0}
-.gantt-bar{position:absolute;top:4px;height:26px;border-radius:3px;cursor:pointer;z-index:2;transition:opacity .1s}
+.gantt-bar{position:absolute;border-radius:3px;cursor:pointer;z-index:2;transition:opacity .1s}
+.gantt-bar-en{position:absolute;font-size:8px;font-weight:400;letter-spacing:.3px;opacity:.75;white-space:nowrap;overflow:hidden;pointer-events:none;z-index:2;display:flex;align-items:center;padding-left:4px}
 .gantt-bar:hover{opacity:.82}
 .gantt-bar.active{outline:2px solid #185FA5;outline-offset:1px}
 .gantt-bar.dep-child{border-left:3px solid #533AB7}
@@ -237,8 +238,6 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .lvl2>td:first-child{border-left:3px solid #1D9E75}
 .lvl3>td:first-child{border-left:3px solid #BA7517}
 .lvl4>td:first-child{border-left:3px solid #A32D2D}
-.toggle-btn{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:0.5px solid var(--color-border-secondary);border-radius:3px;cursor:pointer;font-size:10px;background:var(--color-background-primary);flex-shrink:0;vertical-align:middle;margin-right:3px;transition:transform .15s;color:var(--color-text-primary)}
-.toggle-btn.collapsed{transform:rotate(-90deg)}
 .parent-highlight td{background:rgba(55,138,221,.08)!important}
 .del-btn{font-size:10px;height:20px;padding:0 5px;color:var(--color-text-danger);border-color:var(--color-border-danger)}
 .dep-warning{color:#BA7517;font-size:10px;padding:3px 6px;background:#FFF3CD;border-radius:4px;margin-top:4px}
@@ -429,12 +428,119 @@ function addWD(st,n,h){let d=new Date(st),c=0;while(c<n-1){d.setDate(d.getDate()
 function countWD(s,e,h){if(!s||!e)return 0;let d=new Date(s),c=0;while(d<=e){if(isWork(d,h))c++;d.setDate(d.getDate()+1)}return c}
 function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
+// ── 日本語→英語 自動翻訳辞書（ARIAFINA業務用）──
+const JA_EN_DICT = {
+  // フェーズ・プロジェクト
+  'プロジェクト計画':'Project Planning',
+  '要件定義':'Requirements Definition',
+  'スケジュール作成':'Schedule Creation',
+  '設計フェーズ':'Design Phase',
+  '基本設計':'Basic Design',
+  '詳細設計':'Detailed Design',
+  '開発フェーズ':'Development Phase',
+  'テスト・品質確認':'Testing & QA',
+  'リリース準備':'Release Preparation',
+  // ARIAFINA業務系
+  '事業計画':'Business Planning',
+  '年度計画':'Annual Planning',
+  '予算策定':'Budget Planning',
+  '予算管理':'Budget Management',
+  '市場調査':'Market Research',
+  '競合調査':'Competitive Analysis',
+  '商品企画':'Product Planning',
+  '商品開発':'Product Development',
+  '新商品開発':'New Product Development',
+  'デザイン企画':'Design Planning',
+  'デザイン確認':'Design Review',
+  'デザイン承認':'Design Approval',
+  'サンプル作成':'Sample Production',
+  'サンプル確認':'Sample Review',
+  'サンプル承認':'Sample Approval',
+  '量産準備':'Mass Production Preparation',
+  '量産開始':'Mass Production Start',
+  '製造':'Manufacturing',
+  '品質検査':'Quality Inspection',
+  '品質管理':'Quality Control',
+  '納期管理':'Delivery Management',
+  '出荷':'Shipment',
+  '納品':'Delivery',
+  // 展示会・イベント
+  'サロン・デル・モービル':'Salone del Mobile',
+  'ユーロクッチーナ':'EuroCucina',
+  '展示会準備':'Exhibition Preparation',
+  '展示会出展':'Exhibition Participation',
+  '展示会':'Exhibition',
+  'ショールームオープン':'Showroom Opening',
+  'ショールーム':'Showroom',
+  'グランドオープン':'Grand Opening',
+  'イベント準備':'Event Preparation',
+  'イベント':'Event',
+  // 営業・マーケティング
+  '営業活動':'Sales Activities',
+  '顧客対応':'Customer Support',
+  '見積作成':'Quotation Preparation',
+  '受注':'Order Receipt',
+  '契約':'Contract',
+  '契約締結':'Contract Signing',
+  '価格設定':'Pricing',
+  'カタログ作成':'Catalog Production',
+  'カタログ':'Catalog',
+  'ウェブサイト更新':'Website Update',
+  'SNS運用':'Social Media Management',
+  'プレス対応':'Press Relations',
+  'プレスリリース':'Press Release',
+  // 社内業務
+  '承認申請':'Approval Request',
+  '稟議':'Internal Approval',
+  '稟議申請':'Internal Approval Request',
+  '会議':'Meeting',
+  '打ち合わせ':'Meeting',
+  'ミーティング':'Meeting',
+  '報告':'Reporting',
+  '資料作成':'Document Preparation',
+  '提案書作成':'Proposal Preparation',
+  '提案':'Proposal',
+  '調査':'Research',
+  '分析':'Analysis',
+  '確認':'Review',
+  '検討':'Review & Consideration',
+  '対応':'Response',
+  '準備':'Preparation',
+  '完了':'Completion',
+  // JV関連
+  'JV設立':'JV Establishment',
+  'JV運営':'JV Operations',
+  'エリカ打ち合わせ':'Elica Meeting',
+  'エリカ訪問':'Elica Visit',
+  'イタリア出張':'Italy Business Trip',
+  '海外出張':'Overseas Business Trip',
+  '出張':'Business Trip',
+  // ショールームOp
+  'ショールームオープン準備':'Showroom Opening Preparation',
+  '内装工事':'Interior Construction',
+  '什器設置':'Fixture Installation',
+  '設備工事':'Equipment Installation',
+  'IT設備':'IT Setup',
+  '人員配置':'Staffing',
+  '研修':'Training',
+  'スタッフ研修':'Staff Training',
+  '採用':'Recruitment',
+};
+function autoTranslate(jaTitle){
+  if(!jaTitle)return '';
+  if(JA_EN_DICT[jaTitle])return JA_EN_DICT[jaTitle];
+  // 部分一致（前方）
+  for(const [ja,en] of Object.entries(JA_EN_DICT)){
+    if(jaTitle.includes(ja))return en;
+  }
+  return '';
+}
+
 let currentYear=today.getFullYear();
 let filt={month:0,assignee:'',parent:'',milestoneOnly:false};
 let assignees=['山田 太郎','佐藤 花子','鈴木 一郎','田中 美咲','伊藤 健二'];
 let tasks=[];
 let sideMode=null,editId=null;
-let collapsedIds=new Set();
 let calWorkdayOnly=false;
 let showDeps=true;
 
@@ -457,15 +563,10 @@ async function loadData(){
         }
         if(fbData.assignees)assignees=fbData.assignees;
         if(fbData.year)currentYear=+fbData.year;
-        if(fbData.collapsed){
-          const col=Array.isArray(fbData.collapsed)?fbData.collapsed:Object.values(fbData.collapsed);
-          collapsedIds=new Set(col.map(v=>+v));
-        }
-        // localStorageにも同期
+        // localStorageにも同期（collapsed除く）
         localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
         localStorage.setItem('gt5_asgn',JSON.stringify(assignees));
         localStorage.setItem('gt5_year',String(currentYear));
-        localStorage.setItem('gt5_col',JSON.stringify([...collapsedIds]));
         tasks.forEach(t=>{if(t.predecessorId===undefined)t.predecessorId=null});
         if(!tasks.length)initSample();
         return;
@@ -475,7 +576,6 @@ async function loadData(){
     const t=localStorage.getItem('gt5_tasks');if(t)tasks=JSON.parse(t);
     const a=localStorage.getItem('gt5_asgn');if(a)assignees=JSON.parse(a);
     const y=localStorage.getItem('gt5_year');if(y)currentYear=+y;
-    const c=localStorage.getItem('gt5_col');if(c)collapsedIds=new Set(JSON.parse(c));
   }catch(e){}
   tasks.forEach(t=>{if(t.predecessorId===undefined)t.predecessorId=null});
   if(!tasks.length)initSample();
@@ -486,34 +586,31 @@ function saveData(){
     localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
     localStorage.setItem('gt5_asgn',JSON.stringify(assignees));
     localStorage.setItem('gt5_year',String(currentYear));
-    localStorage.setItem('gt5_col',JSON.stringify([...collapsedIds]));
-    // Firebaseにも保存（非同期）
     if(window._fbSaveData){
       window._fbSaveData({
         tasks,
         assignees,
-        year: currentYear,
-        collapsed: [...collapsedIds]
+        year: currentYear
       });
     }
   }catch(e){}
 }
 function initSample(){
   const y=currentYear,h=hs(y);
-  const mk=(id,wbs,title,asgn,days,start,lvl,col,pid,pred)=>{
+  const mk=(id,wbs,title,asgn,days,start,lvl,col,pid,pred,en='')=>{
     const d=parseD(start);
-    return{id,wbs,title,assignee:asgn,days,start,end:fmt(addWD(d,days,h)),level:lvl,color:col,parentId:pid??null,predecessorId:pred??null}
+    return{id,wbs,title,titleEn:en,assignee:asgn,days,start,end:fmt(addWD(d,days,h)),level:lvl,color:col,parentId:pid??null,predecessorId:pred??null}
   };
   tasks=[
-    mk(1,'1','プロジェクト計画',assignees[0],5,`${y}-04-01`,1,'#378ADD',null,null),
-    mk(2,'1.1','要件定義',assignees[1],3,`${y}-04-01`,2,'#1D9E75',1,null),
-    mk(3,'1.2','スケジュール作成',assignees[0],2,`${y}-04-04`,2,'#1D9E75',1,null),
-    mk(4,'2','設計フェーズ',assignees[2],10,`${y}-04-08`,1,'#378ADD',null,1),
-    mk(5,'2.1','基本設計',assignees[2],5,`${y}-04-08`,2,'#1D9E75',4,null),
-    mk(6,'2.2','詳細設計',assignees[3]||assignees[0],5,`${y}-04-15`,2,'#1D9E75',4,5),
-    mk(7,'3','開発フェーズ',assignees[1],20,`${y}-05-01`,1,'#378ADD',null,4),
-    mk(8,'4','テスト・品質確認',assignees[4]||assignees[0],10,`${y}-06-02`,1,'#378ADD',null,7),
-    mk(9,'5','リリース準備',assignees[0],5,`${y}-06-16`,1,'#378ADD',null,8),
+    mk(1,'1','プロジェクト計画',assignees[0],5,`${y}-04-01`,1,'#378ADD',null,null,'Project Planning'),
+    mk(2,'1.1','要件定義',assignees[1],3,`${y}-04-01`,2,'#1D9E75',1,null,'Requirements Definition'),
+    mk(3,'1.2','スケジュール作成',assignees[0],2,`${y}-04-04`,2,'#1D9E75',1,null,'Schedule Creation'),
+    mk(4,'2','設計フェーズ',assignees[2],10,`${y}-04-08`,1,'#378ADD',null,1,'Design Phase'),
+    mk(5,'2.1','基本設計',assignees[2],5,`${y}-04-08`,2,'#1D9E75',4,null,'Basic Design'),
+    mk(6,'2.2','詳細設計',assignees[3]||assignees[0],5,`${y}-04-15`,2,'#1D9E75',4,5,'Detailed Design'),
+    mk(7,'3','開発フェーズ',assignees[1],20,`${y}-05-01`,1,'#378ADD',null,4,'Development Phase'),
+    mk(8,'4','テスト・品質確認',assignees[4]||assignees[0],10,`${y}-06-02`,1,'#378ADD',null,7,'Testing & QA'),
+    mk(9,'5','リリース準備',assignees[0],5,`${y}-06-16`,1,'#378ADD',null,8,'Release Preparation'),
   ];
 }
 
@@ -594,18 +691,6 @@ function getLeftW(){return LEFT_COLS.reduce((s,c)=>s+(c.k==='title'?titleColW:c.
 const LEFT_W=500;// 後方互換用・実際はgetLeftW()を使用
 function getParents(){return tasks.filter(t=>t.parentId===null)}
 
-// 祖先チェーンを辿り、折りたたまれた祖先があればfalse
-function isAncestorCollapsed(task){
-  let pid=task.parentId;
-  while(pid!=null){
-    if(collapsedIds.has(pid))return true;
-    const p=tasks.find(t=>t.id===pid);
-    pid=p?p.parentId:null;
-  }
-  return false;
-}
-function hasDescendants(id){return tasks.some(t=>t.parentId===id)}
-
 function getVisibleTasks(){
   const afilt=filt.assignee;
   const pfilt=filt.parent?parseInt(filt.parent):null;
@@ -617,14 +702,9 @@ function getVisibleTasks(){
       if(!match)return false;
     }
     if(afilt&&t.assignee!==afilt)return false;
-    if(isAncestorCollapsed(t))return false;
     if(filt.milestoneOnly&&!(t.start&&t.end&&t.start===t.end))return false;
     return true;
   });
-}
-function toggleCollapse(id,event){
-  // 折りたたみ機能は一時保留
-  if(event){event.stopPropagation();event.preventDefault();}
 }
 function toggleDepView(){
   showDeps=!showDeps;
@@ -689,19 +769,18 @@ function render(){
   visT.forEach(task=>{
     const lv=task.level||1;
     const lvClass=`lvl${Math.min(lv,4)}`;
-    const hasCh=hasDescendants(task.id);
     const isHL=pfilt&&task.id===pfilt;
     const hasPred=task.predecessorId!=null;
     const pad=(lv-1)*12; // インデント幅
-    lb+=`<tr class="${lvClass}${isHL?' parent-highlight':''}" data-tid="${task.id}" style="height:${ROW_H}px">`;
-    // WBSセル（読み取り専用・ダブルクリックで編集）
-    lb+=`<td style="width:52px;text-align:center"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:center;cursor:pointer;background:transparent;border:none"></td>`;
-    // 折りたたみトグル
-    const toggleHtml=hasCh
-      ?`<span style="width:21px;display:inline-block"></span>`
-      :`<span style="width:21px;display:inline-block"></span>`;
+    // インデントスペーサー（折りたたみ機能なし）
+    const toggleHtml=`<span style="width:21px;display:inline-block"></span>`;
     const depIcon=hasPred?`<span title="先行タスクあり" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
-    lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden"><div style="display:flex;align-items:center;height:100%">${toggleHtml}<input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div></td>`;
+    const _enText=task.titleEn||autoTranslate(task.title);
+    const enSub=_enText?`<div class="en-sub">${escH(_enText)}</div>`:'';
+    const rowH2=_enText?50:ROW_H;
+    lb+=`<tr class="${lvClass}${isHL?' parent-highlight':''}" data-tid="${task.id}" style="height:${rowH2}px">`;
+    lb+=`<td style="width:52px;text-align:center"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:center;cursor:pointer;background:transparent;border:none"></td>`;
+    lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden"><div style="display:flex;align-items:center;height:100%">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:1px"><div style="display:flex;align-items:center"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`;
     lb+=`<td style="width:86px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`;
     lb+=`<td style="width:46px;text-align:center"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" style="text-align:center;width:40px"></td>`;
     lb+=`<td style="width:84px"><button class="date-btn" onclick="openCal(event,${task.id},'start')">${task.start||'選択'}</button></td>`;
@@ -714,8 +793,9 @@ function render(){
   let rb=`<table class="right-table" id="rightTable" style="width:${totalW+54}px"><tbody>`;
   visT.forEach((task,ri)=>{
     const hasPred=task.predecessorId!=null;
-    rb+=`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${ROW_H}px"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;position:relative;padding:0">`;
-    rb+=`<div style="position:relative;width:${totalW}px;height:${ROW_H}px;overflow:hidden">`;
+    const rowH2=(task.titleEn||autoTranslate(task.title))?50:ROW_H;
+    rb+=`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${rowH2}px"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;position:relative;padding:0">`;
+    rb+=`<div style="position:relative;width:${totalW}px;height:${rowH2}px;overflow:hidden">`;
     days.forEach((d,di)=>{
       const w=d.getDay(),hol=isHol(d,h);
       let bg='';
@@ -732,7 +812,7 @@ function render(){
         if(task.start===task.end){
           // ── マイルストーン表示 ──
           const cx=si*DAY_W+(DAY_W/2);
-          const top=(ROW_H-20)/2;
+          const top=(rowH2-20)/2;
           rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="openSide('editTask',${task.id})">`;
           rb+=`<div class="milestone-diamond" style="background:${col}"></div>`;
           rb+=`<span class="milestone-lbl" style="color:${col}">${escH(task.title)}</span>`;
@@ -740,10 +820,16 @@ function render(){
         }else{
           // ── 通常ガントバー ──
           const L=si*DAY_W,W2=(ei-si+1)*DAY_W;
-          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}" data-tid="${task.id}" style="left:${L}px;width:${W2}px;background:${col}" onclick="openSide('editTask',${task.id})">`;
+          const _enT=task.titleEn||autoTranslate(task.title);
+          const barH=_enT?22:26;
+          const enTop=barH+6;
+          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}" data-tid="${task.id}" style="left:${L}px;top:4px;width:${W2}px;height:${barH}px;background:${col}" onclick="openSide('editTask',${task.id})">`;
           rb+=`<div class="g-resize-l" onmousedown="initRS(event,${task.id},'left')"></div>`;
           rb+=`<div class="gantt-bar-lbl">${escH(task.title)}</div>`;
           rb+=`<div class="g-resize-r" onmousedown="initRS(event,${task.id},'right')"></div></div>`;
+          if(_enT){
+            rb+=`<div class="gantt-bar-en" style="left:${L+3}px;top:${enTop}px;width:${W2-6}px;color:${col}">${escH(_enT)}</div>`;
+          }
         }
       }
     }
@@ -770,7 +856,7 @@ function drawDepArrows(){
   if(!rb)return;
   const totalW=days.length*DAY_W;
   svg.style.width=totalW+'px';
-  svg.style.height=(visT.length*ROW_H)+'px';
+  svg.style.height=(visT.reduce((s,t)=>s+((t.titleEn||autoTranslate(t.title))?50:ROW_H),0))+'px';
 
   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
   const marker=document.createElementNS('http://www.w3.org/2000/svg','marker');
@@ -793,9 +879,10 @@ function drawDepArrows(){
     if(predEi===undefined||succSi===undefined)return;
 
     const x1=(predEi+1)*DAY_W;
-    const y1=fromRow*ROW_H+ROW_H/2;
+    const getRowY=(rowIdx)=>visT.slice(0,rowIdx).reduce((s,t)=>s+((t.titleEn||autoTranslate(t.title))?50:ROW_H),0);
+    const y1=getRowY(fromRow)+((pred.titleEn||autoTranslate(pred.title))?50:ROW_H)/2;
     const x2=succSi*DAY_W;
-    const y2=toRow*ROW_H+ROW_H/2;
+    const y2=getRowY(toRow)+((succ.titleEn||autoTranslate(succ.title))?50:ROW_H)/2;
 
     const midX=(x1+x2)/2;
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -884,7 +971,6 @@ function deleteTask(id){
   const toDelete=new Set(collectIds(id));
   tasks.forEach(t=>{if(toDelete.has(t.predecessorId))t.predecessorId=null});
   tasks=tasks.filter(t=>!toDelete.has(t.id));
-  toDelete.forEach(did=>collapsedIds.delete(did));
   if(toDelete.has(editId)){editId=null;closeSide()}
   reNumberWbs();saveData();render();
 }
@@ -961,6 +1047,13 @@ function openSide(mode,id){
     const isMilestone=!!(t.start&&t.end&&t.start===t.end);
     body.innerHTML=`
       <div class="sf"><label>タスク名</label><input id="s_title" value="${escH(t.title)}" style="font-weight:700;font-size:13px"></div>
+      <div class="sf">
+        <label style="color:var(--color-text-secondary)">英語タイトル（任意）</label>
+        <div style="display:flex;gap:4px;align-items:center">
+          <input id="s_titleEn" value="${escH(t.titleEn||'')}" placeholder="English title (optional)" style="flex:1;font-size:11px;color:var(--color-text-secondary)">
+          <button type="button" onclick="(function(){const s=autoTranslate(document.getElementById('s_title').value);if(s)document.getElementById('s_titleEn').value=s;else alert('辞書に該当なし');})();" style="font-size:10px;padding:2px 6px;border:0.5px solid var(--color-border-secondary);border-radius:3px;background:var(--color-background-secondary);cursor:pointer;white-space:nowrap;flex-shrink:0">自動翻訳</button>
+        </div>
+      </div>
       <div class="sf"><label>WBS番号（自動）</label><input id="s_wbs" value="${escH(t.wbs)}" readonly style="background:var(--color-background-secondary);color:var(--color-text-secondary)"></div>
       <div class="sf"><label>担当者</label><select id="s_asgn">${assignees.map(a=>`<option${a===t.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></div>
       <div class="sf">
@@ -1466,6 +1559,7 @@ function saveEditTask(id){
   const h=hs(currentYear);
   const isMsChk=document.getElementById('s_ms')?.checked||false;
   t.title=document.getElementById('s_title').value;
+  t.titleEn=document.getElementById('s_titleEn')?.value.trim()||'';
   t.assignee=document.getElementById('s_asgn').value;
   t.start=document.getElementById('s_start').value;
   if(isMsChk){
@@ -1499,7 +1593,7 @@ function deleteAllTasks(){
   }
   if(!confirm('全てのタスクを削除しますか？\nこの操作はUNDOで元に戻せます。'))return;
   pushUndo('全タスク削除');
-  tasks=[];collapsedIds.clear();editId=null;sideMode=null;
+  tasks=[];editId=null;sideMode=null;
   document.getElementById('sidePanel').classList.remove('open');
   saveData();render();
 }
@@ -1640,7 +1734,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v23.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v28.csv`;a.click();URL.revokeObjectURL(url);
 }
 async function init(){
   const ys=document.getElementById('yearSel');
@@ -1667,13 +1761,6 @@ async function init(){
     }
     if(window._currentAssignees)assignees=window._currentAssignees;
     if(window._currentYear)currentYear=+window._currentYear;
-    // collapsedIdsを数値Setに確実に変換
-    if(window._currentCollapsed!=null){
-      collapsedIds=new Set(
-        (Array.isArray(window._currentCollapsed)?window._currentCollapsed:Object.values(window._currentCollapsed))
-        .map(v=>+v)
-      );
-    }
     tasks.forEach(t=>{if(t.predecessorId===undefined)t.predecessorId=null});
     reNumberWbs();render();
     showSyncNotice();
@@ -1766,7 +1853,7 @@ function stopEditing() {
   if(!window._fbLockRef) return;
   if(window._fbSaveData){
     window._fbSaveData({
-      tasks, assignees, year: currentYear, collapsed: [...collapsedIds]
+      tasks, assignees, year: currentYear
     });
   }
   window._fbRemove(window._fbLockRef);
@@ -1784,7 +1871,7 @@ function setReadOnly(flag) {
   const editBtns = document.querySelectorAll(
     '.btn.primary, #lockBtn.start, .gantt-bar, .milestone-wrap, ' +
     '.cell-input:not([readonly]), .assignee-sel, .date-btn, ' +
-    '.g-resize-l, .g-resize-r, .toggle-btn'
+    '.g-resize-l, .g-resize-r'
   );
   // タスク追加・サブタスク・担当者管理・CSV以外のボタン
   document.querySelectorAll('button.btn').forEach(b => {
