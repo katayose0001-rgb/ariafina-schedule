@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v38</title>
+<title>年度スケジュール・ガントチャート v40</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -177,15 +177,15 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .ass-row input{flex:1;height:28px;padding:0 7px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:12px;background:var(--color-background-primary);color:var(--color-text-primary)}
 .ass-row .rm-btn{width:26px;height:26px;padding:0;font-size:13px;flex-shrink:0;color:var(--color-text-danger)}
 .left-table,.right-table{border-collapse:collapse;table-layout:fixed}
-.left-table th,.left-table td,.right-table th,.right-table td{border:0.5px solid var(--color-border-tertiary);padding:0;white-space:nowrap;vertical-align:middle;box-sizing:border-box}.left-table th,.right-table th{height:34px}.left-table td,.right-table td{overflow:hidden}
+.left-table th,.left-table td,.right-table th,.right-table td{border:0.5px solid var(--color-border-tertiary);padding:0;white-space:nowrap;vertical-align:middle;box-sizing:border-box;overflow:hidden}.left-table th,.right-table th{height:34px}.left-table tbody tr,.right-table tbody tr{height:34px!important;max-height:34px!important;min-height:34px!important}.left-table tbody td,.right-table tbody td{height:34px!important;max-height:34px!important;min-height:34px!important}
 .left-table th,.right-table th{background:var(--color-background-secondary);font-weight:500;font-size:10px;text-align:center}
 .left-table tbody tr:hover td,.right-table tbody tr:hover td{background:rgba(55,138,221,.05)!important}
 .q1{background:#E6F1FB!important}.q2{background:#EAF3DE!important}.q3{background:#FAEEDA!important}.q4{background:#FBEAF0!important}
 .wknd{background:#F1EFE8!important}.hday{background:#FAECE7!important}.tday{background:#FFF9CC!important}
 .dow-sat{color:#185FA5;font-weight:500}.dow-sun{color:#A32D2D;font-weight:500}
-.cell-input{width:100%;height:22px;border:none;background:transparent;font-size:11px;padding:1px 4px;color:var(--color-text-primary);font-family:inherit}
+.cell-input{width:100%;height:20px;border:none;background:transparent;font-size:11px;padding:1px 4px;color:var(--color-text-primary);font-family:inherit;flex-shrink:0}
 .cell-input:focus{outline:2px solid #378ADD;outline-offset:-2px;background:var(--color-background-primary)}
-.en-sub{font-size:9px;color:var(--color-text-tertiary);font-weight:400;letter-spacing:.3px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;padding:0 4px;margin-top:0}
+.en-sub{font-size:9px;color:var(--color-text-tertiary);font-weight:400;letter-spacing:.3px;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;padding:0 4px;position:absolute;bottom:2px;left:0;right:0;pointer-events:none}
 .assignee-sel{width:100%;height:100%;border:none;background:transparent;font-size:10px;padding:0 2px;color:var(--color-text-primary);font-family:inherit;cursor:pointer}
 .date-btn{width:100%;height:100%;border:none;background:transparent;font-size:10px;padding:2px 4px;color:var(--color-text-primary);cursor:pointer;text-align:left;font-family:inherit}
 .date-btn:hover{background:rgba(55,138,221,.08)}
@@ -1037,7 +1037,7 @@ function render(){
     const rowH2=ROW_H;
     lb+=`<tr class="${lvClass}${isHL?' parent-highlight':''}" data-tid="${task.id}" style="height:${rowH2}px">`;
     lb+=`<td style="width:52px;text-align:center;height:${rowH2}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:center;cursor:pointer;background:transparent;border:none"></td>`;
-    lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:${rowH2}px"><div style="display:flex;align-items:center;height:100%">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:1px"><div style="display:flex;align-items:center"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`;
+    lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:${rowH2}px;position:relative"><div style="display:flex;align-items:center;height:100%;overflow:hidden">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;position:relative;height:100%"><div style="display:flex;align-items:center;height:100%"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`;
     lb+=`<td style="width:86px;height:${rowH2}px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`;
     lb+=`<td style="width:46px;text-align:center;height:${rowH2}px"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" style="text-align:center;width:40px"></td>`;
     lb+=`<td style="width:84px;height:${rowH2}px"><button class="date-btn" onclick="openCal(event,${task.id},'start')">${task.start||'選択'}</button></td>`;
@@ -1092,6 +1092,7 @@ function render(){
   });
   document.getElementById('rightBody').innerHTML=rb+`</tbody></table><svg id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:5;overflow:visible"></svg>`;
   syncScroll();
+  requestAnimationFrame(syncRowHeights); // DOM確定後に行高さ強制同期
   drawDepArrows();
 }
 
@@ -1164,7 +1165,22 @@ function syncScroll(){
   syncRowHeights();
 }
 
-function syncRowHeights(){} // 行高さ固定化により不要
+function syncRowHeights(){
+  // 描画後にDOMで全行を強制34px固定
+  const ROW_PX = ROW_H + 'px';
+  ['leftTable','rightTable'].forEach(id=>{
+    const tbl = document.getElementById(id);
+    if(!tbl) return;
+    tbl.querySelectorAll('tbody tr').forEach(tr=>{
+      tr.style.setProperty('height', ROW_PX, 'important');
+      tr.querySelectorAll('td').forEach(td=>{
+        td.style.setProperty('height', ROW_PX, 'important');
+        td.style.setProperty('max-height', ROW_PX, 'important');
+        td.style.overflow = 'hidden';
+      });
+    });
+  });
+}
 
 function renderStats(){
   const h=hs(currentYear),all=yearDays(currentYear,0);
@@ -2001,7 +2017,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v38.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v40.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
