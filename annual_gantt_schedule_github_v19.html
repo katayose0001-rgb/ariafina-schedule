@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v42</title>
+<title>年度スケジュール・ガントチャート v45</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -244,6 +244,8 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .ms-sw::after{content:'';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:transform .2s}
 .ms-filter-toggle.active .ms-sw{background:#7B5DC4}
 .ms-filter-toggle.active .ms-sw::after{transform:translateX(13px)}
+.toggle-btn{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border:0.5px solid var(--color-border-secondary);border-radius:3px;cursor:pointer;font-size:9px;background:var(--color-background-primary);flex-shrink:0;vertical-align:middle;margin-right:3px;color:var(--color-text-secondary);transition:transform .15s;user-select:none}
+.toggle-btn.collapsed{transform:rotate(-90deg)}
 .milestone-wrap{position:absolute;top:0;display:flex;align-items:center;z-index:4;cursor:pointer}
 .milestone-diamond{width:20px;height:20px;flex-shrink:0;transform:rotate(45deg);border-radius:2px;transition:opacity .1s}
 .milestone-wrap:hover .milestone-diamond{opacity:.78}
@@ -455,6 +457,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 <script>
 const DAY_W=18,ROW_H=34;
 // rowH2Map廃止：行高さは常にROW_H固定（左右ズレ防止）
+let collapsedIds=new Set(); // 折りたたみ中のLv1タスクID（localStorageのみ管理）
 const today=new Date();
 const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
 // ── 32色パレット ──
@@ -843,6 +846,7 @@ function saveData(){
     localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
     localStorage.setItem('gt5_asgn',JSON.stringify(assignees));
     localStorage.setItem('gt5_year',String(currentYear));
+    {const c=localStorage.getItem('gt5_col');if(c)try{collapsedIds=new Set(JSON.parse(c));}catch(e){}}
     if(window._fbSaveData){
       window._fbSaveData({
         tasks,
@@ -943,15 +947,27 @@ function setTitleColW(w){
   localStorage.setItem('gt5_titleW',String(titleColW));
 }
 
-const LEFT_COLS=[{k:'wbs',l:'WBS',w:52},{k:'title',l:'タスク名',w:148},{k:'assignee',l:'担当者',w:86},{k:'days',l:'日数',w:46},{k:'start',l:'開始日',w:84},{k:'end',l:'終了日',w:84}];
+const LEFT_COLS=[{k:'wbs',l:'WBS',w:56},{k:'title',l:'タスク名',w:148},{k:'assignee',l:'担当者',w:86},{k:'days',l:'日数',w:46},{k:'start',l:'開始日',w:84},{k:'end',l:'終了日',w:84}];
 function getLeftW(){return LEFT_COLS.reduce((s,c)=>s+(c.k==='title'?titleColW:c.w),0);}
 const LEFT_W=500;// 後方互換用・実際はgetLeftW()を使用
 function getParents(){return tasks.filter(t=>t.parentId===null)}
 
 function getVisibleTasks(){
+  // 折りたたまれたLv1タスクの子孫を非表示
+  const isHiddenByCollapse=(t)=>{
+    let cur=t;
+    while(cur.parentId!=null){
+      const parent=tasks.find(p=>p.id===cur.parentId);
+      if(!parent)break;
+      if((parent.level===1||parent.level===2)&&collapsedIds.has(parent.id))return true;
+      cur=parent;
+    }
+    return false;
+  };
   const afilt=filt.assignee;
   const pfilt=filt.parent?parseInt(filt.parent):null;
   return tasks.filter(t=>{
+    if(isHiddenByCollapse(t))return false;
     if(pfilt){
       // 選択親かその子孫のみ表示
       let cur=t,match=false;
@@ -963,6 +979,15 @@ function getVisibleTasks(){
     return true;
   });
 }
+// ── 折りたたみ（Lv1のみ・localStorageに保存）──
+function toggleCollapse(id,event){
+  if(event){event.stopPropagation();event.preventDefault();}
+  if(collapsedIds.has(id)) collapsedIds.delete(id);
+  else collapsedIds.add(id);
+  localStorage.setItem('gt5_col',JSON.stringify([...collapsedIds]));
+  render();
+}
+
 function toggleDepView(){
   showDeps=!showDeps;
   const btn=document.getElementById('depToggle');
@@ -1029,14 +1054,18 @@ function render(){
     const isHL=pfilt&&task.id===pfilt;
     const hasPred=task.predecessorId!=null;
     const pad=(lv-1)*12; // インデント幅
-    // インデントスペーサー（折りたたみ機能なし）
-    const toggleHtml=`<span style="width:21px;display:inline-block"></span>`;
+    // Lv1・Lv2の折りたたみボタン表示
+    const hasChildren=tasks.some(t=>t.parentId===task.id);
+    const isCollapsed=collapsedIds.has(task.id);
+    const toggleHtml=((lv===1||lv===2)&&hasChildren)
+      ?`<span class="toggle-btn${isCollapsed?' collapsed':''}" onclick="toggleCollapse(${task.id},event)">▼</span>`
+      :`<span style="width:19px;display:inline-block;flex-shrink:0"></span>`;
     const depIcon=hasPred?`<span title="先行タスクあり" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
     const _enText=task.titleEn||lookupDict(task.title);
     const enSub=_enText?`<div class="en-sub">${escH(_enText)}</div>`:'';
     const rowH2=ROW_H;
     lb+=`<tr class="${lvClass}${isHL?' parent-highlight':''}" data-tid="${task.id}" style="height:${rowH2}px">`;
-    lb+=`<td style="width:52px;text-align:center;height:${rowH2}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:center;cursor:pointer;background:transparent;border:none"></td>`;
+    lb+=`<td style="width:52px;text-align:left;padding-left:4px;height:${rowH2}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:left;cursor:pointer;background:transparent;border:none;width:100%"></td>`;
     lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:34px;position:relative;max-height:34px"><div style="display:flex;align-items:center;height:34px;overflow:hidden;max-height:34px">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;position:relative;height:34px;max-height:34px"><div style="display:flex;align-items:center;height:22px"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`;
     lb+=`<td style="width:86px;height:${rowH2}px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`;
     lb+=`<td style="width:46px;text-align:center;height:${rowH2}px"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" style="text-align:center;width:40px"></td>`;
@@ -1648,16 +1677,18 @@ window.onMsToggle=function(){
     if(daysWrap)daysWrap.style.display='';
     if(endInput){endInput.readOnly=false;endInput.style.background='';}
     if(endBtn)endBtn.style.display='';
-    // チェック解除時：日数から終了日を再計算（start===endのまま固まるのを防ぐ）
+    // チェック解除時：日数を3日にリセットして終了日を再計算
     const startVal=document.getElementById('s_start')?.value||'';
-    const daysVal=Math.max(1,+document.getElementById('s_days')?.value||1);
+    const daysInput=document.getElementById('s_days');
+    // days が1のままなら3にリセット（マイルストーンから戻す）
+    if(daysInput && (+daysInput.value)<=1) daysInput.value=3;
+    const daysVal=Math.max(1,+daysInput?.value||3);
     if(startVal && endInput){
       try{
         const h=hs(currentYear);
         endInput.value=fmt(addWD(parseD(startVal),daysVal,h));
       }catch(e){}
     }
-    calcSideEnd();calcSideEndEdit();
   }
 }
 window.onMsStartChange=function(){
@@ -2030,7 +2061,7 @@ function exportCSV(){
   const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v42.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v45.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
