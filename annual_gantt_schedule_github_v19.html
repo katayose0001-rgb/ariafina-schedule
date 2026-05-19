@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度スケジュール・ガントチャート v45</title>
+<title>度Schedule・ガントチャート v45</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -36,7 +36,7 @@ window._fbSet = set;
 window._fbRemove = remove;
 window._fbSessionId = sessionId;
 
-// ── データ保存（Firebaseへ）──
+// ── データSave（Firebaseへ）──
 window._fbSaveData = async function(payload){
   try{
     const updatedAt = new Date().toISOString();
@@ -69,13 +69,13 @@ onValue(lockRef, (snapshot) => {
 // ── データ変更をリアルタイム監視（他のPCの変更を自動反映）──
 let _lastSaveAt='';
 onValue(dataRef, (snapshot) => {
-  // 自分が編集中の場合は上書きしない
+  // 自分がEditingの場合は上書きしない
   if(window._fbSessionId && window._fbLockData?.sessionId === window._fbSessionId) return;
   const data = snapshot.val();
   if(!data) return;
   // メイン画面が初期化済みの場合のみ反映
   if(!window._appInitialized) return;
-  // 直前に自分が保存したデータは無視（自分の操作による再発火を防ぐ）
+  // 直前に自分がSaveしたデータは無視（自分の操作による再発火を防ぐ）
   if(data.updatedAt && data.updatedAt === _lastSaveAt) return;
   try{
     if(data.tasks) window._currentTasks = data.tasks;
@@ -86,7 +86,7 @@ onValue(dataRef, (snapshot) => {
   }catch(e){}
 });
 
-// ── ユーザー辞書の保存・読み込み ──
+// ── ユーザー辞書のSave・読み込み ──
 window._fbSaveUserDict = async function(dict){
   try{ await set(userDictRef, dict); }catch(e){ console.warn('UserDict save error:', e); }
 };
@@ -303,7 +303,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .undo-bar-btn:hover{background:rgba(255,255,255,.35)}
 .undo-bar-btn:disabled{opacity:.35;cursor:default}
 
-/* ── 全削除ボタン ── */
+/* ── 全Deleteボタン ── */
 .btn.danger{background:#FDF0EF;color:#A32D2D;border-color:#E74C3C}.btn.danger:hover{background:#FADDDA}
 
 /* ── CSV Import Modal ── */
@@ -343,36 +343,36 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
       <div class="tg">
         <div class="lock-bar connecting" id="lockBar">
           <div class="lock-dot"></div>
-          <span id="lockStatus">接続中...</span>
-          <input class="lock-name-input" id="lockNameInput" placeholder="名前を入力" title="編集者名">
-          <button class="lock-btn start" id="lockBtn" onclick="startEditing()" style="display:none">編集開始</button>
+          <span id="lockStatus">Connecting...</span>
+          <input class="lock-name-input" id="lockNameInput" placeholder="Your name" title="編集者名">
+          <button class="lock-btn start" id="lockBtn" onclick="startEditing()" style="display:none">Start Editing</button>
         </div>
       </div>
 
       <div class="tb-sep"></div>
 
       <!-- 表示フィルター -->
-      <span class="tb-group-label">表示</span>
-      <div class="tg"><label>年度</label><select id="yearSel"></select></div>
-      <div class="tg"><label>期間</label>
+      <span class="tb-group-label">View</span>
+      <div class="tg"><label>Year</label><select id="yearSel"></select></div>
+      <div class="tg"><label>Period</label>
         <select id="monthSel">
-          <option value="0">全期間</option><option value="1">Q1 (1–3月)</option>
-          <option value="2">Q2 (4–6月)</option><option value="3">Q3 (7–9月)</option>
-          <option value="4">Q4 (10–12月)</option>
+          <option value="0">All</option><option value="1">Q1 (Jan–Mar)</option>
+          <option value="2">Q2 (Apr–Jun)</option><option value="3">Q3 (Jul–Sep)</option>
+          <option value="4">Q4 (Oct–Dec)</option>
         </select>
       </div>
-      <div class="tg"><label>担当者</label><select id="filterAsgn"><option value="">全員</option></select></div>
-      <div class="tg"><label>タスク</label><select id="filterParent"><option value="">全タスク</option></select></div>
+      <div class="tg"><label>Assignee</label><select id="filterAsgn"><option value="">All</option></select></div>
+      <div class="tg"><label>Tasks</label><select id="filterParent"><option value="">All Tasks</option></select></div>
 
       <div class="tb-sep"></div>
 
       <!-- 移動・表示切替 -->
       <div class="tg">
-        <button class="btn today-btn" onclick="jumpToToday()">▶ 今日</button>
+        <button class="btn today-btn" onclick="jumpToToday()">▶ Today</button>
         <button class="btn dep-btn" id="depToggle" onclick="toggleDepView()">⇢ 依存関係</button>
         <button class="ms-filter-toggle" id="msFilterBtn" onclick="toggleMsFilter()">
           <span class="ms-diamond-icon" style="width:10px;height:10px;background:#533AB7;transform:rotate(45deg);border-radius:2px;flex-shrink:0"></span>
-          <span class="ms-sw"></span>マイルストーンのみ
+          <span class="ms-sw"></span>Milestones Only
         </button>
       </div>
     </div>
@@ -381,35 +381,35 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
     <div class="toolbar-row toolbar-row-2">
 
       <!-- タスク操作 -->
-      <span class="tb-group-label">タスク</span>
+      <span class="tb-group-label">Tasks</span>
       <div class="tg" style="gap:4px">
-        <button class="btn primary" onclick="openSide('addTask')">＋ タスク追加</button>
-        <button class="btn" onclick="openSide('addSub')">＋ サブタスク</button>
-        <button class="btn" onclick="openSide('assignees')">担当者管理</button>
+        <button class="btn primary" onclick="openSide('addTask')">＋ Add Task</button>
+        <button class="btn" onclick="openSide('addSub')">＋ Subtask</button>
+        <button class="btn" onclick="openSide('assignees')">Manage Assignees</button>
       </div>
 
       <div class="tb-sep"></div>
 
       <!-- 翻訳 -->
-      <span class="tb-group-label">翻訳</span>
+      <span class="tb-group-label">Translate</span>
       <div class="tg" style="gap:4px">
         <button class="btn" id="bulkTranslateBtn" onclick="bulkTranslateAll()"
           style="color:#185FA5;border-color:#378ADD;font-weight:600"
-          title="英語タイトル未入力のタスクをAIで一括翻訳">🌐 一括翻訳</button>
+          title="英語タイトル未入力のタスクをAIで一括翻訳">🌐 Bulk Translate</button>
         <button class="btn" onclick="promptApiKey()"
           style="color:#666;font-size:10px"
-          title="Anthropic APIキーを設定">🔑 APIキー</button>
+          title="Anthropic APIキーを設定">🔑 API Key</button>
       </div>
 
       <div class="tb-sep"></div>
 
       <!-- データ操作 -->
-      <span class="tb-group-label">データ</span>
+      <span class="tb-group-label">Data</span>
       <div class="tg" style="gap:4px">
-        <button class="btn" onclick="exportCSV()">📤 CSV出力</button>
+        <button class="btn" onclick="exportCSV()">📤 Export CSV</button>
         <button class="btn" onclick="openImportModal()"
           style="color:#1D9E75;border-color:#1D9E75;font-weight:600"
-          title="CSVファイルからタスクを一括インポート">📥 CSV取込</button>
+          title="CSVファイルからタスクを一括インポート">📥 Import CSV</button>
       </div>
 
     </div>
@@ -420,12 +420,12 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
     <div class="li"><div class="lb" style="background:#EAF3DE"></div>Q2</div>
     <div class="li"><div class="lb" style="background:#FAEEDA"></div>Q3</div>
     <div class="li"><div class="lb" style="background:#FBEAF0"></div>Q4</div>
-    <div class="li"><div class="lb" style="background:#F1EFE8"></div>土日</div>
-    <div class="li"><div class="lb" style="background:#FAECE7"></div>祝日</div>
-    <div class="li"><div class="lb" style="background:#FFF9CC;border:1px solid #EF9F27"></div>今日</div>
-    <div class="li"><div class="lb" style="background:#378ADD;border-color:#185FA5"></div>ガントバー</div>
-    <div class="li"><div style="width:11px;height:11px;background:#533AB7;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>マイルストーン</div>
-    <div class="li"><div class="lb" style="background:#533AB7;border-color:#533AB7"></div>依存関係</div>
+    <div class="li"><div class="lb" style="background:#F1EFE8"></div>Weekends</div>
+    <div class="li"><div class="lb" style="background:#FAECE7"></div>Holidays</div>
+    <div class="li"><div class="lb" style="background:#FFF9CC;border:1px solid #EF9F27"></div>Today</div>
+    <div class="li"><div class="lb" style="background:#378ADD;border-color:#185FA5"></div>Gantt Bar</div>
+    <div class="li"><div style="width:11px;height:11px;background:#533AB7;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>Milestone</div>
+    <div class="li"><div class="lb" style="background:#533AB7;border-color:#533AB7"></div>Dependencies</div>
   </div>
   <div class="main-area">
     <div class="gantt-container">
@@ -449,11 +449,11 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 </div>
 <!-- UNDO バー -->
 <div class="undo-bar" id="undoBar">
-  <span id="undoLabel">操作履歴なし</span>
-  <button class="undo-bar-btn" id="undoBtn" onclick="doUndo()" disabled>↩ 元に戻す</button>
+  <span id="undoLabel">No History</span>
+  <button class="undo-bar-btn" id="undoBtn" onclick="doUndo()" disabled>↩ Undo</button>
 </div>
 <!-- 同期通知 -->
-<div class="sync-notice" id="syncNotice">🔄 データが更新されました</div>
+<div class="sync-notice" id="syncNotice">🔄 Data Updated</div>
 <script>
 const DAY_W=18,ROW_H=34;
 // rowH2Map廃止：行高さは常にROW_H固定（左右ズレ防止）
@@ -486,10 +486,10 @@ let _syncTimer=null;
 function showSyncNotice(msg){
   const el=document.getElementById('syncNotice');if(!el)return;
   if(msg) el.textContent=msg;
-  else el.textContent='🔄 データが更新されました';
+  else el.textContent='🔄 Data Updated';
   el.classList.add('show');
   clearTimeout(_syncTimer);
-  _syncTimer=setTimeout(()=>{el.classList.remove('show');el.textContent='🔄 データが更新されました';},4000);
+  _syncTimer=setTimeout(()=>{el.classList.remove('show');el.textContent='🔄 Data Updated';},4000);
 }
 
 function updateUndoBar(){
@@ -497,11 +497,11 @@ function updateUndoBar(){
   const lbl=document.getElementById('undoLabel');
   if(!btn||!lbl)return;
   if(undoStack.length===0){
-    lbl.textContent='操作履歴なし';
+    lbl.textContent='No History';
     btn.disabled=true;
   }else{
     const last=undoStack[undoStack.length-1];
-    lbl.textContent=`「${last.label}」を元に戻す（${undoStack.length}件）`;
+    lbl.textContent=`「${last.label}」を元に戻す（${undoStack.length} items）`;
     btn.disabled=false;
   }
 }
@@ -531,12 +531,12 @@ function addWD(st,n,h){let d=new Date(st),c=0;while(c<n-1){d.setDate(d.getDate()
 function countWD(s,e,h){if(!s||!e)return 0;let d=new Date(s),c=0;while(d<=e){if(isWork(d,h))c++;d.setDate(d.getDate()+1)}return c}
 function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
-// ── 日本語→英語 自動翻訳辞書（ARIAFINA業務用）──
+// ── 日本語→英語 Auto Translate辞書（ARIAFINA業務用）──
 const JA_EN_DICT = {
   // フェーズ・プロジェクト
   'プロジェクト計画':'Project Planning',
-  '要件定義':'Requirements Definition',
-  'スケジュール作成':'Schedule Creation',
+  '要 items定義':'Requirements Definition',
+  'Schedule作成':'Schedule Creation',
   '設計フェーズ':'Design Phase',
   '基本設計':'Basic Design',
   '詳細設計':'Detailed Design',
@@ -545,7 +545,7 @@ const JA_EN_DICT = {
   'リリース準備':'Release Preparation',
   // ARIAFINA業務系
   '事業計画':'Business Planning',
-  '年度計画':'Annual Planning',
+  '度計画':'Annual Planning',
   '予算策定':'Budget Planning',
   '予算管理':'Budget Management',
   '市場調査':'Market Research',
@@ -639,7 +639,7 @@ function autoTranslate(jaTitle){
 }
 
 // ── ユーザー辞書（手入力した翻訳を蓄積・Firebase共有）──
-let _userDict = {};  // { '施工スケジュール': 'Construction Schedule', ... }
+let _userDict = {};  // { '施工Schedule': 'Construction Schedule', ... }
 
 // 起動時にFirebaseからユーザー辞書を読み込む
 async function loadUserDict(){
@@ -664,11 +664,11 @@ function registerUserDict(jaTitle, enTitle){
   jaTitle = jaTitle.trim();
   enTitle = enTitle.trim();
   if(!jaTitle || !enTitle) return;
-  if(_userDict[jaTitle] === enTitle) return; // 変化なしはスキップ
+  if(_userDict[jaTitle] === enTitle) return; // 変化Noneはスキップ
   _userDict[jaTitle] = enTitle;
-  // localStorageに即時保存
+  // localStorageに即時Save
   localStorage.setItem('gt5_userDict', JSON.stringify(_userDict));
-  // Firebaseにも非同期保存
+  // Firebaseにも非同期Save
   if(window._fbSaveUserDict) window._fbSaveUserDict(_userDict);
 }
 
@@ -684,7 +684,7 @@ function lookupDict(jaTitle){
 }
 
 // ── Claude APIによるリアルタイム翻訳 ──
-// 翻訳キャッシュ（同じタスク名は再度APIを呼ばない）
+// 翻訳キャッシュ（同じTask Nameは再度APIを呼ばない）
 const _translateCache = {};
 
 // ── Anthropic APIキー管理 ──
@@ -698,13 +698,13 @@ function promptApiKey(){
   const current = getApiKey();
   const key = prompt(
     'Anthropic APIキーを入力してください。\n' +
-    '（設定後はブラウザに保存されます）\n\n' +
-    '現在の設定: ' + (current ? '設定済み（****）' : '未設定'),
+    '（設定後はブラウザにSaveされます）\n\n' +
+    '現在の設定: ' + (current ? 'Set (****)' : 'Not set'),
     current
   );
   if(key !== null){
     setApiKey(key);
-    if(key.trim()) alert('APIキーを保存しました。');
+    if(key.trim()) alert('APIキーをSaveしました。');
   }
 }
 
@@ -719,7 +719,7 @@ async function translateWithAI(jaTitle){
   try{
     const apiKey = getApiKey();
     if(!apiKey){
-      const ok = confirm('Anthropic APIキーが未設定です。\n今すぐ設定しますか？');
+      const ok = confirm('Anthropic APIキーがNot setです。\n今すぐ設定しますか？');
       if(ok) promptApiKey();
       return '';
     }
@@ -756,30 +756,30 @@ async function translateWithAI(jaTitle){
   }
 }
 
-// 編集パネルの「自動翻訳」ボタンから呼ばれる
+// 編集パネルの「Auto Translate」ボタンから呼ばれる
 async function clickAutoTranslate(){
   const btn = document.getElementById('autoTranslateBtn');
   const titleVal = document.getElementById('s_title')?.value?.trim();
   if(!titleVal)return;
-  btn.textContent='翻訳中...';
+  btn.textContent='Translating...';
   btn.disabled=true;
   const result = await translateWithAI(titleVal);
   if(result){
     document.getElementById('s_titleEn').value=result;
   }else{
-    btn.textContent='該当なし';
-    setTimeout(()=>{btn.textContent='自動翻訳';btn.disabled=false;},1500);
+    btn.textContent='該当None';
+    setTimeout(()=>{btn.textContent='Auto Translate';btn.disabled=false;},1500);
     return;
   }
-  btn.textContent='自動翻訳';
+  btn.textContent='Auto Translate';
   btn.disabled=false;
 }
 
-// 全タスクの titleEn を一括自動翻訳して保存
+// 全タスクの titleEn を一括Auto TranslateしてSave
 async function bulkTranslateAll(){
-  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   const targets = tasks.filter(t=>!t.titleEn && t.title);
-  if(!targets.length){alert('翻訳が必要なタスクはありません。');return;}
+  if(!targets.length){alert('No tasks need translation.');return;}
   const btn = document.getElementById('bulkTranslateBtn');
   btn.disabled=true;
   let done=0;
@@ -793,7 +793,7 @@ async function bulkTranslateAll(){
   saveData(); render();
   btn.textContent='一括翻訳';
   btn.disabled=false;
-  showSyncNotice('翻訳完了：'+done+'件');
+  showSyncNotice('Done: '+done+' items');
 }
 
 let currentYear=today.getFullYear();
@@ -842,7 +842,7 @@ async function loadData(){
 }
 function saveData(){
   try{
-    // localStorageに保存
+    // localStorageにSave
     localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
     localStorage.setItem('gt5_asgn',JSON.stringify(assignees));
     localStorage.setItem('gt5_year',String(currentYear));
@@ -864,8 +864,8 @@ function initSample(){
   };
   tasks=[
     mk(1,'1','プロジェクト計画',assignees[0],5,`${y}-04-01`,1,'#378ADD',null,null,'Project Planning'),
-    mk(2,'1.1','要件定義',assignees[1],3,`${y}-04-01`,2,'#1D9E75',1,null,'Requirements Definition'),
-    mk(3,'1.2','スケジュール作成',assignees[0],2,`${y}-04-04`,2,'#1D9E75',1,null,'Schedule Creation'),
+    mk(2,'1.1','要 items定義',assignees[1],3,`${y}-04-01`,2,'#1D9E75',1,null,'Requirements Definition'),
+    mk(3,'1.2','Schedule作成',assignees[0],2,`${y}-04-04`,2,'#1D9E75',1,null,'Schedule Creation'),
     mk(4,'2','設計フェーズ',assignees[2],10,`${y}-04-08`,1,'#378ADD',null,1,'Design Phase'),
     mk(5,'2.1','基本設計',assignees[2],5,`${y}-04-08`,2,'#1D9E75',4,null,'Basic Design'),
     mk(6,'2.2','詳細設計',assignees[3]||assignees[0],5,`${y}-04-15`,2,'#1D9E75',4,5,'Detailed Design'),
@@ -940,14 +940,14 @@ function yearDays(y,fm){
   const r=[[0,2],[3,5],[6,8],[9,11]];const[ms,me]=r[fm-1];
   return all.filter(d=>d.getMonth()>=ms&&d.getMonth()<=me);
 }
-// タスク名カラム幅（リサイズ可能）
+// Task Nameカラム幅（リサイズ可能）
 let titleColW=parseInt(localStorage.getItem('gt5_titleW')||'148',10);
 function setTitleColW(w){
   titleColW=Math.max(80,Math.min(400,w));
   localStorage.setItem('gt5_titleW',String(titleColW));
 }
 
-const LEFT_COLS=[{k:'wbs',l:'WBS',w:56},{k:'title',l:'タスク名',w:148},{k:'assignee',l:'担当者',w:86},{k:'days',l:'日数',w:46},{k:'start',l:'開始日',w:84},{k:'end',l:'終了日',w:84}];
+const LEFT_COLS=[{k:'wbs',l:'WBS',w:56},{k:'title',l:'Task Name',w:148},{k:'assignee',l:'Assignee',w:86},{k:'days',l:'Days',w:46},{k:'start',l:'Start',w:84},{k:'end',l:'End',w:84}];
 function getLeftW(){return LEFT_COLS.reduce((s,c)=>s+(c.k==='title'?titleColW:c.w),0);}
 const LEFT_W=500;// 後方互換用・実際はgetLeftW()を使用
 function getParents(){return tasks.filter(t=>t.parentId===null)}
@@ -969,7 +969,7 @@ function getVisibleTasks(){
   return tasks.filter(t=>{
     if(isHiddenByCollapse(t))return false;
     if(pfilt){
-      // 選択親かその子孫のみ表示
+      // Select親かその子孫のみ表示
       let cur=t,match=false;
       while(cur){if(cur.id===pfilt){match=true;break;}cur=tasks.find(p=>p.id===cur.parentId)||null;}
       if(!match)return false;
@@ -979,7 +979,7 @@ function getVisibleTasks(){
     return true;
   });
 }
-// ── 折りたたみ（Lv1のみ・localStorageに保存）──
+// ── 折りたたみ（Lv1のみ・localStorageにSave）──
 function toggleCollapse(id,event){
   if(event){event.stopPropagation();event.preventDefault();}
   if(collapsedIds.has(id)) collapsedIds.delete(id);
@@ -991,7 +991,7 @@ function toggleCollapse(id,event){
 function toggleDepView(){
   showDeps=!showDeps;
   const btn=document.getElementById('depToggle');
-  btn.textContent=showDeps?'⇢ 依存関係を非表示':'⇢ 依存関係を表示';
+  btn.textContent=showDeps?'⇢ Hide Dependencies':'⇢ Show Dependencies';
   btn.style.background=showDeps?'#E0D0F8':'';
   drawDepArrows();
 }
@@ -1002,7 +1002,7 @@ function toggleMsFilter(){
 }
 
 function buildHeader(days,h){
-  const DOW=['日','月','火','水','木','金','土'];
+  const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const quarters=[],months=[];let cq=null,cm=null;
   days.forEach(d=>{
     const q=Math.ceil((d.getMonth()+1)/3),m=d.getMonth();
@@ -1060,7 +1060,7 @@ function render(){
     const toggleHtml=((lv===1||lv===2)&&hasChildren)
       ?`<span class="toggle-btn${isCollapsed?' collapsed':''}" onclick="toggleCollapse(${task.id},event)">▼</span>`
       :`<span style="width:19px;display:inline-block;flex-shrink:0"></span>`;
-    const depIcon=hasPred?`<span title="先行タスクあり" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
+    const depIcon=hasPred?`<span title="Has Predecessor" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
     const _enText=task.titleEn||lookupDict(task.title);
     const enSub=_enText?`<div class="en-sub">${escH(_enText)}</div>`:'';
     const rowH2=ROW_H;
@@ -1069,8 +1069,8 @@ function render(){
     lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:34px;position:relative;max-height:34px"><div style="display:flex;align-items:center;height:34px;overflow:hidden;max-height:34px">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;position:relative;height:34px;max-height:34px"><div style="display:flex;align-items:center;height:22px"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`;
     lb+=`<td style="width:86px;height:${rowH2}px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`;
     lb+=`<td style="width:46px;text-align:center;height:${rowH2}px"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" style="text-align:center;width:40px"></td>`;
-    lb+=`<td style="width:84px;height:${rowH2}px"><button class="date-btn" onclick="openCal(event,${task.id},'start')">${task.start||'選択'}</button></td>`;
-    lb+=`<td style="width:84px;height:${rowH2}px"><button class="date-btn" onclick="openCal(event,${task.id},'end')">${task.end||'選択'}</button></td>`;
+    lb+=`<td style="width:84px;height:${rowH2}px"><button class="date-btn" onclick="openCal(event,${task.id},'start')">${task.start||'Select'}</button></td>`;
+    lb+=`<td style="width:84px;height:${rowH2}px"><button class="date-btn" onclick="openCal(event,${task.id},'end')">${task.end||'Select'}</button></td>`;
     lb+=`</tr>`;
   });
   document.getElementById('leftBody').innerHTML=lb+`</tbody></table>`;
@@ -1115,7 +1115,7 @@ function render(){
         }
       }
     }
-    rb+=`</div></td><td style="width:54px;height:${rowH2}px;text-align:center;padding:0 4px"><button class="btn del-btn" onclick="deleteTask(${task.id})">削除</button></td></tr>`;
+    rb+=`</div></td><td style="width:54px;height:${rowH2}px;text-align:center;padding:0 4px"><button class="btn del-btn" onclick="deleteTask(${task.id})">Delete</button></td></tr>`;
   });
   document.getElementById('rightBody').innerHTML=rb+`</tbody></table><svg id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:5;overflow:visible"></svg>`;
   syncScroll();
@@ -1223,14 +1223,14 @@ function renderStats(){
   const h=hs(currentYear),all=yearDays(currentYear,0);
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
-  document.getElementById('statsBar').innerHTML=`<div class="si">年度: <span class="sv">${currentYear}年</span></div><div class="si">実働日数: <span class="sv">${work}日</span></div><div class="si">祝日: <span class="sv">${hols}日</span></div><div class="si">タスク数: <span class="sv">${tasks.length}件</span></div><div class="si">依存関係: <span class="sv">${depCount}件</span></div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">Year: <span class="sv">${currentYear}</span></div><div class="si">Working Days: <span class="sv">${work}日</span></div><div class="si">Holidays: <span class="sv">${hols}日</span></div><div class="si">Tasks: <span class="sv">${tasks.length} items</span></div><div class="si">Dependencies: <span class="sv">${depCount} items</span></div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
-  sa.innerHTML='<option value="">全員</option>';
+  sa.innerHTML='<option value="">All</option>';
   assignees.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;if(a===pa)o.selected=true;sa.appendChild(o)});
   const sp=document.getElementById('filterParent'),pp=sp.value;
-  sp.innerHTML='<option value="">全タスク</option>';
+  sp.innerHTML='<option value="">All Tasks</option>';
   tasks.forEach(t=>{const o=document.createElement('option');o.value=String(t.id);o.textContent=`${'　'.repeat((t.level||1)-1)}${t.wbs} ${t.title}`;if(String(t.id)===pp)o.selected=true;sp.appendChild(o)});
 }
 function jumpToToday(){
@@ -1241,7 +1241,7 @@ function jumpToToday(){
   rb.scrollTo({left:Math.max(0,idx*DAY_W-rb.clientWidth/2+DAY_W/2),behavior:'smooth'});
 }
 
-// FIX: タスク名専用の更新関数（UNDOを壊さないようrendar()を呼ばない）
+// FIX: Task Name専用の更新関数（UNDOを壊さないようrendar()を呼ばない）
 function uTaskTitle(id, val){
   if(!_isEditing)return;
   const t=tasks.find(t=>t.id===id);if(!t)return;
@@ -1268,12 +1268,12 @@ function uDays(id,val){
 function deleteTask(id){
   // 編集ロックチェック
   if(!_isEditing){
-    alert('削除するには「編集開始」ボタンを押して編集権限を取得してください。');
+    alert('Deleteするには「Start Editing」ボタンを押して編集権限を取得してください。');
     return;
   }
-  if(!confirm('このタスクを削除しますか？\n（子孫タスクも同時に削除されます）'))return;
+  if(!confirm('このタスクをDeleteしますか？\n（子孫タスクも同時にDeleteされます）'))return;
   const t=tasks.find(t=>t.id===id);
-  pushUndo(`タスク削除「${t?.title||id}」`);
+  pushUndo(`タスクDelete「${t?.title||id}」`);
   // 再帰的に子孫IDを収集
   function collectIds(pid){
     let ids=[pid];
@@ -1291,54 +1291,54 @@ function deleteTask(id){
 function openSide(mode,id){
   // 編集権限チェック（閲覧専用時はすべてのパネルを開かない）
   if(!_isEditing){
-    alert('操作するには「編集開始」ボタンを押して編集権限を取得してください。');
+    alert('操作するには「Start Editing」ボタンを押して編集権限を取得してください。');
     return;
   }
   sideMode=mode;editId=id||null;
   document.getElementById('sidePanel').classList.add('open');
-  const titles={addTask:'タスク追加',addSub:'サブタスク追加',editTask:'タスク編集',assignees:'担当者管理'};
+  const titles={addTask:'タスクAdd',addSub:'サブタスクAdd',editTask:'タスク編集',assignees:'Manage Assignees'};
   document.getElementById('sideTitle').textContent=titles[mode]||'';
   const body=document.getElementById('sideBody'),footer=document.getElementById('sideFooter');
 
   if(mode==='addTask'){
     // 全タスクを親候補として（レベル4未満）
     const parentCands=tasks.filter(t=>(t.level||1)<4);
-    const parentOpts=`<option value="">なし（ルートレベル1）</option>`+
+    const parentOpts=`<option value="">None（ルートレベル1）</option>`+
       parentCands.map(t=>`<option value="${t.id}">${t.wbs} ${escH(t.title)} [Lv${t.level||1}→子Lv${(t.level||1)+1}]</option>`).join('');
-    const insertOpts=`<option value="last">末尾に追加</option>`+
-      getParents().map(p=>`<option value="${p.id}">${p.wbs} ${escH(p.title)} の前に挿入</option>`).join('');
+    const insertOpts=`<option value="last">末尾にAdd</option>`+
+      getParents().map(p=>`<option value="${p.id}">${p.wbs} ${escH(p.title)} Insert Before</option>`).join('');
     body.innerHTML=`
-      <div class="sf"><label>タスク名</label><input id="s_title" placeholder="タスク名を入力" style="font-weight:700;font-size:13px"></div>
-      <div class="sf"><label>親タスク</label><select id="s_parent_id" onchange="onAddParentChange()">${parentOpts}</select><div class="sf-dep-note">親を選ぶとサブタスクとして追加</div></div>
+      <div class="sf"><label>Task Name</label><input id="s_title" placeholder="Task Nameを入力" style="font-weight:700;font-size:13px"></div>
+      <div class="sf"><label>親タスク</label><select id="s_parent_id" onchange="onAddParentChange()">${parentOpts}</select><div class="sf-dep-note">親を選ぶとサブタスクとしてAdd</div></div>
       <div class="sf" id="s_insert_wrap"><label>挿入位置（ルート内）</label><select id="s_insert_pos">${insertOpts}</select></div>
-      <div class="sf"><label>担当者</label><select id="s_asgn">${assignees.map(a=>`<option>${escH(a)}</option>`).join('')}</select></div>
+      <div class="sf"><label>Assignee</label><select id="s_asgn">${assignees.map(a=>`<option>${escH(a)}</option>`).join('')}</select></div>
       <div class="sf">
         <label>種別</label>
         <label class="ms-toggle-row" id="s_ms_row">
           <input type="checkbox" id="s_ms" class="ms-toggle-chk" onchange="onMsToggle()">
           <span class="ms-diamond-icon-sm"></span>
-          <span class="ms-toggle-lbl">◆ マイルストーン（1日）</span>
+          <span class="ms-toggle-lbl">◆ Milestone (1 day)</span>
         </label>
       </div>
-      <div class="sf" id="s_days_wrap"><label>日数</label><input id="s_days" type="number" min="1" value="5" oninput="calcSideEnd()"></div>
-      <div class="sf"><label>開始日</label>
+      <div class="sf" id="s_days_wrap"><label>Days</label><input id="s_days" type="number" min="1" value="5" oninput="calcSideEnd()"></div>
+      <div class="sf"><label>Start Date</label>
         <div class="date-field-wrap">
           <input id="s_start" placeholder="${currentYear}-04-01" oninput="onMsStartChange()">
           <button class="date-field-btn" onclick="openSideCal(event,'s_start','s_end','s_days','start')">📅</button>
         </div>
       </div>
-      <div class="sf" id="s_end_wrap"><label>終了日</label>
+      <div class="sf" id="s_end_wrap"><label>End Date</label>
         <div class="date-field-wrap">
           <input id="s_end" id="s_end" readonly style="background:var(--color-background-secondary)">
         </div>
       </div>
-      <div class="sf"><label>表示色</label>${buildColorPalette(COLORS[getNextId()%COLORS.length],'s_color')}</div>
+      <div class="sf"><label>Color</label>${buildColorPalette(COLORS[getNextId()%COLORS.length],'s_color')}</div>
       <div class="sf">
-        <label>先行タスク（依存）</label>
-        <select id="s_pred"><option value="">なし</option>${tasks.map(t=>`<option value="${t.id}">${t.wbs} ${escH(t.title)}</option>`).join('')}</select>
-        <div class="sf-dep-note">設定すると先行タスク終了の翌営業日が開始日になります</div>
+        <label>Predecessor（依存）</label>
+        <select id="s_pred"><option value="">None</option>${tasks.map(t=>`<option value="${t.id}">${t.wbs} ${escH(t.title)}</option>`).join('')}</select>
+        <div class="sf-dep-note">設定するとPredecessor終了の翌営業日がStart Dateになります</div>
       </div>`;
-    footer.innerHTML=`<button class="btn" onclick="closeSide()">キャンセル</button><button class="btn primary" onclick="saveNewTask()">追加</button>`;
+    footer.innerHTML=`<button class="btn" onclick="closeSide()">Cancel</button><button class="btn primary" onclick="saveNewTask()">Add</button>`;
   }
 
   if(mode==='addSub'){openSide('addTask');return;}
@@ -1353,43 +1353,43 @@ function openSide(mode,id){
       const h=hs(currentYear);
       const expectedStart=fmt(nextWorkDay(parseD(predTask.end),h));
       if(t.start&&t.start!==expectedStart){
-        depWarning=`<div class="dep-warning">⚠ 先行タスクの終了日（${predTask.end}）と開始日が連動していません。「依存関係を適用」ボタンで修正できます。</div>`;
+        depWarning=`<div class="dep-warning">⚠ PredecessorのEnd Date（${predTask.end}）とStart Dateが連動していません。「依存関係を適用」ボタンで修正できます。</div>`;
       }
     }
     const isMilestone=!!(t.start&&t.end&&t.start===t.end);
     body.innerHTML=`
-      <div class="sf"><label>タスク名</label><input id="s_title" value="${escH(t.title)}" style="font-weight:700;font-size:13px"></div>
+      <div class="sf"><label>Task Name</label><input id="s_title" value="${escH(t.title)}" style="font-weight:700;font-size:13px"></div>
       <div class="sf">
-        <label style="color:var(--color-text-secondary)">英語タイトル（任意）</label>
+        <label style="color:var(--color-text-secondary)">English Title (optional)</label>
         <div style="display:flex;gap:4px;align-items:center">
           <input id="s_titleEn" value="${escH(t.titleEn||'')}" placeholder="English title (optional)" style="flex:1;font-size:11px;color:var(--color-text-secondary)">
-          <button type="button" id="autoTranslateBtn" onclick="clickAutoTranslate()" style="font-size:10px;padding:2px 6px;border:0.5px solid #378ADD;border-radius:3px;background:#EAF3FB;color:#185FA5;cursor:pointer;white-space:nowrap;flex-shrink:0;font-weight:600">自動翻訳</button>
+          <button type="button" id="autoTranslateBtn" onclick="clickAutoTranslate()" style="font-size:10px;padding:2px 6px;border:0.5px solid #378ADD;border-radius:3px;background:#EAF3FB;color:#185FA5;cursor:pointer;white-space:nowrap;flex-shrink:0;font-weight:600">Auto Translate</button>
         </div>
       </div>
-      <div class="sf"><label>WBS番号（自動）</label><input id="s_wbs" value="${escH(t.wbs)}" readonly style="background:var(--color-background-secondary);color:var(--color-text-secondary)"></div>
-      <div class="sf"><label>担当者</label><select id="s_asgn">${assignees.map(a=>`<option${a===t.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></div>
+      <div class="sf"><label>WBS (Auto)</label><input id="s_wbs" value="${escH(t.wbs)}" readonly style="background:var(--color-background-secondary);color:var(--color-text-secondary)"></div>
+      <div class="sf"><label>Assignee</label><select id="s_asgn">${assignees.map(a=>`<option${a===t.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></div>
       <div class="sf">
         <label>種別</label>
         <label class="ms-toggle-row${isMilestone?' ms-on':''}" id="s_ms_row">
           <input type="checkbox" id="s_ms" class="ms-toggle-chk"${isMilestone?' checked':''} onchange="onMsToggle()">
           <span class="ms-diamond-icon-sm"></span>
-          <span class="ms-toggle-lbl">◆ マイルストーン（1日）</span>
+          <span class="ms-toggle-lbl">◆ Milestone (1 day)</span>
         </label>
       </div>
-      <div class="sf" id="s_days_wrap"${isMilestone?' style="display:none"':''}><label>日数</label><input id="s_days" type="number" min="1" value="${t.days}" oninput="calcSideEndEdit()"></div>
-      <div class="sf"><label>開始日</label>
+      <div class="sf" id="s_days_wrap"${isMilestone?' style="display:none"':''}><label>Days</label><input id="s_days" type="number" min="1" value="${t.days}" oninput="calcSideEndEdit()"></div>
+      <div class="sf"><label>Start Date</label>
         <div class="date-field-wrap">
           <input id="s_start" value="${t.start||''}" oninput="onMsStartChange()">
           <button class="date-field-btn" onclick="openSideCal(event,'s_start','s_end','s_days','start')">📅</button>
         </div>
       </div>
-      <div class="sf" id="s_end_wrap"><label>終了日</label>
+      <div class="sf" id="s_end_wrap"><label>End Date</label>
         <div class="date-field-wrap">
           <input id="s_end" value="${t.end||''}"${isMilestone?' readonly style="background:var(--color-background-secondary)"':''} oninput="calcSideDaysEdit()">
           <button class="date-field-btn"${isMilestone?' style="display:none"':''} onclick="openSideCal(event,'s_end','s_start','s_days','end')">📅</button>
         </div>
       </div>
-      <div class="sf"><label>表示色</label>${buildColorPalette(t.color||COLORS[0],'s_color')}</div>
+      <div class="sf"><label>Color</label>${buildColorPalette(t.color||COLORS[0],'s_color')}</div>
       <div class="sf"><label>レベル</label>
         <select id="s_level" onchange="onEditLevelChange(${id})">
           <option value="1"${(t.level||1)===1?' selected':''}>〇.　　　　Lv1 プロジェクト成果物</option>
@@ -1405,37 +1405,37 @@ function openSide(mode,id){
       <div class="sf">
         <label>位置の移動（同階層内）</label>
         <div class="move-btn-row">
-          <button class="move-btn" onclick="moveTask(${id},'up')" id="btn_move_up">▲ 上へ</button>
-          <button class="move-btn" onclick="moveTask(${id},'down')" id="btn_move_down">▼ 下へ</button>
+          <button class="move-btn" onclick="moveTask(${id},'up')" id="btn_move_up">▲ Up</button>
+          <button class="move-btn" onclick="moveTask(${id},'down')" id="btn_move_down">▼ Down</button>
         </div>
       </div>
       <div class="sf">
-        <label>先行タスク（依存）</label>
+        <label>Predecessor（依存）</label>
         <select id="s_pred" onchange="onPredChange(${id})">
-          <option value="">なし</option>
-          ${validPreds.map(p=>`<option value="${p.id}"${p.id===t.predecessorId?' selected':''}>${p.wbs} ${escH(p.title)} (終了:${p.end||'未設定'})</option>`).join('')}
+          <option value="">None</option>
+          ${validPreds.map(p=>`<option value="${p.id}"${p.id===t.predecessorId?' selected':''}>${p.wbs} ${escH(p.title)} (終了:${p.end||'Not set'})</option>`).join('')}
         </select>
-        <div class="sf-dep-note">先行タスクの終了翌営業日 → このタスクの開始日が自動で連動します</div>
+        <div class="sf-dep-note">Predecessorの終了翌営業日 → このタスクのStart Dateが自動で連動します</div>
         ${depWarning}
       </div>`;
     footer.innerHTML=`
-      <button class="btn danger" onclick="deleteTask(${id})" title="このタスクを削除">削除</button>
+      <button class="btn danger" onclick="deleteTask(${id})" title="このタスクをDelete">Delete</button>
       <button class="btn" onclick="applyDep(${id})" style="color:#533AB7;border-color:#7B5DC4">依存適用</button>
-      <button class="btn" onclick="closeSide()">閉じる</button>
-      <button class="btn primary" onclick="saveEditTask(${id})">保存</button>`;
+      <button class="btn" onclick="closeSide()">Close</button>
+      <button class="btn primary" onclick="saveEditTask(${id})">Save</button>`;
     render();
   }
 
   if(mode==='assignees'){
     renderAssigneePanel();
-    footer.innerHTML=`<button class="btn" onclick="closeSide()">キャンセル</button><button class="btn primary" onclick="saveAssignees()">保存</button>`;
+    footer.innerHTML=`<button class="btn" onclick="closeSide()">Cancel</button><button class="btn primary" onclick="saveAssignees()">Save</button>`;
   }
 }
 
 // ── サイドパネル用カレンダーポップアップ ──
-// startInputId: 開始日フィールドのID
+// startInputId: Start DateフィールドのID
 // otherInputId: もう一方の日付フィールドのID（連動計算用）
-// daysInputId:  日数フィールドのID
+// daysInputId:  DaysフィールドのID
 // mode: 'start' or 'end'
 function openSideCal(e, startInputId, otherInputId, daysInputId, mode){
   e.preventDefault();e.stopPropagation();
@@ -1459,11 +1459,11 @@ function showSideCal(anchor, initD, targetId, otherInputId, daysInputId, mode){
   }
   function draw(){
     const hset=hs(vY);const first=new Date(vY,vM,1),last=new Date(vY,vM+1,0);
-    const MN=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const inp=document.getElementById(targetId);
     const selDs=inp?inp.value:'';
-    let html=`<div class="cal-toggle-row"><span>土日・祝日</span><div class="cal-toggle"><button class="${!calWorkdayOnly?'on':''}" data-m="show">表示</button><button class="${calWorkdayOnly?'on':''}" data-m="hide">非表示</button></div></div>`;
-    html+=`<div class="cal-nav"><button id="cprev">‹</button><span>${vY}年 ${MN[vM]}</span><button id="cnext">›</button></div>`;
+    let html=`<div class="cal-toggle-row"><span>土日・祝日</span><div class="cal-toggle"><button class="${!calWorkdayOnly?'on':''}" data-m="show">View</button><button class="${calWorkdayOnly?'on':''}" data-m="hide">非表示</button></div></div>`;
+    html+=`<div class="cal-nav"><button id="cprev">‹</button><span>${vY} ${MN[vM]}</span><button id="cnext">›</button></div>`;
     if(calWorkdayOnly){
       const wd=[];for(let d=1;d<=last.getDate();d++){const dt=new Date(vY,vM,d);if(isWork(dt,hset))wd.push(dt)}
       html+=`<div class="cal-grid-work"><div class="cal-dow">月</div><div class="cal-dow">火</div><div class="cal-dow">水</div><div class="cal-dow">木</div><div class="cal-dow">金</div>`;
@@ -1474,7 +1474,7 @@ function showSideCal(anchor, initD, targetId, otherInputId, daysInputId, mode){
       const wc=[...Array(last.getDate())].filter((_,i)=>isWknd(new Date(vY,vM,i+1))).length;
       html+=`<div class="cal-workday-note">実働日のみ表示（土日${wc}日・祝日${hc}日を除外）</div>`;
     }else{
-      html+=`<div class="cal-grid-full">${['日','月','火','水','木','金','土'].map((d,i)=>`<div class="cal-dow${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('')}`;
+      html+=`<div class="cal-grid-full">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<div class="cal-dow${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('')}`;
       for(let i=0;i<first.getDay();i++)html+=`<div class="cal-day other"></div>`;
       for(let d=1;d<=last.getDate();d++){const dt=new Date(vY,vM,d),ds=fmt(dt),w=dt.getDay(),hol=isHol(dt,hset);let cls='cal-day';if(ds===selDs)cls+=' sel';else if(ds===fmt(t0))cls+=' tod';if(hol||w===0)cls+=' hol';else if(w===6)cls+=' sat';html+=`<div class="${cls}" data-ds="${ds}">${d}</div>`}
       html+=`</div>`;
@@ -1493,13 +1493,13 @@ function showSideCal(anchor, initD, targetId, otherInputId, daysInputId, mode){
         const h2=hs(currentYear);
         // 連動計算
         if(mode==='start'){
-          // 開始日変更 → 終了日を再計算
+          // Start Date変更 → End Dateを再計算
           const daysEl=document.getElementById(daysInputId);
           const n=daysEl?Math.max(1,+daysEl.value||1):1;
           const endEl=document.getElementById(otherInputId);
           if(endEl){endEl.value=fmt(addWD(parseD(ds),n,h2));}
         }else{
-          // 終了日変更 → 日数を再計算
+          // End Date変更 → Daysを再計算
           const startEl=document.getElementById(otherInputId);
           const daysEl=document.getElementById(daysInputId);
           if(startEl&&daysEl){
@@ -1551,8 +1551,8 @@ function onParentChange(){
   const insSel=document.getElementById('s_insert_pos');
   if(insSel){
     const sibs=tasks.filter(t=>t.parentId===pid);
-    insSel.innerHTML=`<option value="last">末尾に追加</option>`+
-      sibs.map(s=>`<option value="${s.id}">${s.wbs} ${escH(s.title)} の前に挿入</option>`).join('');
+    insSel.innerHTML=`<option value="last">末尾にAdd</option>`+
+      sibs.map(s=>`<option value="${s.id}">${s.wbs} ${escH(s.title)} Insert Before</option>`).join('');
   }
   calcSideEnd();
 }
@@ -1565,17 +1565,17 @@ window.onAddParentChange=function(){
     // ルートレベル：直接の子（level=1）のみ
     if(insWrap)insWrap.style.display='';
     if(insSel){
-      insSel.innerHTML=`<option value="last">末尾に追加</option>`+
-        tasks.filter(t=>t.parentId===null).map(p=>`<option value="${p.id}">${p.wbs} ${escH(p.title)} の前に挿入</option>`).join('');
+      insSel.innerHTML=`<option value="last">末尾にAdd</option>`+
+        tasks.filter(t=>t.parentId===null).map(p=>`<option value="${p.id}">${p.wbs} ${escH(p.title)} Insert Before</option>`).join('');
     }
   }else{
     const pid=parseInt(val);
-    // 直接の子のみ選択肢に出す
+    // 直接の子のみSelect肢に出す
     const directChildren=tasks.filter(t=>t.parentId===pid);
     if(insWrap)insWrap.style.display='';
     if(insSel){
-      insSel.innerHTML=`<option value="last">末尾に追加</option>`+
-        directChildren.map(s=>`<option value="${s.id}">${s.wbs} ${escH(s.title)} の前に挿入</option>`).join('');
+      insSel.innerHTML=`<option value="last">末尾にAdd</option>`+
+        directChildren.map(s=>`<option value="${s.id}">${s.wbs} ${escH(s.title)} Insert Before</option>`).join('');
     }
     const parent=tasks.find(t=>t.id===pid);
     const se=document.getElementById('s_start');if(se&&parent?.start)se.value=parent.start;
@@ -1594,14 +1594,14 @@ window.onEditLevelChange=function(id){
   }
 }
 function renderAssigneePanel(){
-  document.getElementById('sideBody').innerHTML=`<div id="assList">${assignees.map((a,i)=>`<div class="ass-row"><input id="as_${i}" value="${escH(a)}"><button class="btn rm-btn" onclick="this.closest('.ass-row').remove()">×</button></div>`).join('')}</div><button class="btn" onclick="addAssRow()" style="width:100%;margin-top:6px">＋ 担当者を追加</button>`;
+  document.getElementById('sideBody').innerHTML=`<div id="assList">${assignees.map((a,i)=>`<div class="ass-row"><input id="as_${i}" value="${escH(a)}"><button class="btn rm-btn" onclick="this.closest('.ass-row').remove()">×</button></div>`).join('')}</div><button class="btn" onclick="addAssRow()" style="width:100%;margin-top:6px">＋ AssigneeをAdd</button>`;
 }
 function addAssRow(){const li=document.getElementById('assList');const n=li.children.length;const d=document.createElement('div');d.className='ass-row';d.innerHTML=`<input id="as_${n}" value=""><button class="btn rm-btn" onclick="this.closest('.ass-row').remove()">×</button>`;li.appendChild(d)}
 function saveAssignees(){
-  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
-  pushUndo('担当者管理を更新');
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
+  pushUndo('Manage Assigneesを更新');
   const newList=[...document.querySelectorAll('#assList input')].map(i=>i.value.trim()).filter(Boolean);
-  // 削除された担当者が割り当てられているタスクは先頭の担当者に変更
+  // DeleteされたAssigneeが割り当てられているタスクは先頭のAssigneeに変更
   const removed=assignees.filter(a=>!newList.includes(a));
   if(removed.length&&newList.length){
     tasks.forEach(t=>{if(removed.includes(t.assignee))t.assignee=newList[0];});
@@ -1614,7 +1614,7 @@ function calcSideEndEdit(){const s=document.getElementById('s_start')?.value;con
 function calcSideDaysEdit(){const s=parseD(document.getElementById('s_start')?.value);const e=parseD(document.getElementById('s_end')?.value);const h=hs(currentYear);if(s&&e&&e>=s){const el=document.getElementById('s_days');if(el)el.value=countWD(s,e,h)}}
 
 function saveNewTask(){
-  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   const id=getNextId();
   const start=document.getElementById('s_start')?.value||'';
   const h=hs(currentYear);
@@ -1629,8 +1629,8 @@ function saveNewTask(){
   const parentId=parentSelVal?parseInt(parentSelVal):null;
   const parentTask=parentId?tasks.find(t=>t.id===parentId):null;
   const level=parentTask?(parentTask.level||1)+1:1;
-  const title=document.getElementById('s_title')?.value||'新しいタスク';
-  pushUndo(`タスク追加「${title}」`);
+  const title=document.getElementById('s_title')?.value||'New Task';
+  pushUndo(`タスクAdd「${title}」`);
   const newTask={id,wbs:'',title,
     assignee:document.getElementById('s_asgn')?.value||'',days,start:actualStart,end,level,
     color:document.getElementById('s_color')?.value||COLORS[0],parentId,predecessorId:predId};
@@ -1651,7 +1651,7 @@ function saveNewTask(){
       tasks.push(newTask);
     }
   }else{
-    // 「〇〇の前に挿入」：指定タスクが必ず同じ親の子孫内に収まっているはず
+    // 「〇〇Insert Before」：指定タスクが必ず同じ親の子孫内に収まっているはず
     const beforeId=parseInt(insVal);
     const beforeIdx=tasks.findIndex(t=>t.id===beforeId);
     if(beforeIdx>=0)tasks.splice(beforeIdx,0,newTask);else tasks.push(newTask);
@@ -1668,7 +1668,7 @@ window.onMsToggle=function(){
   if(chk.checked){
     if(row)row.classList.add('ms-on');
     if(daysWrap)daysWrap.style.display='none';
-    // 終了日を開始日と同じに固定
+    // End DateをStart Dateと同じに固定
     const sv=document.getElementById('s_start')?.value||'';
     if(endInput){endInput.value=sv;endInput.readOnly=true;endInput.style.background='var(--color-background-secondary)';}
     if(endBtn)endBtn.style.display='none';
@@ -1677,7 +1677,7 @@ window.onMsToggle=function(){
     if(daysWrap)daysWrap.style.display='';
     if(endInput){endInput.readOnly=false;endInput.style.background='';}
     if(endBtn)endBtn.style.display='';
-    // チェック解除時：日数を3日にリセットして終了日を再計算
+    // チェック解除時：Daysを3日にリセットしてEnd Dateを再計算
     const startVal=document.getElementById('s_start')?.value||'';
     const daysInput=document.getElementById('s_days');
     // days が1のままなら3にリセット（マイルストーンから戻す）
@@ -1707,7 +1707,7 @@ function initColResize(e){
   const startX=e.clientX,startW=titleColW;
   function onMove(ev){
     setTitleColW(startW+(ev.clientX-startX));
-    // テーブル幅・セル幅をリアルタイム更新（再renderなし）
+    // テーブル幅・セル幅をリアルタイム更新（再renderNone）
     const lw=getLeftW();
     document.querySelectorAll('.left-table').forEach(t=>t.style.width=lw+'px');
     document.querySelectorAll('#leftTable td:nth-child(2)').forEach(td=>td.style.width=titleColW+'px');
@@ -1723,7 +1723,7 @@ function initColResize(e){
   document.addEventListener('mouseup',onUp);
 }
 
-// ── タスク開始日へのスクロール ──
+// ── タスクStart Dateへのスクロール ──
 function scrollToTaskStart(taskId){
   const t=tasks.find(t=>t.id===taskId);
   if(!t||!t.start)return;
@@ -1748,11 +1748,11 @@ function showCtxMenu(e, taskId){
     ${canAddChild?`
     <div class="ctx-sep"></div>
     <div class="ctx-item" onclick="addChildTask(${taskId});closeCtxMenu()">
-      <span class="ctx-icon">➕</span>サブタスクを追加 <span style="font-size:10px;opacity:.6;margin-left:4px">Lv${lv+1}</span>
+      <span class="ctx-icon">➕</span>Add Subtask <span style="font-size:10px;opacity:.6;margin-left:4px">Lv${lv+1}</span>
     </div>`:''}
     <div class="ctx-sep"></div>
     <div class="ctx-item" onclick="deleteTask(${taskId});closeCtxMenu()" style="color:#A32D2D">
-      <span class="ctx-icon">🗑️</span>削除
+      <span class="ctx-icon">🗑️</span>Delete
     </div>`;
   // 画面端に収まるよう位置調整
   document.body.appendChild(menu);
@@ -1761,7 +1761,7 @@ function showCtxMenu(e, taskId){
   if(x+mw>window.innerWidth)x=window.innerWidth-mw-4;
   if(y+mh>window.innerHeight)y=window.innerHeight-mh-4;
   menu.style.left=x+'px';menu.style.top=y+'px';
-  // 外クリックで閉じる
+  // 外クリックでClose
   setTimeout(()=>document.addEventListener('mousedown',closeCtxOnOutside,true),0);
 }
 function closeCtxOnOutside(e){
@@ -1775,22 +1775,22 @@ function closeCtxMenu(){
 window.showCtxMenu=showCtxMenu;
 window.closeCtxMenu=closeCtxMenu;
 
-// 右クリックからサブタスクを追加（サイドパネルを親指定済みで開く）
+// 右クリックからAdd Subtask（サイドパネルを親指定済みで開く）
 function addChildTask(parentId){
-  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   const parent=tasks.find(t=>t.id===parentId);if(!parent)return;
-  if((parent.level||1)>=4){alert('Lv4以上にはサブタスクを追加できません');return;}
+  if((parent.level||1)>=4){alert('Lv4以上にはAdd Subtaskできません');return;}
   sideMode='addTask';editId=null;
   document.getElementById('sidePanel').classList.add('open');
-  document.getElementById('sideTitle').textContent='サブタスクを追加';
+  document.getElementById('sideTitle').textContent='Add Subtask';
   const body=document.getElementById('sideBody'),footer=document.getElementById('sideFooter');
   const directChildren=tasks.filter(t=>t.parentId===parentId);
-  const insertOpts=`<option value="last">末尾に追加</option>`+
-    directChildren.map(s=>`<option value="${s.id}">${s.wbs} ${escH(s.title)} の前に挿入</option>`).join('');
+  const insertOpts=`<option value="last">末尾にAdd</option>`+
+    directChildren.map(s=>`<option value="${s.id}">${s.wbs} ${escH(s.title)} Insert Before</option>`).join('');
   const parentCands=tasks.filter(t=>(t.level||1)<4);
   const parentOpts=parentCands.map(t=>`<option value="${t.id}"${t.id===parentId?' selected':''}>${t.wbs} ${escH(t.title)} [Lv${t.level||1}→子Lv${(t.level||1)+1}]</option>`).join('');
   body.innerHTML=`
-    <div class="sf"><label>タスク名</label><input id="s_title" placeholder="サブタスク名を入力" style="font-weight:700;font-size:13px" autofocus></div>
+    <div class="sf"><label>Task Name</label><input id="s_title" placeholder="サブTask Nameを入力" style="font-weight:700;font-size:13px" autofocus></div>
     <div class="sf" style="background:color-mix(in srgb,var(--color-background-secondary) 80%,var(--color-background-primary));border-radius:6px;padding:6px 10px">
       <span style="font-size:10px;color:var(--color-text-secondary)">親タスク：</span>
       <span style="font-size:11px;font-weight:600">${escH(parent.wbs)} ${escH(parent.title)}</span>
@@ -1798,27 +1798,27 @@ function addChildTask(parentId){
     </div>
     <div class="sf"><label>親タスク（変更可）</label><select id="s_parent_id" onchange="onAddParentChange()">${parentOpts}</select></div>
     <div class="sf" id="s_insert_wrap"><label>挿入位置</label><select id="s_insert_pos">${insertOpts}</select></div>
-    <div class="sf"><label>担当者</label><select id="s_asgn">${assignees.map(a=>`<option${a===parent.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></div>
-    <div class="sf" id="s_days_wrap"><label>日数</label><input id="s_days" type="number" min="1" value="5" oninput="calcSideEnd()"></div>
-    <div class="sf"><label>開始日</label>
+    <div class="sf"><label>Assignee</label><select id="s_asgn">${assignees.map(a=>`<option${a===parent.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></div>
+    <div class="sf" id="s_days_wrap"><label>Days</label><input id="s_days" type="number" min="1" value="5" oninput="calcSideEnd()"></div>
+    <div class="sf"><label>Start Date</label>
       <div class="date-field-wrap">
         <input id="s_start" value="${parent.start||''}" oninput="calcSideEnd()">
         <button class="date-field-btn" onclick="openSideCal(event,'s_start','s_end','s_days','start')">📅</button>
       </div>
     </div>
-    <div class="sf" id="s_end_wrap"><label>終了日（自動）</label><input id="s_end" readonly style="background:var(--color-background-secondary)"></div>
-    <div class="sf"><label>表示色</label>${buildColorPalette(parent.color||COLORS[1],'s_color')}</div>
+    <div class="sf" id="s_end_wrap"><label>End Date（自動）</label><input id="s_end" readonly style="background:var(--color-background-secondary)"></div>
+    <div class="sf"><label>Color</label>${buildColorPalette(parent.color||COLORS[1],'s_color')}</div>
     <div class="sf">
-      <label>先行タスク（依存）</label>
-      <select id="s_pred"><option value="">なし</option>${tasks.map(t=>`<option value="${t.id}">${t.wbs} ${escH(t.title)}</option>`).join('')}</select>
-      <div class="sf-dep-note">設定すると先行タスク終了の翌営業日が開始日になります</div>
+      <label>Predecessor（依存）</label>
+      <select id="s_pred"><option value="">None</option>${tasks.map(t=>`<option value="${t.id}">${t.wbs} ${escH(t.title)}</option>`).join('')}</select>
+      <div class="sf-dep-note">設定するとPredecessor終了の翌営業日がStart Dateになります</div>
     </div>`;
-  footer.innerHTML=`<button class="btn" onclick="closeSide()">キャンセル</button><button class="btn primary" onclick="saveNewTask()">追加</button>`;
+  footer.innerHTML=`<button class="btn" onclick="closeSide()">Cancel</button><button class="btn primary" onclick="saveNewTask()">Add</button>`;
   setTimeout(calcSideEnd,10);
 }
 window.addChildTask=addChildTask;
 function moveTask(id, dir){
-  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   const t=tasks.find(t=>t.id===id);if(!t)return;
   const parentId=t.parentId??null;
 
@@ -1876,7 +1876,7 @@ function isDescendantOf(id,ancestorId){
   return false;
 }
 function saveEditTask(id){
-  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   const t=tasks.find(t=>t.id===id);if(!t)return;
   pushUndo(`タスク編集「${t.title}」`);
   const h=hs(currentYear);
@@ -1911,14 +1911,14 @@ function saveEditTask(id){
 }
 function closeSide(){editId=null;sideMode=null;document.getElementById('sidePanel').classList.remove('open');render()}
 
-// ── 全タスク削除 ──
+// ── 全タスクDelete ──
 function deleteAllTasks(){
   if(!_isEditing){
-    alert('削除するには「編集開始」ボタンを押して編集権限を取得してください。');
+    alert('Deleteするには「Start Editing」ボタンを押して編集権限を取得してください。');
     return;
   }
-  if(!confirm('全てのタスクを削除しますか？\nこの操作はUNDOで元に戻せます。'))return;
-  pushUndo('全タスク削除');
+  if(!confirm('全てのタスクをDeleteしますか？\nこの操作はUNDOで元に戻せます。'))return;
+  pushUndo('全タスクDelete');
   tasks=[];editId=null;sideMode=null;
   document.getElementById('sidePanel').classList.remove('open');
   saveData();render();
@@ -1954,7 +1954,7 @@ window.onHexInput=function(inp, prevId){
   }
 }
 
-// ── テーブル上のカレンダー（左パネルの開始日・終了日ボタン）──
+// ── テーブル上のカレンダー（左パネルのStart Date・End Dateボタン）──
 function openCal(e,id,mode){
   if(!_isEditing)return;
   e.stopPropagation();document.querySelectorAll('.cal-popup').forEach(p=>p.remove());
@@ -1967,10 +1967,10 @@ function showCal(anchor,initD,taskId,mode){
   function pos(){const r=anchor.getBoundingClientRect();let top=r.bottom+4,left=r.left;if(top+300>window.innerHeight)top=r.top-300;if(left+210>window.innerWidth)left=window.innerWidth-215;if(left<4)left=4;popup.style.top=top+'px';popup.style.left=left+'px';}
   function draw(){
     const hset=hs(vY);const first=new Date(vY,vM,1),last=new Date(vY,vM+1,0);
-    const MN=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const task=tasks.find(t=>t.id===taskId);const selDs=mode==='start'?task.start:task.end;
-    let html=`<div class="cal-toggle-row"><span>土日・祝日</span><div class="cal-toggle"><button class="${!calWorkdayOnly?'on':''}" data-m="show">表示</button><button class="${calWorkdayOnly?'on':''}" data-m="hide">非表示</button></div></div>`;
-    html+=`<div class="cal-nav"><button id="cprev">‹</button><span>${vY}年 ${MN[vM]}</span><button id="cnext">›</button></div>`;
+    let html=`<div class="cal-toggle-row"><span>土日・祝日</span><div class="cal-toggle"><button class="${!calWorkdayOnly?'on':''}" data-m="show">View</button><button class="${calWorkdayOnly?'on':''}" data-m="hide">非表示</button></div></div>`;
+    html+=`<div class="cal-nav"><button id="cprev">‹</button><span>${vY} ${MN[vM]}</span><button id="cnext">›</button></div>`;
     if(calWorkdayOnly){
       const wd=[];for(let d=1;d<=last.getDate();d++){const dt=new Date(vY,vM,d);if(isWork(dt,hset))wd.push(dt)}
       html+=`<div class="cal-grid-work"><div class="cal-dow">月</div><div class="cal-dow">火</div><div class="cal-dow">水</div><div class="cal-dow">木</div><div class="cal-dow">金</div>`;
@@ -1981,7 +1981,7 @@ function showCal(anchor,initD,taskId,mode){
       const wc=[...Array(last.getDate())].filter((_,i)=>isWknd(new Date(vY,vM,i+1))).length;
       html+=`<div class="cal-workday-note">実働日のみ表示（土日${wc}日・祝日${hc}日を除外）</div>`;
     }else{
-      html+=`<div class="cal-grid-full">${['日','月','火','水','木','金','土'].map((d,i)=>`<div class="cal-dow${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('')}`;
+      html+=`<div class="cal-grid-full">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<div class="cal-dow${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('')}`;
       for(let i=0;i<first.getDay();i++)html+=`<div class="cal-day other"></div>`;
       for(let d=1;d<=last.getDate();d++){const dt=new Date(vY,vM,d),ds=fmt(dt),w=dt.getDay(),hol=isHol(dt,hset);let cls='cal-day';if(ds===selDs)cls+=' sel';else if(ds===fmt(t0))cls+=' tod';if(hol||w===0)cls+=' hol';else if(w===6)cls+=' sat';html+=`<div class="${cls}" data-ds="${ds}">${d}</div>`}
       html+=`</div>`;
@@ -2030,7 +2030,7 @@ function renderBarsOnly(){
   getVisibleTasks().forEach(task=>{
     const row=document.querySelector(`#rightTable tr[data-tid="${task.id}"]`);if(!row)return;
     const wrap=row.querySelector('.gantt-cell-td div');if(!wrap)return;
-    // 既存バー・マイルストーン削除
+    // 既存バー・マイルストーンDelete
     wrap.querySelectorAll('.gantt-bar,.milestone-wrap').forEach(el=>el.remove());
     if(task.start&&task.end){const si=dayIdx[task.start],ei=dayIdx[task.end];if(si!==undefined&&ei!==undefined&&ei>=si){
       const col=task.color||COLORS[0];
@@ -2058,10 +2058,10 @@ function renderBarsOnly(){
 }
 function exportCSV(){
   const bom='\uFEFF';
-  const rows=[['WBS','タスク名','担当者','日数','開始日','終了日','先行タスクID'],
+  const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v45.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v46.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -2091,7 +2091,7 @@ function closeImportModal(){
   document.getElementById('impOverlay').style.display='none';
 }
 
-// ファイル選択時
+// ファイルSelect時
 function onImportFileSelected(input){
   const f=input.files[0];
   if(f) processImportFile(f);
@@ -2115,7 +2115,7 @@ function processImportFile(file){
 function parseImportCSV(text, filename){
   const lines=text.split(/\r?\n/).filter(l=>l.trim());
   if(lines.length<2){
-    alert('データ行が見つかりません。ヘッダー行を含む2行以上のCSVを選択してください。');
+    alert('データ行が見つかりません。ヘッダー行を含む2行以上のCSVをSelectしてください。');
     return;
   }
   // ヘッダー行をスキップ
@@ -2133,30 +2133,30 @@ function parseImportCSV(text, filename){
     const days=parseInt(cols[3])||1;
     const start=(cols[4]||'').trim();
     const end=(cols[5]||'').trim();
-    if(!title){errors.push(`行${i+2}: タスク名が空`);return;}
+    if(!title){errors.push(`行${i+2}: Task Nameが空`);return;}
     _importedRows.push({wbs,title,assignee,days,start,end});
   });
 
   if(!_importedRows.length){
-    alert('インポートできる行がありません。\n'+errors.join('\n'));
+    alert('No importable rows found.\n'+errors.join('\n'));
     return;
   }
 
   // プレビュー表示
   const prev=document.getElementById('impPreview');
-  prev.textContent=`✅ ${filename}\n読み込み: ${_importedRows.length}件${errors.length?' ('+errors.length+'件スキップ)':''}`;
+  prev.textContent=`✅ ${filename}\nLoaded: ${_importedRows.length} items${errors.length?' ('+errors.length+' itemsスキップ)':''}`;
   prev.style.display='block';
 
-  // テーブルプレビュー（最初の5件）
+  // テーブルプレビュー（最初の5 items）
   const tbl=document.getElementById('impTbl');
   const preview=_importedRows.slice(0,5);
-  tbl.innerHTML='<tr><th>WBS</th><th>タスク名</th><th>担当者</th><th>日数</th><th>開始日</th></tr>'+
-    preview.map(r=>`<tr><td>${r.wbs}</td><td>${escH(r.title)}</td><td>${escH(r.assignee)}</td><td>${r.days}</td><td>${r.start||'(未設定)'}</td></tr>`).join('');
+  tbl.innerHTML='<tr><th>WBS</th><th>Task Name</th><th>Assignee</th><th>Days</th><th>Start Date</th></tr>'+
+    preview.map(r=>`<tr><td>${r.wbs}</td><td>${escH(r.title)}</td><td>${escH(r.assignee)}</td><td>${r.days}</td><td>${r.start||'(Not set)'}</td></tr>`).join('');
   document.getElementById('impPreviewTable').style.display='block';
   document.getElementById('impOptionSec').style.display='block';
   document.getElementById('impExecBtn').style.display='';
 
-  // 置換モード選択時の警告
+  // 置換モードSelect時の警告
   document.querySelectorAll('input[name="impMode"]').forEach(r=>{
     r.onchange=()=>{
       document.getElementById('impReplaceWarn').style.display=r.value==='replace'?'block':'none';
@@ -2183,20 +2183,20 @@ function parseCSVLine(line){
   return result;
 }
 
-// インポート実行
+// Execute Import
 function execImport(){
-  if(!_isEditing){alert('操作するには「編集開始」ボタンを押してください。');return;}
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   if(!_importedRows.length){alert('インポートするデータがありません。');return;}
 
   const mode=document.querySelector('input[name="impMode"]:checked')?.value||'append';
-  pushUndo('CSVインポート');
+  pushUndo('CSV Import');
 
-  // 既存IDの最大値を取得（追加モード時）
+  // 既存IDの最大値を取得（Addモード時）
   let nextId=mode==='replace'?1:Math.max(0,...tasks.map(t=>t.id))+1;
 
   if(mode==='replace'){
     tasks=[];
-    // 新しい担当者も追加
+    // 新しいAssigneeもAdd
     assignees=[...new Set([...assignees,..._importedRows.map(r=>r.assignee).filter(Boolean)])];
   }
 
@@ -2226,7 +2226,7 @@ function execImport(){
     // レベルをWBSのドット数から算出
     const level=row.wbs?Math.min(4,row.wbs.split('.').length):1;
 
-    // 担当者追加
+    // AssigneeAdd
     if(row.assignee&&!assignees.includes(row.assignee)){
       assignees.push(row.assignee);
     }
@@ -2257,24 +2257,24 @@ function execImport(){
   render();
 
   const result=document.getElementById('impResult');
-  result.textContent=`✅ ${newTasks.length}件のタスクをインポートしました。`;
+  result.textContent=`✅ ${newTasks.length} tasks imported.`;
   result.style.display='block';
   document.getElementById('impExecBtn').style.display='none';
 
-  // 3秒後にモーダルを閉じる
+  // 3秒後にモーダルをClose
   setTimeout(()=>closeImportModal(),2500);
 }
 
-// インポート用テンプレートCSVのダウンロード
+// インポート用TemplateCSVのダウンロード
 function downloadTemplate(){
   const bom='\uFEFF';
   const rows=[
-    ['WBS','タスク名','担当者','日数','開始日（YYYY-MM-DD）','終了日（YYYY-MM-DD）'],
-    ['1','プロジェクト計画','担当者名',5,'2026-04-01','2026-04-07'],
-    ['1.1','要件定義','担当者名',3,'2026-04-01','2026-04-03'],
-    ['1.2','スケジュール作成','担当者名',2,'2026-04-04','2026-04-07'],
-    ['2','設計フェーズ','担当者名',10,'2026-04-08','2026-04-21'],
-    ['2.1','基本設計','担当者名',5,'2026-04-08','2026-04-14'],
+    ['WBS','Task Name','Assignee','Days','Start Date（YYYY-MM-DD）','End Date（YYYY-MM-DD）'],
+    ['1','プロジェクト計画','Assignee名',5,'2026-04-01','2026-04-07'],
+    ['1.1','要 items定義','Assignee名',3,'2026-04-01','2026-04-03'],
+    ['1.2','Schedule作成','Assignee名',2,'2026-04-04','2026-04-07'],
+    ['2','設計フェーズ','Assignee名',10,'2026-04-08','2026-04-21'],
+    ['2.1','基本設計','Assignee名',5,'2026-04-08','2026-04-14'],
   ];
   const csv=bom+rows.map(r=>r.map(v=>
     String(v).includes(',') ? '"'+v+'"' : v
@@ -2287,7 +2287,7 @@ function downloadTemplate(){
 async function init(){
   await loadUserDict(); // ユーザー辞書をFirebaseから読み込み
   const ys=document.getElementById('yearSel');
-  [2024,2025,2026,2027,2028].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===currentYear)o.selected=true;ys.appendChild(o)});
+  [2024,2025,2026,2027,2028].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'';if(y===currentYear)o.selected=true;ys.appendChild(o)});
   ys.onchange=()=>{currentYear=+ys.value;saveData();render()};
   document.getElementById('monthSel').onchange=function(){filt.month=+this.value;render()};
   document.getElementById('filterAsgn').onchange=function(){filt.assignee=this.value;render()};
@@ -2351,36 +2351,36 @@ window._updateLockUI = function(data) {
   if(!data) {
     // 誰も編集していない
     if(_isEditing) {
-      // 自分が編集中だったが別タブで解放された
+      // 自分がEditingだったが別タブで解放された
       _isEditing = false;
     }
     bar.className = 'lock-bar';
-    status.textContent = '編集可能';
+    status.textContent = 'Editable';
     inp.style.display = '';
-    btn.textContent = '編集開始';
+    btn.textContent = 'Start Editing';
     btn.className = 'lock-btn start';
     btn.style.display = '';
     btn.onclick = startEditing;
     setReadOnly(false);
   } else if(data.sessionId === window._fbSessionId) {
-    // 自分が編集中
+    // 自分がEditing
     _isEditing = true;
     bar.className = 'lock-bar editing';
-    status.textContent = `✏️ ${data.name}（編集中）`;
+    status.textContent = `✏️ ${data.name}（Editing）`;
     inp.style.display = 'none';
-    btn.textContent = '編集終了';
+    btn.textContent = 'End Editing';
     btn.className = 'lock-btn stop';
     btn.style.display = '';
     btn.onclick = stopEditing;
     setReadOnly(false);
   } else {
-    // 他の人が編集中
+    // 他の人がEditing
     _isEditing = false;
     bar.className = 'lock-bar locked';
-    status.textContent = `🔒 ${data.name} が編集中`;
+    status.textContent = `🔒 ${data.name} がEditing`;
     inp.style.display = 'none';
     btn.style.display = '';
-    btn.textContent = '強制解放';
+    btn.textContent = 'Force Unlock';
     btn.className = 'lock-btn stop';
     btn.onclick = forceUnlock;
     setReadOnly(true);
@@ -2410,7 +2410,7 @@ function stopEditing() {
 }
 
 function forceUnlock() {
-  if(!confirm('強制的に編集ロックを解放しますか？\n（相手が編集中の場合、変更が失われる可能性があります）')) return;
+  if(!confirm('強制的に編集ロックを解放しますか？\n（相手がEditingの場合、変更が失われる可能性があります）')) return;
   window._fbRemove(window._fbLockRef);
 }
 
@@ -2422,7 +2422,7 @@ function setReadOnly(flag) {
     '.cell-input:not([readonly]), .assignee-sel, .date-btn, ' +
     '.g-resize-l, .g-resize-r'
   );
-  // タスク追加・サブタスク・担当者管理・CSV以外のボタン
+  // タスクAdd・サブタスク・Manage Assignees・CSV以外のボタン
   document.querySelectorAll('button.btn').forEach(b => {
     if(b.id === 'lockBtn') return;
     if(b.closest('.lock-bar')) return;
@@ -2439,19 +2439,19 @@ function setReadOnly(flag) {
   });
 }
 
-// Firebase接続前は「接続中」表示
+// Firebase接続前は「Connecting」表示
 window.addEventListener('fbReady', () => {
   const bar = document.getElementById('lockBar');
   const status = document.getElementById('lockStatus');
   const btn = document.getElementById('lockBtn');
   if(bar) {
     bar.className = 'lock-bar';
-    status.textContent = '編集可能';
+    status.textContent = 'Editable';
     btn.style.display = '';
   }
 });
 
-// ページを閉じる前に編集終了
+// ページをClose前にEnd Editing
 window.addEventListener('beforeunload', () => {
   if(_isEditing && window._fbRemove && window._fbLockRef) {
     window._fbRemove(window._fbLockRef);
@@ -2466,54 +2466,54 @@ window.forceUnlock = forceUnlock;
 <div class="imp-overlay" id="impOverlay" style="display:none" onclick="if(event.target===this)closeImportModal()">
   <div class="imp-modal">
     <div class="imp-head">
-      <h3>📥 CSVインポート</h3>
+      <h3>📥 CSV Import</h3>
       <button class="imp-close" onclick="closeImportModal()">✕</button>
     </div>
     <div class="imp-body">
 
       <div class="imp-section">
-        <h4>📋 CSVフォーマット</h4>
+        <h4>📋 CSV Format</h4>
         <div class="imp-note">
           1行目はヘッダー行として無視されます。<br>
-          <strong>列順：WBS, タスク名, 担当者, 日数, 開始日（任意）, 終了日（任意）</strong><br>
+          <strong>列順：WBS, Task Name, Assignee, Days, Start Date（任意）, End Date（任意）</strong><br>
           ・日付形式：YYYY-MM-DD（例：2026-04-01）<br>
-          ・日数のみ入力の場合、開始日は本日が設定されます<br>
+          ・Daysのみ入力の場合、Start Dateは本日が設定されます<br>
           ・WBSの階層（ドット区切り）から親子関係を自動判定します
         </div>
-        <button class="btn" onclick="downloadTemplate()" style="margin-top:8px;font-size:11px">📄 テンプレートCSVをダウンロード</button>
+        <button class="btn" onclick="downloadTemplate()" style="margin-top:8px;font-size:11px">📄 TemplateCSVをダウンロード</button>
       </div>
 
       <div class="imp-section">
-        <h4>📂 ファイルを選択</h4>
+        <h4>📂 ファイルをSelect</h4>
         <div class="imp-drop" id="impDrop" onclick="document.getElementById('impFileInput').click()">
           <div style="font-size:28px">📂</div>
-          <div style="font-size:13px;font-weight:600;margin-top:8px">クリックまたはドラッグ＆ドロップ</div>
-          <p>CSV / TXT ファイル対応（UTF-8 または Shift-JIS）</p>
+          <div style="font-size:13px;font-weight:600;margin-top:8px">Click or Drag & Drop</div>
+          <p>CSV / TXT supported (UTF-8 or Shift-JIS)</p>
         </div>
         <input type="file" id="impFileInput" accept=".csv,.txt" style="display:none" onchange="onImportFileSelected(this)">
         <div class="imp-preview" id="impPreview" style="display:none"></div>
       </div>
 
       <div class="imp-section" id="impOptionSec" style="display:none">
-        <h4>⚙️ インポート方法</h4>
+        <h4>⚙️ Import Mode</h4>
         <div class="imp-radio-row">
-          <label><input type="radio" name="impMode" value="append" checked> 既存データに追加</label>
-          <label><input type="radio" name="impMode" value="replace"> 既存データを全て置換</label>
+          <label><input type="radio" name="impMode" value="append" checked> 既存データにAdd</label>
+          <label><input type="radio" name="impMode" value="replace"> Replace all existing</label>
         </div>
-        <div class="imp-warn" id="impReplaceWarn" style="display:none">⚠️ 既存のタスクがすべて削除されます。事前にCSV出力でバックアップすることを推奨します。</div>
+        <div class="imp-warn" id="impReplaceWarn" style="display:none">⚠️ 既存のタスクがすべてDeleteされます。事前にCSV出力でバックアップすることを推奨します。</div>
       </div>
 
       <div id="impPreviewTable" style="display:none">
-        <h4 style="font-size:12px;font-weight:700;color:#185FA5;margin-bottom:8px">📊 プレビュー（最初の5件）</h4>
+        <h4 style="font-size:12px;font-weight:700;color:#185FA5;margin-bottom:8px">📊 プレビュー（最初の5 items）</h4>
         <table class="imp-tbl" id="impTbl"></table>
       </div>
 
       <div class="imp-result" id="impResult"></div>
     </div>
     <div class="imp-foot">
-      <button class="btn" onclick="closeImportModal()">キャンセル</button>
-      <button class="btn" onclick="downloadTemplate()" style="color:#185FA5;border-color:#378ADD">テンプレート</button>
-      <button class="btn primary" id="impExecBtn" onclick="execImport()" style="display:none">✅ インポート実行</button>
+      <button class="btn" onclick="closeImportModal()">Cancel</button>
+      <button class="btn" onclick="downloadTemplate()" style="color:#185FA5;border-color:#378ADD">Template</button>
+      <button class="btn primary" id="impExecBtn" onclick="execImport()" style="display:none">✅ Execute Import</button>
     </div>
   </div>
 </div>
