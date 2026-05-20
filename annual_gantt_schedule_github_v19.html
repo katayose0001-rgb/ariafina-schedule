@@ -2422,6 +2422,18 @@ function openReportModal(){
   document.getElementById('rptDlBtn').style.display='none';
   document.getElementById('rptStatus').textContent='';
   document.getElementById('rptHint').style.display='';
+  // ヘッダーを日本語にリセット（null安全）
+  const _sh={1:'📈 KPIサマリー',2:'🥧 完了率',3:'📊 担当者別進捗',4:'👥 担当者別タスク（進行中・近日着手）',5:'📝 自動分析（催促・振り返りアドバイス・担当者クローズアップ）'};
+  Object.entries(_sh).forEach(([k,v])=>{const el=document.getElementById('rptSecHead'+k);if(el)el.textContent=v;});
+  const _rh=document.querySelector('.rpt-head h3');if(_rh)_rh.textContent='📊 ARIAFINAプロジェクト進捗レポート';
+  const _b1=document.getElementById('rptGenBtn');if(_b1)_b1.textContent='📊 レポート生成（日本語）';
+  const _b2=document.getElementById('rptGenBtnEn');if(_b2)_b2.textContent='📊 Generate Report (EN)';
+  const _ai=document.getElementById('rptAISection');
+  if(_ai)_ai.innerHTML='<div style="color:#aaa;font-size:12px;padding:8px">「レポート生成」ボタンを押すとスケジュールデータを自動分析してアドバイスを表示します</div>';
+  const _pb=document.getElementById('rptProgressBars');
+  if(_pb)_pb.innerHTML='<div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div>';
+  const _ac=document.getElementById('rptAssigneeCards');
+  if(_ac)_ac.innerHTML='<div style="color:#aaa;font-size:12px">レポート生成後に表示</div>';
   // サマリーKPIを即時表示
   renderReportKPI();
 }
@@ -2491,7 +2503,7 @@ function renderDonutChart(done,inprog,todo){
         ${p2>0?`<path d="${arc(p2,p1)}" fill="none" stroke="#378ADD" stroke-width="${sw}" stroke-linecap="butt"/>`:''}
         ${p1>0?`<path d="${arc(p1,0)}" fill="none" stroke="#1D9E75" stroke-width="${sw}" stroke-linecap="butt"/>`:''}
         <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="22" font-weight="700" fill="#185FA5">${pct}%</text>
-        <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="10" fill="#888">完了率</text>
+        <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="10" fill="#888" id="rptDonutLabel">完了率</text>
       </svg>
       <div class="rpt-donut-legend">
         <div class="rpt-donut-leg-item"><div class="rpt-donut-dot" style="background:#1D9E75"></div>完了 ${done}件</div>
@@ -2693,6 +2705,34 @@ function generateReport(lang){
     <div style="margin-bottom:18px">${sHead(L.secHead1)}${sec1Html}</div>
     <div style="margin-bottom:18px">${sHead(L.secHead2)}${sec2Html}</div>
     <div>${sHead(L.secHead3)}${sec3Html}</div>`;
+
+  // ── セクションヘッダーを言語切替 ──
+  const SH={
+    1: isEn?'📈 KPI Summary':'📈 KPIサマリー',
+    2: isEn?'🥧 Completion Rate':'🥧 完了率',
+    3: isEn?'📊 Progress by Assignee':'📊 担当者別進捗',
+    4: isEn?'👥 Tasks by Assignee (In Progress / Upcoming)':'👥 担当者別タスク（進行中・近日着手）',
+    5: isEn?'📝 Auto Analysis (Reminders · Advice · Closeup)':'📝 自動分析（催促・振り返りアドバイス・担当者クローズアップ）',
+  };
+  Object.entries(SH).forEach(([k,v])=>{
+    const el=document.getElementById('rptSecHead'+k);
+    if(el)el.textContent=v;
+  });
+  const donutLabel=document.getElementById('rptDonutLabel');
+  if(donutLabel)donutLabel.textContent=isEn?'Done Rate':'完了率';
+  const rptHead=document.querySelector('.rpt-head h3');
+  if(rptHead)rptHead.textContent=isEn?'📊 ARIAFINA Project Progress Report':'📊 ARIAFINAプロジェクト進捗レポート';
+  const rptDateRange=document.getElementById('rptDateRange');
+  if(rptDateRange){
+    const opts=isEn?{year:'numeric',month:'long',day:'numeric'}:{year:'numeric',month:'long',day:'numeric'};
+    rptDateRange.textContent=isEn
+      ?`As of ${new Date(t0).toLocaleDateString('en-US',opts)}`
+      :`${new Date(t0).toLocaleDateString('ja-JP',opts)} 時点`;
+  }
+  const hint=document.getElementById('rptAIHint');
+  if(hint)hint.textContent=isEn
+    ?'Press "Generate Report (EN)" to auto-analyze schedule data.'
+    :'「レポート生成」ボタンを押すとスケジュールデータを自動分析してアドバイスを表示します';
 
   window._reportHtml=buildFullReportHtml(d,isEn);
   document.getElementById('rptCopyBtn').style.display='';
@@ -3030,7 +3070,7 @@ window.forceUnlock = forceUnlock;
 
       <!-- Section 1: KPIサマリー -->
       <div class="rpt-section">
-        <div class="rpt-section-head">📈 KPIサマリー</div>
+        <div class="rpt-section-head" id="rptSecHead1">📈 KPIサマリー</div>
         <div class="rpt-section-body">
           <div id="rptKPI"><div style="color:#aaa;font-size:12px;padding:8px">読み込み中…</div></div>
         </div>
@@ -3039,13 +3079,13 @@ window.forceUnlock = forceUnlock;
       <!-- Section 2: 完了率グラフ + 担当者別進捗バー -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
         <div class="rpt-section" style="margin-bottom:0">
-          <div class="rpt-section-head" style="background:linear-gradient(135deg,#1D9E75,#0E7A5C)">🥧 完了率</div>
+          <div class="rpt-section-head" style="background:linear-gradient(135deg,#1D9E75,#0E7A5C)" id="rptSecHead2">🥧 完了率</div>
           <div class="rpt-section-body" style="padding:10px 12px">
             <div id="rptDonut"><div style="color:#aaa;font-size:12px;padding:8px">読み込み中…</div></div>
           </div>
         </div>
         <div class="rpt-section" style="margin-bottom:0">
-          <div class="rpt-section-head" style="background:linear-gradient(135deg,#533AB7,#7B5DC4)">📊 担当者別進捗</div>
+          <div class="rpt-section-head" style="background:linear-gradient(135deg,#533AB7,#7B5DC4)" id="rptSecHead3">📊 担当者別進捗</div>
           <div class="rpt-section-body" style="padding:10px 12px">
             <div id="rptProgressBars"><div style="color:#aaa;font-size:12px;padding:8px">AIレポート生成後に表示</div></div>
           </div>
@@ -3054,7 +3094,7 @@ window.forceUnlock = forceUnlock;
 
       <!-- Section 3: 担当者別タスクカード -->
       <div class="rpt-section">
-        <div class="rpt-section-head" style="background:linear-gradient(135deg,#BA7517,#EF9F27)">👥 担当者別タスク（進行中・近日着手）</div>
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#BA7517,#EF9F27)" id="rptSecHead4">👥 担当者別タスク（進行中・近日着手）</div>
         <div class="rpt-section-body">
           <div id="rptAssigneeCards"><div style="color:#aaa;font-size:12px;padding:8px">AIレポート生成後に表示</div></div>
         </div>
@@ -3062,9 +3102,9 @@ window.forceUnlock = forceUnlock;
 
       <!-- Section 4: 分析コンテンツ（催促・コンサル・クローズアップ）-->
       <div class="rpt-section">
-        <div class="rpt-section-head" style="background:linear-gradient(135deg,#A32D2D,#E74C3C)">📝 自動分析（催促・振り返りアドバイス・担当者クローズアップ）</div>
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#A32D2D,#E74C3C)" id="rptSecHead5">📝 自動分析（催促・振り返りアドバイス・担当者クローズアップ）</div>
         <div class="rpt-section-body">
-          <div id="rptAISection"><div style="color:#aaa;font-size:12px;padding:8px">「レポート生成」ボタンを押すとスケジュールデータを自動分析してアドバイスを表示します</div></div>
+          <div id="rptAISection"><div style="color:#aaa;font-size:12px;padding:8px" id="rptAIHint">「レポート生成」ボタンを押すとスケジュールデータを自動分析してアドバイスを表示します</div></div>
         </div>
       </div>
 
