@@ -256,11 +256,15 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .lvl2 td{background:var(--color-background-secondary)!important;border-left:3px solid transparent}
 .lvl3 td{background:color-mix(in srgb,var(--color-background-secondary) 50%,var(--color-background-primary))!important;border-left:3px solid transparent}
 .lvl4 td{background:var(--color-background-primary)!important;border-left:3px solid transparent}
+.lvl5 td{background:color-mix(in srgb,var(--color-background-secondary) 30%,var(--color-background-primary))!important;border-left:3px solid transparent}
+.lvl6 td{background:var(--color-background-primary)!important;border-left:3px solid transparent}
 /* レベル別左ボーダーアクセント */
 .lvl1>td:first-child{border-left:3px solid #378ADD}
 .lvl2>td:first-child{border-left:3px solid #1D9E75}
 .lvl3>td:first-child{border-left:3px solid #BA7517}
 .lvl4>td:first-child{border-left:3px solid #A32D2D}
+.lvl5>td:first-child{border-left:3px solid #533AB7}
+.lvl6>td:first-child{border-left:3px solid #7F8C8D}
 .parent-highlight td{background:rgba(55,138,221,.08)!important}
 .del-btn{font-size:10px;height:20px;padding:0 5px;color:var(--color-text-danger);border-color:var(--color-border-danger)}
 .dep-warning{color:#BA7517;font-size:10px;padding:3px 6px;background:#FFF3CD;border-radius:4px;margin-top:4px}
@@ -959,7 +963,7 @@ function getVisibleTasks(){
     while(cur.parentId!=null){
       const parent=tasks.find(p=>p.id===cur.parentId);
       if(!parent)break;
-      if((parent.level===1||parent.level===2)&&collapsedIds.has(parent.id))return true;
+      if((parent.level===1||parent.level===2||parent.level===3)&&collapsedIds.has(parent.id))return true;
       cur=parent;
     }
     return false;
@@ -1050,14 +1054,14 @@ function render(){
   let lb=`<table class="left-table" style="width:${getLeftW()}px" id="leftTable"><tbody>`;
   visT.forEach(task=>{
     const lv=task.level||1;
-    const lvClass=`lvl${Math.min(lv,4)}`;
+    const lvClass=`lvl${Math.min(lv,6)}`;
     const isHL=pfilt&&task.id===pfilt;
     const hasPred=task.predecessorId!=null;
     const pad=(lv-1)*12; // インデント幅
     // Lv1・Lv2の折りたたみボタン表示
     const hasChildren=tasks.some(t=>t.parentId===task.id);
     const isCollapsed=collapsedIds.has(task.id);
-    const toggleHtml=((lv===1||lv===2)&&hasChildren)
+    const toggleHtml=((lv===1||lv===2||lv===3)&&hasChildren)
       ?`<span class="toggle-btn${isCollapsed?' collapsed':''}" onclick="toggleCollapse(${task.id},event)">▼</span>`
       :`<span style="width:19px;display:inline-block;flex-shrink:0"></span>`;
     const depIcon=hasPred?`<span title="Has Predecessor" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
@@ -1302,7 +1306,7 @@ function openSide(mode,id){
 
   if(mode==='addTask'){
     // 全タスクを親候補として（レベル4未満）
-    const parentCands=tasks.filter(t=>(t.level||1)<4);
+    const parentCands=tasks.filter(t=>(t.level||1)<6);
     const parentOpts=`<option value="">None（ルートレベル1）</option>`+
       parentCands.map(t=>`<option value="${t.id}">${t.wbs} ${escH(t.title)} [Lv${t.level||1}→子Lv${(t.level||1)+1}]</option>`).join('');
     const insertOpts=`<option value="last">末尾にAdd</option>`+
@@ -1395,7 +1399,9 @@ function openSide(mode,id){
           <option value="1"${(t.level||1)===1?' selected':''}>〇.　　　　Lv1 プロジェクト成果物</option>
           <option value="2"${(t.level||1)===2?' selected':''}>〇.〇　　　Lv2 主要サブ成果物</option>
           <option value="3"${(t.level||1)===3?' selected':''}>〇.〇.〇　 Lv3 ワークパッケージ</option>
-          <option value="4"${(t.level||1)===4?' selected':''}>〇.〇.〇.〇 Lv4 補助ワーク</option>
+          <option value="4"${(t.level||1)===4?' selected':''}>〇.〇.〇.〇 Lv4 Supporting Work</option>
+          <option value="5"${(t.level||1)===5?' selected':''}>〇.〇.〇.〇.〇 Lv5 Detail Work</option>
+          <option value="6"${(t.level||1)===6?' selected':''}>〇.〇.〇.〇.〇.〇 Lv6 Sub-detail Work</option>
         </select>
       </div>
       <div class="sf" id="s_parent_wrap"${(t.level||1)===1?' style="display:none"':''}>
@@ -1779,7 +1785,7 @@ window.closeCtxMenu=closeCtxMenu;
 function addChildTask(parentId){
   if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   const parent=tasks.find(t=>t.id===parentId);if(!parent)return;
-  if((parent.level||1)>=4){alert('Lv4以上にはAdd Subtaskできません');return;}
+  if((parent.level||1)>=6){alert('Cannot add subtask below Lv6.');return;}
   sideMode='addTask';editId=null;
   document.getElementById('sidePanel').classList.add('open');
   document.getElementById('sideTitle').textContent='Add Subtask';
@@ -1787,7 +1793,7 @@ function addChildTask(parentId){
   const directChildren=tasks.filter(t=>t.parentId===parentId);
   const insertOpts=`<option value="last">末尾にAdd</option>`+
     directChildren.map(s=>`<option value="${s.id}">${s.wbs} ${escH(s.title)} Insert Before</option>`).join('');
-  const parentCands=tasks.filter(t=>(t.level||1)<4);
+  const parentCands=tasks.filter(t=>(t.level||1)<6);
   const parentOpts=parentCands.map(t=>`<option value="${t.id}"${t.id===parentId?' selected':''}>${t.wbs} ${escH(t.title)} [Lv${t.level||1}→子Lv${(t.level||1)+1}]</option>`).join('');
   body.innerHTML=`
     <div class="sf"><label>Task Name</label><input id="s_title" placeholder="サブTask Nameを入力" style="font-weight:700;font-size:13px" autofocus></div>
@@ -2061,7 +2067,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v46.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v47.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -2224,7 +2230,7 @@ function execImport(){
     }
 
     // レベルをWBSのドット数から算出
-    const level=row.wbs?Math.min(4,row.wbs.split('.').length):1;
+    const level=row.wbs?Math.min(6,row.wbs.split('.').length):1;
 
     // AssigneeAdd
     if(row.assignee&&!assignees.includes(row.assignee)){
