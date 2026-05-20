@@ -2501,166 +2501,140 @@ function renderDonutChart(done,inprog,todo){
     </div>`;
 }
 
-// ── 進捗バーチャート（担当者別）──
-function renderProgressBars(byAssignee){
-  const el=document.getElementById('rptProgressBars');
-  if(!el)return;
-  const entries=Object.values(byAssignee);
-  if(!entries.length){el.innerHTML='<div style="color:#aaa;font-size:12px;padding:8px">担当者データなし</div>';return;}
-  let html='<div class="rpt-chart-wrap">';
-  entries.forEach(a=>{
-    const total=a.inProg.length+a.upcoming.length+a.done.length;
-    if(!total)return;
-    const pct=Math.round((a.done.length/total)*100);
-    const colors=['#1D9E75','#378ADD','#EF9F27'];
-    const barColor=pct>=80?colors[0]:pct>=40?colors[1]:colors[2];
-    html+=`<div class="rpt-progress-row">
-      <div class="rpt-progress-label" title="${escH(a.name)}">${escH(a.name)}</div>
-      <div class="rpt-progress-bar-bg">
-        <div class="rpt-progress-bar-fill" style="width:${pct}%;background:${barColor}"></div>
-      </div>
-      <div class="rpt-progress-pct">${pct}%</div>
-    </div>`;
-  });
-  html+='</div>';
-  el.innerHTML=html;
-}
-
-// ── 担当者カードの即時レンダリング ──
-function renderAssigneeCards(byAssignee){
-  const el=document.getElementById('rptAssigneeCards');
-  if(!el)return;
-  const entries=Object.values(byAssignee).filter(a=>a.inProg.length||a.upcoming.length);
-  if(!entries.length){el.innerHTML='<div style="color:#aaa;font-size:12px">進行中・近日着手タスクなし</div>';return;}
-  const cardColors=['#185FA5','#1D9E75','#BA7517','#533AB7','#A32D2D','#0E7A5C','#639922','#8E44AD'];
-  let html='<div class="rpt-assignee-grid">';
-  entries.forEach((a,i)=>{
-    const bg=cardColors[i%cardColors.length];
-    const allTasks=[...a.inProg.map(t=>({...t,_s:'進行中'})),...a.upcoming.map(t=>({...t,_s:'近日着手'}))];
-    const taskItems=allTasks.slice(0,5).map(t=>`
-      <div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:4px">
-        <span style="font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap;margin-top:1px;${t._s==='進行中'?'background:#EAF3FB;color:#185FA5':'background:#FFF4E5;color:#BA7517'}">${t._s}</span>
-        <span style="font-size:11px;color:#333">${escH(t.title)}${t.titleEn?'<span style="font-size:9px;color:#999;margin-left:3px">'+escH(t.titleEn)+'</span>':''}</span>
-      </div>`).join('');
-    html+=`<div class="rpt-assignee-card">
-      <div class="rpt-assignee-card-head" style="background:${bg}">
-        <span>${escH(a.name)}</span>
-        <span class="rpt-assignee-badge">${a.inProg.length+a.upcoming.length}件</span>
-      </div>
-      <div class="rpt-assignee-card-body">${taskItems}${allTasks.length>5?`<div style="color:#aaa;font-size:10px;margin-top:4px">…他${allTasks.length-5}件</div>`:''}</div>
-    </div>`;
-  });
-  html+='</div>';
-  el.innerHTML=html;
-}
-
-// ── レポート生成（APIキー不要・ロジックベース）──
-function generateReport(){
-  const btn=document.getElementById('rptGenBtn');
+// ── レポート生成（APIキー不要・ロジックベース）lang='ja'|'en' ──
+function generateReport(lang){
+  if(!lang)lang='ja';
+  const isEn=(lang==='en');
+  const btn=document.getElementById(isEn?'rptGenBtnEn':'rptGenBtn');
+  const btnOther=document.getElementById(isEn?'rptGenBtn':'rptGenBtnEn');
   const status=document.getElementById('rptStatus');
   document.getElementById('rptHint').style.display='none';
   const d=buildReportData();
   if(!d.allT.length){
-    document.getElementById('rptAISection').innerHTML='<div style="padding:20px;text-align:center;color:#aaa">タスクデータがありません</div>';
+    document.getElementById('rptAISection').innerHTML='<div style="padding:20px;text-align:center;color:#aaa">'+(isEn?'No task data found.':'タスクデータがありません')+'</div>';
     return;
   }
-  btn.disabled=true;btn.textContent='⏳ 生成中...';
+  btn.disabled=true;
+  btn.textContent=isEn?'⏳ Generating...':'⏳ 生成中...';
+  if(btnOther)btnOther.disabled=true;
   // グラフ・カード描画
-  renderProgressBars(d.byAssignee);
-  renderAssigneeCards(d.byAssignee);
+  renderProgressBars(d.byAssignee,isEn);
+  renderAssigneeCards(d.byAssignee,isEn);
   document.getElementById('rptCopyBtn').style.display='none';
   document.getElementById('rptDlBtn').style.display='none';
+
+  const L={
+    noUpcoming: isEn?'No tasks starting within 2 weeks.':'2週間以内に新たに着手するタスクはありません。',
+    urgent:'URGENT', thisWeek:'This Week', in2w:'Within 2W',
+    daysLater: n=>isEn?`in ${n} day${n>1?'s':''}:`:`${n}日後：`,
+    startOn: isEn?'Start':'着手',
+    noInProg: isEn?'No tasks currently in progress.':'現在進行中のタスクはありません。',
+    inProgress: isEn?'In Progress':'進行中',
+    secHead1: isEn?'⏰ Upcoming Tasks (2 weeks) — Action Required':'⏰ 2週間以内の着手タスク — 担当者への催促',
+    secHead2: isEn?'💡 Last Month Review — Advisory':'💡 過去1ヶ月の業務 — 振り返りと進め方アドバイス',
+    secHead3: isEn?'📋 In-Progress Tasks — Assignee Closeup':'📋 進捗中タスク — 担当者別クローズアップ',
+    tblWbs:'WBS', tblTask: isEn?'Task':'タスク名',
+    tblAssignee: isEn?'Assignee':'担当',
+    tblStart: isEn?'Start':'開始',
+    tblEnd: isEn?'End':'終了',
+    tblStatus: isEn?'Status':'状態',
+    statusDone: isEn?'Done':'完了',
+    statusInProg: isEn?'In Progress':'進行中',
+    statusTodo: isEn?'Pending':'未着手',
+    noAdvice: isEn?'Operations over the past month are on track. Keep up the current pace.':'過去1ヶ月の業務は概ね順調です。引き続き現状のペースを維持してください。',
+    past1mTitle: isEn?'▸ Tasks Started in the Last Month':'▸ 過去1ヶ月の着手タスク一覧',
+    noPast: isEn?'No tasks started in the last month.':'過去1ヶ月に着手したタスクはありません。',
+    inProgCount: n=>isEn?`${n} In Progress`:`${n}件 進行中`,
+  };
 
   // ── セクション1：2週間以内の催促リスト ──
   let sec1Html='';
   if(d.upcoming2w.length===0){
-    sec1Html='<div class="rpt-alert-card green">2週間以内に新たに着手するタスクはありません。</div>';
+    sec1Html=`<div class="rpt-alert-card green">${L.noUpcoming}</div>`;
   }else{
-    // 着手まで何日か計算して優先度色分け
     sec1Html='<ul style="padding-left:0;list-style:none;margin:0">';
-    d.upcoming2w
-      .sort((a,b)=>a.start.localeCompare(b.start))
-      .forEach(t=>{
-        const diffMs=parseD(t.start)-t0;
-        const diffDays=Math.ceil(diffMs/(1000*60*60*24));
-        const urgColor=diffDays<=3?'#E74C3C':diffDays<=7?'#EF9F27':'#1D9E75';
-        const urgLabel=diffDays<=3?'至急':diffDays<=7?'今週中':'2週間以内';
-        const asgn=t.assignee||'担当者未定';
-        sec1Html+=`<li style="display:flex;align-items:flex-start;gap:10px;margin-bottom:9px;padding:9px 12px;background:#fafcff;border:1px solid #e8edf5;border-radius:8px;border-left:4px solid ${urgColor}">
-          <span style="font-size:10px;font-weight:700;color:#fff;background:${urgColor};border-radius:4px;padding:2px 7px;white-space:nowrap;flex-shrink:0;margin-top:1px">${urgLabel}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:2px">${escH(t.title)}${t.titleEn?'<span style="font-size:10px;color:#888;font-weight:400;margin-left:5px">'+escH(t.titleEn)+'</span>':''}</div>
-            <div style="font-size:11px;color:#555"><strong style="color:#185FA5">${escH(asgn)}</strong> さん ／ 着手：${t.start}（${diffDays}日後）〜${t.end} ／ ${t.days}日間</div>
-          </div>
-          <span style="font-size:10px;color:#aaa;white-space:nowrap;flex-shrink:0">${t.wbs}</span>
-        </li>`;
-      });
+    d.upcoming2w.sort((a,b)=>a.start.localeCompare(b.start)).forEach(t=>{
+      const diffMs=parseD(t.start)-t0;
+      const diffDays=Math.ceil(diffMs/(1000*60*60*24));
+      const urgColor=diffDays<=3?'#E74C3C':diffDays<=7?'#EF9F27':'#1D9E75';
+      const urgLabel=diffDays<=3?L.urgent:diffDays<=7?L.thisWeek:L.in2w;
+      const asgn=t.assignee||(isEn?'Unassigned':'担当者未定');
+      const taskName=isEn?(t.titleEn||t.title):t.title;
+      const taskSub=isEn?'':(t.titleEn?`<span style="font-size:10px;color:#888;font-weight:400;margin-left:5px">${escH(t.titleEn)}</span>`:'');
+      sec1Html+=`<li style="display:flex;align-items:flex-start;gap:10px;margin-bottom:9px;padding:9px 12px;background:#fafcff;border:1px solid #e8edf5;border-radius:8px;border-left:4px solid ${urgColor}">
+        <span style="font-size:10px;font-weight:700;color:#fff;background:${urgColor};border-radius:4px;padding:2px 7px;white-space:nowrap;flex-shrink:0;margin-top:1px">${urgLabel}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:2px">${escH(taskName)}${taskSub}</div>
+          <div style="font-size:11px;color:#555"><strong style="color:#185FA5">${escH(asgn)}</strong> / ${L.startOn}：${t.start}（${L.daysLater(diffDays)}）〜${t.end} / ${t.days}d</div>
+        </div>
+        <span style="font-size:10px;color:#aaa;white-space:nowrap;flex-shrink:0">${t.wbs}</span>
+      </li>`;
+    });
     sec1Html+='</ul>';
   }
 
-  // ── セクション2：過去1ヶ月の振り返り・コンサルティング ──
+  // ── セクション2：過去1ヶ月の振り返り・アドバイス ──
   const h=hs(currentYear);
-  // 遅延タスク（終了日が今日より後なのに開始から相当経過）
   const overdue=d.inProg.filter(t=>{
     if(!t.start||!t.end)return false;
     const elapsed=countWD(parseD(t.start),t0,h);
     const total=countWD(parseD(t.start),parseD(t.end),h);
-    return total>0&&(elapsed/total)>1.1; // 10%超過
+    return total>0&&(elapsed/total)>1.1;
   });
   const longTasks=d.past1m.filter(t=>t.days>=10);
   const shortTasks=d.past1m.filter(t=>t.days<=2);
   const noAssignee=d.past1m.filter(t=>!t.assignee);
   let adviceItems=[];
-  // よかった点
   if(d.past1m.length>0){
-    adviceItems.push({type:'green',icon:'✅',text:`過去1ヶ月で<strong>${d.past1m.length}件</strong>のタスクに着手しました。うち<strong>${d.past1m.filter(t=>t.end<d.today).length}件</strong>が完了済みです。`});
+    const doneCount=d.past1m.filter(t=>t.end<d.today).length;
+    adviceItems.push({type:'green',icon:'✅',text:isEn
+      ?`<strong>${d.past1m.length} tasks</strong> were started in the last month, of which <strong>${doneCount}</strong> are already completed.`
+      :`過去1ヶ月で<strong>${d.past1m.length}件</strong>のタスクに着手しました。うち<strong>${doneCount}件</strong>が完了済みです。`});
   }
   if(longTasks.length>0){
-    adviceItems.push({type:'warn',icon:'📌',text:`10日以上の長期タスクが<strong>${longTasks.length}件</strong>あります（${longTasks.slice(0,2).map(t=>escH(t.title)).join('、')}など）。中間マイルストーンを設けて進捗を細かく管理することを推奨します。`});
+    adviceItems.push({type:'warn',icon:'📌',text:isEn
+      ?`<strong>${longTasks.length}</strong> long-term tasks (10+ days) detected (e.g. ${longTasks.slice(0,2).map(t=>escH(t.titleEn||t.title)).join(', ')}). Consider adding intermediate milestones.`
+      :`10日以上の長期タスクが<strong>${longTasks.length}件</strong>あります（${longTasks.slice(0,2).map(t=>escH(t.title)).join('、')}など）。中間マイルストーンを設けて進捗を管理することを推奨します。`});
   }
   if(overdue.length>0){
-    adviceItems.push({type:'red',icon:'⚠️',text:`進行中タスクのうち<strong>${overdue.length}件</strong>が予定工数を超過しています（${overdue.slice(0,2).map(t=>escH(t.title)).join('、')}）。担当者と原因を確認し、スケジュール見直しを検討してください。`});
+    adviceItems.push({type:'red',icon:'⚠️',text:isEn
+      ?`<strong>${overdue.length}</strong> in-progress task(s) appear to be behind schedule (${overdue.slice(0,2).map(t=>escH(t.titleEn||t.title)).join(', ')}). Please review and update the schedule.`
+      :`進行中タスクのうち<strong>${overdue.length}件</strong>が予定工数を超過しています（${overdue.slice(0,2).map(t=>escH(t.title)).join('、')}）。担当者と原因を確認し、スケジュール見直しを検討してください。`});
   }
   if(shortTasks.length>=3){
-    adviceItems.push({type:'green',icon:'💡',text:`2日以内の短期タスクが<strong>${shortTasks.length}件</strong>あります。類似タスクをまとめてバッチ処理することで、切り替えコストの削減が見込めます。`});
+    adviceItems.push({type:'green',icon:'💡',text:isEn
+      ?`<strong>${shortTasks.length}</strong> short tasks (1–2 days) were identified. Batching similar tasks could reduce context-switching overhead.`
+      :`2日以内の短期タスクが<strong>${shortTasks.length}件</strong>あります。類似タスクをまとめてバッチ処理することで、切り替えコストの削減が見込めます。`});
   }
   if(noAssignee.length>0){
-    adviceItems.push({type:'warn',icon:'👤',text:`担当者未設定のタスクが<strong>${noAssignee.length}件</strong>あります。責任の所在を明確にするため、早急に担当者を割り当ててください。`});
-  }
-  if(d.upcoming2w.length===0&&d.inProg.length===0){
-    adviceItems.push({type:'green',icon:'🎉',text:'現在、進行中・近日着手タスクはありません。次フェーズの計画を早めに立案することで、余裕のあるスタートが切れます。'});
+    adviceItems.push({type:'warn',icon:'👤',text:isEn
+      ?`<strong>${noAssignee.length}</strong> task(s) have no assignee. Please assign owners to clarify accountability.`
+      :`担当者未設定のタスクが<strong>${noAssignee.length}件</strong>あります。責任の所在を明確にするため、早急に担当者を割り当ててください。`});
   }
   if(adviceItems.length===0){
-    adviceItems.push({type:'green',icon:'✅',text:'過去1ヶ月の業務は概ね順調です。引き続き現状のペースを維持してください。'});
+    adviceItems.push({type:'green',icon:'✅',text:L.noAdvice});
   }
-  const typeStyle={
-    red:'border-left-color:#E74C3C;background:#FEF9F9',
-    warn:'border-left-color:#EF9F27;background:#FFFBF0',
-    green:'border-left-color:#1D9E75;background:#F0FBF7'
-  };
-  let sec2Html=adviceItems.map(a=>`
-    <div class="rpt-alert-card" style="${typeStyle[a.type]||typeStyle.green}">
-      <span style="margin-right:5px">${a.icon}</span>${a.text}
-    </div>`).join('');
-  // 過去1ヶ月タスク一覧テーブル
+  const typeStyle={red:'border-left-color:#E74C3C;background:#FEF9F9',warn:'border-left-color:#EF9F27;background:#FFFBF0',green:'border-left-color:#1D9E75;background:#F0FBF7'};
+  let sec2Html=adviceItems.map(a=>`<div class="rpt-alert-card" style="${typeStyle[a.type]||typeStyle.green}"><span style="margin-right:5px">${a.icon}</span>${a.text}</div>`).join('');
   if(d.past1m.length){
-    sec2Html+=`<div style="margin-top:10px;font-size:11px;font-weight:700;color:#185FA5;margin-bottom:5px">▸ 過去1ヶ月の着手タスク一覧</div>
+    sec2Html+=`<div style="margin-top:10px;font-size:11px;font-weight:700;color:#185FA5;margin-bottom:5px">${L.past1mTitle}</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px">
       <thead><tr>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">WBS</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">タスク名</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">担当</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">開始</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">終了</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">状態</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">${L.tblWbs}</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">${L.tblTask}</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">${L.tblAssignee}</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">${L.tblStart}</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">${L.tblEnd}</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">${L.tblStatus}</th>
       </tr></thead><tbody>`;
     d.past1m.sort((a,b)=>a.start.localeCompare(b.start)).forEach((t,i)=>{
       const st=taskStatus(t);
-      const stLabel=st==='done'?'完了':st==='in-progress'?'進行中':'未着手';
+      const stLabel=st==='done'?L.statusDone:st==='in-progress'?L.statusInProg:L.statusTodo;
       const stColor=st==='done'?'#1D9E75':st==='in-progress'?'#378ADD':'#888';
+      const tName=isEn?(t.titleEn||t.title):t.title;
       sec2Html+=`<tr style="${i%2===1?'background:#f7f9fc':''}">
         <td style="padding:5px 8px;border:1px solid #e8edf5;color:#888">${escH(t.wbs)}</td>
-        <td style="padding:5px 8px;border:1px solid #e8edf5">${escH(t.title)}</td>
+        <td style="padding:5px 8px;border:1px solid #e8edf5">${escH(tName)}</td>
         <td style="padding:5px 8px;border:1px solid #e8edf5">${escH(t.assignee||'—')}</td>
         <td style="padding:5px 8px;border:1px solid #e8edf5;text-align:center">${t.start}</td>
         <td style="padding:5px 8px;border:1px solid #e8edf5;text-align:center">${t.end}</td>
@@ -2669,21 +2643,16 @@ function generateReport(){
     });
     sec2Html+='</tbody></table>';
   }else{
-    sec2Html+='<div style="color:#aaa;font-size:12px;margin-top:8px">過去1ヶ月に着手したタスクはありません。</div>';
+    sec2Html+=`<div style="color:#aaa;font-size:12px;margin-top:8px">${L.noPast}</div>`;
   }
 
   // ── セクション3：進捗中タスク 担当者別クローズアップ ──
   let sec3Html='';
   if(d.inProg.length===0){
-    sec3Html='<div class="rpt-alert-card green">現在進行中のタスクはありません。</div>';
+    sec3Html=`<div class="rpt-alert-card green">${L.noInProg}</div>`;
   }else{
-    // 担当者ごとにグループ化
     const byAsgn={};
-    d.inProg.forEach(t=>{
-      const a=t.assignee||'担当者未設定';
-      if(!byAsgn[a])byAsgn[a]=[];
-      byAsgn[a].push(t);
-    });
+    d.inProg.forEach(t=>{const a=t.assignee||(isEn?'Unassigned':'担当者未設定');if(!byAsgn[a])byAsgn[a]=[];byAsgn[a].push(t);});
     const cardColors=['#185FA5','#1D9E75','#BA7517','#533AB7','#A32D2D','#0E7A5C','#639922','#8E44AD'];
     let ci=0;
     sec3Html='<div style="display:flex;flex-direction:column;gap:10px">';
@@ -2692,9 +2661,11 @@ function generateReport(){
       const rows=tlist.map(t=>{
         const pct=getProgressPct(t);
         const barColor=pct>=80?'#1D9E75':pct>=40?'#378ADD':'#EF9F27';
+        const tName=isEn?(t.titleEn||t.title):t.title;
+        const tSub=isEn?(t.title!==t.titleEn&&t.titleEn?'':`<span style="font-size:9px;color:#999;margin-left:4px">${escH(t.title)}</span>`):(t.titleEn?`<span style="font-size:9px;color:#999;margin-left:4px">${escH(t.titleEn)}</span>`:'');
         return `<div style="margin-bottom:7px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-            <span style="font-size:11px;color:#333;font-weight:500">${escH(t.title)}${t.titleEn?'<span style="font-size:9px;color:#999;margin-left:4px">'+escH(t.titleEn)+'</span>':''}</span>
+            <span style="font-size:11px;color:#333;font-weight:500">${escH(tName)}${tSub}</span>
             <span style="font-size:10px;color:#888;white-space:nowrap;margin-left:8px">${t.start}〜${t.end}</span>
           </div>
           <div style="display:flex;align-items:center;gap:7px">
@@ -2708,7 +2679,7 @@ function generateReport(){
       sec3Html+=`<div style="border:1px solid #e0e8f5;border-radius:9px;overflow:hidden">
         <div style="background:${bg};color:#fff;padding:9px 14px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between">
           <span>${escH(asgn)}</span>
-          <span style="background:rgba(255,255,255,.22);border-radius:10px;padding:1px 8px;font-size:10px">${tlist.length}件 進行中</span>
+          <span style="background:rgba(255,255,255,.22);border-radius:10px;padding:1px 8px;font-size:10px">${L.inProgCount(tlist.length)}</span>
         </div>
         <div style="padding:12px 14px;background:#fff">${rows}</div>
       </div>`;
@@ -2716,42 +2687,98 @@ function generateReport(){
     sec3Html+='</div>';
   }
 
-  // 各セクションをDOMに反映
   const aiSection=document.getElementById('rptAISection');
   const sHead=s=>`<div style="font-size:13px;font-weight:700;color:#185FA5;margin:0 0 10px;padding-left:8px;border-left:3px solid #378ADD">${s}</div>`;
   aiSection.innerHTML=`
-    <div style="margin-bottom:18px">${sHead('⏰ 2週間以内の着手タスク — 担当者への催促')}${sec1Html}</div>
-    <div style="margin-bottom:18px">${sHead('💡 過去1ヶ月の業務 — 振り返りと進め方アドバイス')}${sec2Html}</div>
-    <div>${sHead('📋 進捗中タスク — 担当者別クローズアップ')}${sec3Html}</div>`;
+    <div style="margin-bottom:18px">${sHead(L.secHead1)}${sec1Html}</div>
+    <div style="margin-bottom:18px">${sHead(L.secHead2)}${sec2Html}</div>
+    <div>${sHead(L.secHead3)}${sec3Html}</div>`;
 
-  window._reportHtml=buildFullReportHtml(d);
+  window._reportHtml=buildFullReportHtml(d,isEn);
   document.getElementById('rptCopyBtn').style.display='';
   document.getElementById('rptDlBtn').style.display='';
-  status.textContent=`✅ 生成完了 · ${d.today} · ${d.allT.length}件分析`;
-  btn.disabled=false;btn.textContent='🔄 再生成';
+  status.textContent=isEn
+    ?`✅ Done · ${d.today} · ${d.allT.length} tasks analyzed`
+    :`✅ 生成完了 · ${d.today} · ${d.allT.length}件分析`;
+  btn.disabled=false;
+  btn.textContent=isEn?'🔄 Regenerate (EN)':'🔄 再生成（日本語）';
+  if(btnOther)btnOther.disabled=false;
+}
+
+// ── renderProgressBars：英語対応 ──
+function renderProgressBars(byAssignee,isEn){
+  const el=document.getElementById('rptProgressBars');
+  if(!el)return;
+  const entries=Object.values(byAssignee);
+  if(!entries.length){el.innerHTML=`<div style="color:#aaa;font-size:12px;padding:8px">${isEn?'No assignee data.':'担当者データなし'}</div>`;return;}
+  let html='<div class="rpt-chart-wrap">';
+  entries.forEach(a=>{
+    const total=a.inProg.length+a.upcoming.length+a.done.length;
+    if(!total)return;
+    const pct=Math.round((a.done.length/total)*100);
+    const barColor=pct>=80?'#1D9E75':pct>=40?'#378ADD':'#EF9F27';
+    html+=`<div class="rpt-progress-row">
+      <div class="rpt-progress-label" title="${escH(a.name)}">${escH(a.name)}</div>
+      <div class="rpt-progress-bar-bg"><div class="rpt-progress-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      <div class="rpt-progress-pct">${pct}%</div>
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+// ── renderAssigneeCards：英語対応 ──
+function renderAssigneeCards(byAssignee,isEn){
+  const el=document.getElementById('rptAssigneeCards');
+  if(!el)return;
+  const entries=Object.values(byAssignee).filter(a=>a.inProg.length||a.upcoming.length);
+  if(!entries.length){el.innerHTML=`<div style="color:#aaa;font-size:12px">${isEn?'No active tasks.':'進行中・近日着手タスクなし'}</div>`;return;}
+  const cardColors=['#185FA5','#1D9E75','#BA7517','#533AB7','#A32D2D','#0E7A5C','#639922','#8E44AD'];
+  const inProgLabel=isEn?'In Progress':'進行中';
+  const upcomingLabel=isEn?'Upcoming':'近日着手';
+  let html='<div class="rpt-assignee-grid">';
+  entries.forEach((a,i)=>{
+    const bg=cardColors[i%cardColors.length];
+    const allTasks=[...a.inProg.map(t=>({...t,_s:inProgLabel})),...a.upcoming.map(t=>({...t,_s:upcomingLabel}))];
+    const taskItems=allTasks.slice(0,5).map(t=>{
+      const tName=isEn?(t.titleEn||t.title):t.title;
+      const tSub=isEn?'':(t.titleEn?`<span style="font-size:9px;color:#999;margin-left:3px">${escH(t.titleEn)}</span>`:'');
+      const sColor=t._s===inProgLabel?'background:#EAF3FB;color:#185FA5':'background:#FFF4E5;color:#BA7517';
+      return `<div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:4px">
+        <span style="font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap;margin-top:1px;${sColor}">${t._s}</span>
+        <span style="font-size:11px;color:#333">${escH(tName)}${tSub}</span>
+      </div>`;
+    }).join('');
+    const moreLabel=isEn?`…and ${allTasks.length-5} more`:`…他${allTasks.length-5}件`;
+    html+=`<div class="rpt-assignee-card">
+      <div class="rpt-assignee-card-head" style="background:${bg}">
+        <span>${escH(a.name)}</span>
+        <span class="rpt-assignee-badge">${a.inProg.length+a.upcoming.length}${isEn?' tasks':'件'}</span>
+      </div>
+      <div class="rpt-assignee-card-body">${taskItems}${allTasks.length>5?`<div style="color:#aaa;font-size:10px;margin-top:4px">${moreLabel}</div>`:''}</div>
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
 }
 
 // ── フルHTMLレポートを組み立て（ダウンロード用）──
-function buildFullReportHtml(d){
+function buildFullReportHtml(d,isEn){
+  if(!isEn)isEn=false;
   const kpiEl=document.getElementById('rptKPI');
   const donutEl=document.getElementById('rptDonut');
   const barsEl=document.getElementById('rptProgressBars');
   const cardsEl=document.getElementById('rptAssigneeCards');
   const aiEl=document.getElementById('rptAISection');
+  const title=isEn?`ARIAFINA Project Progress Report — ${d.today}`:`ARIAFINAプロジェクト進捗レポート — ${d.today}`;
+  const h=s=>`<h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px;padding-left:8px;border-left:3px solid #378ADD">${s}</h3>`;
   return `<div style="font-family:'Hiragino Sans','Yu Gothic UI',sans-serif;max-width:820px;margin:0 auto;color:#1a1a1a;font-size:12px">
-    <h2 style="font-size:18px;font-weight:700;color:#185FA5;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #EAF3FB">
-      📊 ARIAFINAプロジェクト進捗レポート — ${d.today}
-    </h2>
-    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:0 0 8px">KPIサマリー</h3>
-    ${kpiEl?.innerHTML||''}
-    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px">完了率</h3>
-    ${donutEl?.innerHTML||''}
-    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px">担当者別進捗</h3>
-    ${barsEl?.innerHTML||''}
-    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px">担当者別タスク一覧</h3>
-    ${cardsEl?.innerHTML||''}
-    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px">AIアドバイス</h3>
-    ${aiEl?.innerHTML||''}
+    <h2 style="font-size:18px;font-weight:700;color:#185FA5;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #EAF3FB">📊 ${title}</h2>
+    ${h(isEn?'KPI Summary':'KPIサマリー')}${kpiEl?.innerHTML||''}
+    ${h(isEn?'Completion Rate':'完了率')}${donutEl?.innerHTML||''}
+    ${h(isEn?'Progress by Assignee':'担当者別進捗')}${barsEl?.innerHTML||''}
+    ${h(isEn?'Tasks by Assignee':'担当者別タスク一覧')}${cardsEl?.innerHTML||''}
+    ${h(isEn?'Analysis & Advice':'分析・アドバイス')}${aiEl?.innerHTML||''}
   </div>`;
 }
 
@@ -2984,9 +3011,13 @@ window.forceUnlock = forceUnlock;
 
       <!-- アクションバー -->
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-        <button class="btn" onclick="generateReport()" id="rptGenBtn"
+        <button class="btn" onclick="generateReport('ja')" id="rptGenBtn"
           style="background:#185FA5;color:#fff;border-color:#185FA5;font-weight:600">
-          📊 レポート生成
+          📊 レポート生成（日本語）
+        </button>
+        <button class="btn" onclick="generateReport('en')" id="rptGenBtnEn"
+          style="background:#1D9E75;color:#fff;border-color:#0E7A5C;font-weight:600">
+          📊 Generate Report (EN)
         </button>
         <button class="btn" onclick="copyReportHtml()" id="rptCopyBtn" style="display:none">
           📋 HTMLをコピー
@@ -2994,7 +3025,7 @@ window.forceUnlock = forceUnlock;
         <button class="btn" onclick="downloadReportHtml()" id="rptDlBtn" style="display:none">
           💾 HTMLで保存
         </button>
-        <span style="font-size:11px;color:#888" id="rptHint">「レポート生成」でスケジュールデータを自動分析します（APIキー不要）</span>
+        <span style="font-size:11px;color:#888" id="rptHint">スケジュールデータを自動分析します（APIキー不要）</span>
       </div>
 
       <!-- Section 1: KPIサマリー -->
