@@ -195,6 +195,14 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .gantt-bar:hover{opacity:.82}
 .gantt-bar.active{outline:2px solid #185FA5;outline-offset:1px}
 .gantt-bar.dep-child{border-left:3px solid #533AB7}
+.gantt-bar.task-done{opacity:.75;filter:brightness(.92)}
+.gantt-bar.task-done .gantt-bar-lbl::after{content:'✓';margin-left:4px;font-size:10px;opacity:.9}
+.gantt-bar.task-overdue{animation:overdue-pulse 2s ease-in-out infinite}
+@keyframes overdue-pulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.4)}50%{box-shadow:0 0 0 4px rgba(231,76,60,0)}}
+.done-badge{position:absolute;top:-7px;right:2px;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;pointer-events:none;z-index:4;white-space:nowrap;line-height:1.6}
+.done-badge.early{background:#1D9E75;color:#fff}
+.done-badge.done{background:#0E7A5C;color:#fff}
+.done-badge.overdue{background:#E74C3C;color:#fff}
 .gantt-bar-lbl{position:absolute;inset:0;display:flex;align-items:center;padding:0 6px;font-size:9px;color:#fff;pointer-events:none;overflow:hidden}
 .g-resize-l,.g-resize-r{position:absolute;top:0;width:7px;height:100%;cursor:ew-resize;z-index:3}
 .g-resize-l{left:0}.g-resize-r{right:0}
@@ -1173,7 +1181,15 @@ function render(){
         }else{
           // ── 通常ガントバー ──
           const L=si*DAY_W,W2=(ei-si+1)*DAY_W;
-          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}" data-tid="${task.id}" style="left:${L}px;top:4px;width:${W2}px;height:26px;background:${col}" onclick="openSide('editTask',${task.id})">`;
+          const isDone=task.done===true;
+          const isOverdue=!isDone&&task.end&&task.end<fmt(t0);
+          const doneClass=isDone?' task-done':isOverdue?' task-overdue':'';
+          const doneBarStyle=isDone?`background:${col};opacity:.8;filter:saturate(1.2)`:isOverdue?`background:#E74C3C`:col;
+          const badgeHtml=isDone&&task.doneAt&&task.doneAt<task.end
+            ?`<div class="done-badge early">🏁 早期完了</div>`
+            :isDone?`<div class="done-badge done">✅ 完了</div>`
+            :isOverdue?`<div class="done-badge overdue">⚠️ 未完了</div>`:'';
+          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}" data-tid="${task.id}" style="left:${L}px;top:4px;width:${W2}px;height:26px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="openSide('editTask',${task.id})">${badgeHtml}`;
           rb+=`<div class="g-resize-l" onmousedown="initRS(event,${task.id},'left')"></div>`;
           rb+=`<div class="gantt-bar-lbl">${escH(task.title)}</div>`;
           rb+=`<div class="g-resize-r" onmousedown="initRS(event,${task.id},'right')"></div></div>`;
@@ -1440,6 +1456,16 @@ function openSide(mode,id){
           <span class="ms-diamond-icon-sm"></span>
           <span class="ms-toggle-lbl">◆ Milestone (1 day)</span>
         </label>
+      </div>
+      <div class="sf" style="background:${t.done?'#EAF7EE':'var(--color-background-secondary)'};border-radius:8px;padding:10px 12px;border:1px solid ${t.done?'#1D9E75':'var(--color-border-tertiary)'}">
+        <label style="font-weight:700;color:${t.done?'#0E7A5C':'var(--color-text-primary)'}">✅ 完了ステータス</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+            <input type="checkbox" id="s_done" ${t.done?'checked':''} style="width:16px;height:16px;cursor:pointer">
+            <span>${t.done?'✅ 完了済み':'未完了'}</span>
+          </label>
+          ${t.done&&t.doneAt?`<span style="font-size:10px;color:#888">完了日：${t.doneAt}</span>`:''}
+        </div>
       </div>
       <div class="sf" id="s_days_wrap"${isMilestone?' style="display:none"':''}><label>Days</label><input id="s_days" type="number" min="1" value="${t.days}" oninput="calcSideEndEdit()"></div>
       <div class="sf"><label>Start Date</label>
@@ -1822,6 +1848,11 @@ function showCtxMenu(e, taskId){
       <span class="ctx-icon">⬆️</span>Insert Before
     </div>
     <div class="ctx-sep"></div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="toggleTaskDone(${taskId});closeCtxMenu()" style="color:${t.done?'#888':'#1D9E75'}">
+      <span class="ctx-icon">${t.done?'↩️':'✅'}</span>${t.done?'完了を取り消す':'✅ 完了にする'}
+    </div>
+    <div class="ctx-sep"></div>
     <div class="ctx-item" onclick="deleteTask(${taskId});closeCtxMenu()" style="color:#A32D2D">
       <span class="ctx-icon">🗑️</span>Delete
     </div>`;
@@ -1864,6 +1895,19 @@ function closeCtxMenu(){
 }
 window.showCtxMenu=showCtxMenu;
 window.closeCtxMenu=closeCtxMenu;
+
+// ── タスク完了トグル（右クリックメニューから）──
+function toggleTaskDone(id){
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
+  const t=tasks.find(t=>t.id===id);if(!t)return;
+  pushUndo(t.done?`完了取消「${t.title}」`:`完了「${t.title}」`);
+  t.done=!t.done;
+  if(t.done&&!t.doneAt) t.doneAt=fmt(t0);
+  if(!t.done) t.doneAt=null;
+  saveData();render();
+  showSyncNotice(t.done?`✅ 完了：${t.title}`:`↩️ 取消：${t.title}`);
+}
+window.toggleTaskDone=toggleTaskDone;
 
 // 右クリックからAdd Subtask（サイドパネルを親指定済みで開く）
 function addChildTask(parentId){
@@ -1984,6 +2028,14 @@ function saveEditTask(id){
     t.days=Math.max(1,+document.getElementById('s_days').value||1);
     t.end=document.getElementById('s_end').value;
     if(t.start&&!t.end)t.end=fmt(addWD(parseD(t.start),t.days,h));
+  }
+  // 完了ステータス保存
+  const doneChk=document.getElementById('s_done');
+  if(doneChk){
+    const wasDone=t.done;
+    t.done=doneChk.checked;
+    if(t.done&&!wasDone) t.doneAt=fmt(t0); // 初回完了日を記録
+    if(!t.done) t.doneAt=null;
   }
   t.color=document.getElementById('s_color').value;
   const newLevel=+document.getElementById('s_level').value;
@@ -2134,9 +2186,20 @@ function renderBarsOnly(){
         const lb=document.createElement('span');lb.className='milestone-lbl';lb.style.color=col;lb.textContent=task.title;
         ms.append(dm,lb);wrap.appendChild(ms);
       }else{
-        const bar=document.createElement('div');bar.className=`gantt-bar${task.predecessorId?' dep-child':''}`;bar.dataset.tid=task.id;
-        bar.style.cssText=`left:${si*DAY_W}px;width:${(ei-si+1)*DAY_W}px;background:${col}`;
+        const _isDone=task.done===true;
+        const _isOd=!_isDone&&task.end&&task.end<fmt(t0);
+        const bar=document.createElement('div');
+        bar.className=`gantt-bar${task.predecessorId?' dep-child':''}${_isDone?' task-done':_isOd?' task-overdue':''}`;
+        bar.dataset.tid=task.id;
+        bar.style.cssText=`left:${si*DAY_W}px;width:${(ei-si+1)*DAY_W}px;background:${_isOd?'#E74C3C':col};${_isDone?'opacity:.82':''}`;
         bar.onclick=()=>openSide('editTask',task.id);
+        if(_isDone&&task.doneAt&&task.doneAt<task.end){
+          const b=document.createElement('div');b.className='done-badge early';b.textContent='🏁 早期完了';bar.appendChild(b);
+        }else if(_isDone){
+          const b=document.createElement('div');b.className='done-badge done';b.textContent='✅ 完了';bar.appendChild(b);
+        }else if(_isOd){
+          const b=document.createElement('div');b.className='done-badge overdue';b.textContent='⚠️ 未完了';bar.appendChild(b);
+        }
         const rl=document.createElement('div');rl.className='g-resize-l';rl.onmousedown=ev=>initRS(ev,task.id,'left');
         const rr=document.createElement('div');rr.className='g-resize-r';rr.onmousedown=ev=>initRS(ev,task.id,'right');
         const lbl=document.createElement('div');lbl.className='gantt-bar-lbl';lbl.textContent=task.title;
@@ -2367,7 +2430,8 @@ function getRptDate(offsetDays){
 }
 function taskStatus(t){
   const td=getRptToday();
-  if(t.end<td) return 'done';
+  if(t.done) return 'done';
+  if(t.end<td) return 'overdue';
   if(t.start<=td) return 'in-progress';
   return 'upcoming';
 }
@@ -2386,8 +2450,8 @@ function buildReportData(){
   const ago1m=getRptDate(-30);
   // 全タスク（Lv1のみ除外しない）
   const allT=tasks.filter(t=>t.start&&t.end);
-  const done_=allT.filter(t=>t.end<today);
-  const inProg=allT.filter(t=>t.start<=today&&t.end>=today);
+  const done_=allT.filter(t=>t.done===true||(t.end<today&&t.done!==false));
+  const inProg=allT.filter(t=>!t.done&&t.start<=today&&t.end>=today);
   const upcoming2w=allT.filter(t=>t.start>today&&t.start<=in2w);
   const past1m=allT.filter(t=>t.start>=ago1m&&t.start<today);
   // 担当者別
@@ -2551,6 +2615,7 @@ function generateReport(lang){
     tblEnd: isEn?'End':'終了',
     tblStatus: isEn?'Status':'状態',
     statusDone: isEn?'Done':'完了',
+    statusOverdue: isEn?'Overdue ⚠️':'未完了 ⚠️',
     statusInProg: isEn?'In Progress':'進行中',
     statusTodo: isEn?'Pending':'未着手',
     noAdvice: isEn?'Operations over the past month are on track. Keep up the current pace.':'過去1ヶ月の業務は概ね順調です。引き続き現状のペースを維持してください。',
@@ -2641,8 +2706,8 @@ function generateReport(lang){
       </tr></thead><tbody>`;
     d.past1m.sort((a,b)=>a.start.localeCompare(b.start)).forEach((t,i)=>{
       const st=taskStatus(t);
-      const stLabel=st==='done'?L.statusDone:st==='in-progress'?L.statusInProg:L.statusTodo;
-      const stColor=st==='done'?'#1D9E75':st==='in-progress'?'#378ADD':'#888';
+      const stLabel=st==='done'?L.statusDone:st==='overdue'?L.statusOverdue:st==='in-progress'?L.statusInProg:L.statusTodo;
+      const stColor=st==='done'?'#1D9E75':st==='overdue'?'#E74C3C':st==='in-progress'?'#378ADD':'#888';
       const tName=isEn?(t.titleEn||t.title):t.title;
       sec2Html+=`<tr style="${i%2===1?'background:#f7f9fc':''}">
         <td style="padding:5px 8px;border:1px solid #e8edf5;color:#888">${escH(t.wbs)}</td>
