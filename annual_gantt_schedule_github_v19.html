@@ -470,7 +470,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
       <!-- データ操作 -->
       <span class="tb-group-label">Data</span>
       <div class="tg" style="gap:4px">
-        <button class="btn" onclick="openReportModal()" style="color:#0E7A5C;border-color:#1D9E75;font-weight:600" title="Generate 2-week activity report for email">📊 Report</button>
+        <button class="btn" onclick="openReportModal()" style="color:#0E7A5C;border-color:#1D9E75;font-weight:600" title="進捗レポートを生成（APIキー不要）">📊 Report</button>
         <button class="btn" onclick="exportCSV()">📤 Export CSV</button>
         <button class="btn" onclick="openImportModal()"
           style="color:#1D9E75;border-color:#1D9E75;font-weight:600"
@@ -2554,104 +2554,181 @@ function renderAssigneeCards(byAssignee){
   el.innerHTML=html;
 }
 
-// ── AI生成（3セクション：催促・過去1ヶ月コンサル・進捗中一覧）──
-async function generateReport(){
+// ── レポート生成（APIキー不要・ロジックベース）──
+function generateReport(){
   const btn=document.getElementById('rptGenBtn');
   const status=document.getElementById('rptStatus');
   document.getElementById('rptHint').style.display='none';
-  const apiKey=getApiKey();
-  if(!apiKey){
-    const ok=confirm('Anthropic APIキーが未設定です。今すぐ設定しますか？');
-    if(ok)promptApiKey();
-    return;
-  }
   const d=buildReportData();
   if(!d.allT.length){
     document.getElementById('rptAISection').innerHTML='<div style="padding:20px;text-align:center;color:#aaa">タスクデータがありません</div>';
     return;
   }
-  btn.disabled=true;btn.textContent='⏳ Generating...';status.textContent='AI分析中…';
-  // グラフ・カードは即時描画
+  btn.disabled=true;btn.textContent='⏳ 生成中...';
+  // グラフ・カード描画
   renderProgressBars(d.byAssignee);
   renderAssigneeCards(d.byAssignee);
-  const aiSection=document.getElementById('rptAISection');
-  aiSection.innerHTML=`<div class="rpt-generating"><div class="spinner"></div><div>AIがレポートを生成中です…</div></div>`;
   document.getElementById('rptCopyBtn').style.display='none';
   document.getElementById('rptDlBtn').style.display='none';
 
-  // AI向けデータ整形
-  const fmt2w=d.upcoming2w.map(t=>`- [${t.wbs}] ${t.title}${t.titleEn?' ('+t.titleEn+')':''} | 担当:${t.assignee||'—'} | ${t.start}〜${t.end} | ${t.days}日`).join('\n')||'（なし）';
-  const fmt1m=d.past1m.map(t=>`- [${t.wbs}] ${t.title}${t.titleEn?' ('+t.titleEn+')':''} | 担当:${t.assignee||'—'} | ${t.start}〜${t.end} | ${t.days}日`).join('\n')||'（なし）';
-  const fmtInp=d.inProg.map(t=>`- [${t.wbs}] ${t.title}${t.titleEn?' ('+t.titleEn+')':''} | 担当:${t.assignee||'—'} | ${t.start}〜${t.end} | ${t.days}日`).join('\n')||'（なし）';
-
-  const prompt=`あなたはARIAFINA（富士工業×Elica SpAのJV）のプロジェクト管理コーディネーターです。以下のスケジュールデータを元に、日本語でプロフェッショナルなレポートを生成してください。
-
-本日：${d.today}
-
-【2週間以内に着手するタスク（催促対象）】
-${fmt2w}
-
-【過去1ヶ月に着手したタスク（振り返り対象）】
-${fmt1m}
-
-【現在進行中のタスク】
-${fmtInp}
-
-以下の3セクションをHTMLで出力してください。
-マークダウン・コードフェンス不要。HTMLのみを出力。各セクションはdivで区切る。
-
-セクション1：<div id="ai-sec1">
-<h4>⏰ 2週間以内の着手タスク — 担当者への催促ポイント</h4>
-各タスクについて担当者へのアクションを促す具体的なコメントを箇条書き（<ul><li>）で。
-「〇〇さん、△△の準備を〇日までに開始してください」という形式で。
-</div>
-
-セクション2：<div id="ai-sec2">
-<h4>💡 過去1ヶ月の業務 — 進め方アドバイス</h4>
-過去1ヶ月の業務について、よかった点・改善点・次回への提案を簡潔にコンサルティング風に。
-箇条書き（<ul><li>）3〜5件程度。
-</div>
-
-セクション3：<div id="ai-sec3">
-<h4>📋 進捗中タスク — 担当者別クローズアップ</h4>
-進捗中タスクを担当者ごとにまとめた短いコメント文を。担当者名を<strong>で強調。
-各担当者2〜3文でその担当者の状況・注意点を記述。
-</div>`;
-
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':apiKey,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:3000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    if(!res.ok)throw new Error(`API ${res.status}`);
-    const data=await res.json();
-    let html=data?.content?.[0]?.text?.trim()||'';
-    html=html.replace(/^```html?\n?/,'').replace(/\n?```$/,'').trim();
-    // スタイルを適用
-    html=html.replace(/<h4>/g,'<h4 style="font-size:13px;font-weight:700;color:#185FA5;margin:0 0 10px;padding-left:8px;border-left:3px solid #378ADD">');
-    html=html.replace(/<ul>/g,'<ul style="padding-left:18px;margin:0">');
-    html=html.replace(/<li>/g,'<li style="margin-bottom:6px;font-size:12px;line-height:1.7;color:#333">');
-    html=html.replace(/<strong>/g,'<strong style="color:#185FA5">');
-    aiSection.innerHTML=`<div class="rpt-ai-content">${html}</div>`;
-    window._reportHtml=buildFullReportHtml(d);
-    document.getElementById('rptCopyBtn').style.display='';
-    document.getElementById('rptDlBtn').style.display='';
-    status.textContent=`✅ 生成完了 · ${d.today} · ${d.allT.length}件分析`;
-  }catch(e){
-    aiSection.innerHTML=`<div style="padding:16px;color:#A32D2D;background:#FDF0EF;border-radius:8px">エラー: ${escH(e.message)}</div>`;
-    status.textContent='生成失敗';
+  // ── セクション1：2週間以内の催促リスト ──
+  let sec1Html='';
+  if(d.upcoming2w.length===0){
+    sec1Html='<div class="rpt-alert-card green">2週間以内に新たに着手するタスクはありません。</div>';
+  }else{
+    // 着手まで何日か計算して優先度色分け
+    sec1Html='<ul style="padding-left:0;list-style:none;margin:0">';
+    d.upcoming2w
+      .sort((a,b)=>a.start.localeCompare(b.start))
+      .forEach(t=>{
+        const diffMs=parseD(t.start)-t0;
+        const diffDays=Math.ceil(diffMs/(1000*60*60*24));
+        const urgColor=diffDays<=3?'#E74C3C':diffDays<=7?'#EF9F27':'#1D9E75';
+        const urgLabel=diffDays<=3?'至急':diffDays<=7?'今週中':'2週間以内';
+        const asgn=t.assignee||'担当者未定';
+        sec1Html+=`<li style="display:flex;align-items:flex-start;gap:10px;margin-bottom:9px;padding:9px 12px;background:#fafcff;border:1px solid #e8edf5;border-radius:8px;border-left:4px solid ${urgColor}">
+          <span style="font-size:10px;font-weight:700;color:#fff;background:${urgColor};border-radius:4px;padding:2px 7px;white-space:nowrap;flex-shrink:0;margin-top:1px">${urgLabel}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:2px">${escH(t.title)}${t.titleEn?'<span style="font-size:10px;color:#888;font-weight:400;margin-left:5px">'+escH(t.titleEn)+'</span>':''}</div>
+            <div style="font-size:11px;color:#555"><strong style="color:#185FA5">${escH(asgn)}</strong> さん ／ 着手：${t.start}（${diffDays}日後）〜${t.end} ／ ${t.days}日間</div>
+          </div>
+          <span style="font-size:10px;color:#aaa;white-space:nowrap;flex-shrink:0">${t.wbs}</span>
+        </li>`;
+      });
+    sec1Html+='</ul>';
   }
-  btn.disabled=false;btn.textContent='✨ AIレポート生成';
+
+  // ── セクション2：過去1ヶ月の振り返り・コンサルティング ──
+  const h=hs(currentYear);
+  // 遅延タスク（終了日が今日より後なのに開始から相当経過）
+  const overdue=d.inProg.filter(t=>{
+    if(!t.start||!t.end)return false;
+    const elapsed=countWD(parseD(t.start),t0,h);
+    const total=countWD(parseD(t.start),parseD(t.end),h);
+    return total>0&&(elapsed/total)>1.1; // 10%超過
+  });
+  const longTasks=d.past1m.filter(t=>t.days>=10);
+  const shortTasks=d.past1m.filter(t=>t.days<=2);
+  const noAssignee=d.past1m.filter(t=>!t.assignee);
+  let adviceItems=[];
+  // よかった点
+  if(d.past1m.length>0){
+    adviceItems.push({type:'green',icon:'✅',text:`過去1ヶ月で<strong>${d.past1m.length}件</strong>のタスクに着手しました。うち<strong>${d.past1m.filter(t=>t.end<d.today).length}件</strong>が完了済みです。`});
+  }
+  if(longTasks.length>0){
+    adviceItems.push({type:'warn',icon:'📌',text:`10日以上の長期タスクが<strong>${longTasks.length}件</strong>あります（${longTasks.slice(0,2).map(t=>escH(t.title)).join('、')}など）。中間マイルストーンを設けて進捗を細かく管理することを推奨します。`});
+  }
+  if(overdue.length>0){
+    adviceItems.push({type:'red',icon:'⚠️',text:`進行中タスクのうち<strong>${overdue.length}件</strong>が予定工数を超過しています（${overdue.slice(0,2).map(t=>escH(t.title)).join('、')}）。担当者と原因を確認し、スケジュール見直しを検討してください。`});
+  }
+  if(shortTasks.length>=3){
+    adviceItems.push({type:'green',icon:'💡',text:`2日以内の短期タスクが<strong>${shortTasks.length}件</strong>あります。類似タスクをまとめてバッチ処理することで、切り替えコストの削減が見込めます。`});
+  }
+  if(noAssignee.length>0){
+    adviceItems.push({type:'warn',icon:'👤',text:`担当者未設定のタスクが<strong>${noAssignee.length}件</strong>あります。責任の所在を明確にするため、早急に担当者を割り当ててください。`});
+  }
+  if(d.upcoming2w.length===0&&d.inProg.length===0){
+    adviceItems.push({type:'green',icon:'🎉',text:'現在、進行中・近日着手タスクはありません。次フェーズの計画を早めに立案することで、余裕のあるスタートが切れます。'});
+  }
+  if(adviceItems.length===0){
+    adviceItems.push({type:'green',icon:'✅',text:'過去1ヶ月の業務は概ね順調です。引き続き現状のペースを維持してください。'});
+  }
+  const typeStyle={
+    red:'border-left-color:#E74C3C;background:#FEF9F9',
+    warn:'border-left-color:#EF9F27;background:#FFFBF0',
+    green:'border-left-color:#1D9E75;background:#F0FBF7'
+  };
+  let sec2Html=adviceItems.map(a=>`
+    <div class="rpt-alert-card" style="${typeStyle[a.type]||typeStyle.green}">
+      <span style="margin-right:5px">${a.icon}</span>${a.text}
+    </div>`).join('');
+  // 過去1ヶ月タスク一覧テーブル
+  if(d.past1m.length){
+    sec2Html+=`<div style="margin-top:10px;font-size:11px;font-weight:700;color:#185FA5;margin-bottom:5px">▸ 過去1ヶ月の着手タスク一覧</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">WBS</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">タスク名</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">担当</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">開始</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">終了</th>
+        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">状態</th>
+      </tr></thead><tbody>`;
+    d.past1m.sort((a,b)=>a.start.localeCompare(b.start)).forEach((t,i)=>{
+      const st=taskStatus(t);
+      const stLabel=st==='done'?'完了':st==='in-progress'?'進行中':'未着手';
+      const stColor=st==='done'?'#1D9E75':st==='in-progress'?'#378ADD':'#888';
+      sec2Html+=`<tr style="${i%2===1?'background:#f7f9fc':''}">
+        <td style="padding:5px 8px;border:1px solid #e8edf5;color:#888">${escH(t.wbs)}</td>
+        <td style="padding:5px 8px;border:1px solid #e8edf5">${escH(t.title)}</td>
+        <td style="padding:5px 8px;border:1px solid #e8edf5">${escH(t.assignee||'—')}</td>
+        <td style="padding:5px 8px;border:1px solid #e8edf5;text-align:center">${t.start}</td>
+        <td style="padding:5px 8px;border:1px solid #e8edf5;text-align:center">${t.end}</td>
+        <td style="padding:5px 8px;border:1px solid #e8edf5;text-align:center;font-weight:600;color:${stColor}">${stLabel}</td>
+      </tr>`;
+    });
+    sec2Html+='</tbody></table>';
+  }else{
+    sec2Html+='<div style="color:#aaa;font-size:12px;margin-top:8px">過去1ヶ月に着手したタスクはありません。</div>';
+  }
+
+  // ── セクション3：進捗中タスク 担当者別クローズアップ ──
+  let sec3Html='';
+  if(d.inProg.length===0){
+    sec3Html='<div class="rpt-alert-card green">現在進行中のタスクはありません。</div>';
+  }else{
+    // 担当者ごとにグループ化
+    const byAsgn={};
+    d.inProg.forEach(t=>{
+      const a=t.assignee||'担当者未設定';
+      if(!byAsgn[a])byAsgn[a]=[];
+      byAsgn[a].push(t);
+    });
+    const cardColors=['#185FA5','#1D9E75','#BA7517','#533AB7','#A32D2D','#0E7A5C','#639922','#8E44AD'];
+    let ci=0;
+    sec3Html='<div style="display:flex;flex-direction:column;gap:10px">';
+    Object.entries(byAsgn).forEach(([asgn,tlist])=>{
+      const bg=cardColors[ci++%cardColors.length];
+      const rows=tlist.map(t=>{
+        const pct=getProgressPct(t);
+        const barColor=pct>=80?'#1D9E75':pct>=40?'#378ADD':'#EF9F27';
+        return `<div style="margin-bottom:7px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+            <span style="font-size:11px;color:#333;font-weight:500">${escH(t.title)}${t.titleEn?'<span style="font-size:9px;color:#999;margin-left:4px">'+escH(t.titleEn)+'</span>':''}</span>
+            <span style="font-size:10px;color:#888;white-space:nowrap;margin-left:8px">${t.start}〜${t.end}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px">
+            <div style="flex:1;height:8px;background:#e8edf5;border-radius:4px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px"></div>
+            </div>
+            <span style="font-size:10px;font-weight:700;color:${barColor};width:32px;text-align:right">${pct}%</span>
+          </div>
+        </div>`;
+      }).join('');
+      sec3Html+=`<div style="border:1px solid #e0e8f5;border-radius:9px;overflow:hidden">
+        <div style="background:${bg};color:#fff;padding:9px 14px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between">
+          <span>${escH(asgn)}</span>
+          <span style="background:rgba(255,255,255,.22);border-radius:10px;padding:1px 8px;font-size:10px">${tlist.length}件 進行中</span>
+        </div>
+        <div style="padding:12px 14px;background:#fff">${rows}</div>
+      </div>`;
+    });
+    sec3Html+='</div>';
+  }
+
+  // 各セクションをDOMに反映
+  const aiSection=document.getElementById('rptAISection');
+  const sHead=s=>`<div style="font-size:13px;font-weight:700;color:#185FA5;margin:0 0 10px;padding-left:8px;border-left:3px solid #378ADD">${s}</div>`;
+  aiSection.innerHTML=`
+    <div style="margin-bottom:18px">${sHead('⏰ 2週間以内の着手タスク — 担当者への催促')}${sec1Html}</div>
+    <div style="margin-bottom:18px">${sHead('💡 過去1ヶ月の業務 — 振り返りと進め方アドバイス')}${sec2Html}</div>
+    <div>${sHead('📋 進捗中タスク — 担当者別クローズアップ')}${sec3Html}</div>`;
+
+  window._reportHtml=buildFullReportHtml(d);
+  document.getElementById('rptCopyBtn').style.display='';
+  document.getElementById('rptDlBtn').style.display='';
+  status.textContent=`✅ 生成完了 · ${d.today} · ${d.allT.length}件分析`;
+  btn.disabled=false;btn.textContent='🔄 再生成';
 }
 
 // ── フルHTMLレポートを組み立て（ダウンロード用）──
@@ -2909,7 +2986,7 @@ window.forceUnlock = forceUnlock;
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
         <button class="btn" onclick="generateReport()" id="rptGenBtn"
           style="background:#185FA5;color:#fff;border-color:#185FA5;font-weight:600">
-          ✨ AIレポート生成
+          📊 レポート生成
         </button>
         <button class="btn" onclick="copyReportHtml()" id="rptCopyBtn" style="display:none">
           📋 HTMLをコピー
@@ -2917,7 +2994,7 @@ window.forceUnlock = forceUnlock;
         <button class="btn" onclick="downloadReportHtml()" id="rptDlBtn" style="display:none">
           💾 HTMLで保存
         </button>
-        <span style="font-size:11px;color:#888" id="rptHint">「AIレポート生成」でAIによる分析コメントが追加されます</span>
+        <span style="font-size:11px;color:#888" id="rptHint">「レポート生成」でスケジュールデータを自動分析します（APIキー不要）</span>
       </div>
 
       <!-- Section 1: KPIサマリー -->
@@ -2952,11 +3029,11 @@ window.forceUnlock = forceUnlock;
         </div>
       </div>
 
-      <!-- Section 4: AI生成コンテンツ（催促・コンサル・クローズアップ）-->
+      <!-- Section 4: 分析コンテンツ（催促・コンサル・クローズアップ）-->
       <div class="rpt-section">
-        <div class="rpt-section-head" style="background:linear-gradient(135deg,#A32D2D,#E74C3C)">🤖 AIアドバイス（催促・コンサルティング・担当者クローズアップ）</div>
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#A32D2D,#E74C3C)">📝 自動分析（催促・振り返りアドバイス・担当者クローズアップ）</div>
         <div class="rpt-section-body">
-          <div id="rptAISection"><div style="color:#aaa;font-size:12px;padding:8px">「AIレポート生成」ボタンを押すとAIによる分析・アドバイスが生成されます</div></div>
+          <div id="rptAISection"><div style="color:#aaa;font-size:12px;padding:8px">「レポート生成」ボタンを押すとスケジュールデータを自動分析してアドバイスを表示します</div></div>
         </div>
       </div>
 
