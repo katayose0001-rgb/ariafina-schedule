@@ -310,6 +310,19 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 /* ── 全Deleteボタン ── */
 .btn.danger{background:#FDF0EF;color:#A32D2D;border-color:#E74C3C}.btn.danger:hover{background:#FADDDA}
 
+/* ── Report Modal ── */
+.rpt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center}
+.rpt-modal{background:#fff;border-radius:12px;box-shadow:0 8px 48px rgba(0,0,0,.22);width:min(760px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.rpt-head{padding:20px 28px 16px;border-bottom:1px solid #e0e4ea;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0E7A5C,#1D9E75);color:#fff}
+.rpt-head h3{font-size:16px;font-weight:700}
+.rpt-head .sub{font-size:11px;opacity:.8;margin-top:2px}
+.rpt-close{width:28px;height:28px;border:none;background:rgba(255,255,255,.2);cursor:pointer;font-size:16px;color:#fff;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.rpt-close:hover{background:rgba(255,255,255,.35)}
+.rpt-body{padding:20px 28px;overflow-y:auto;flex:1}
+.rpt-foot{padding:14px 28px;border-top:1px solid #e0e4ea;display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.rpt-status{font-size:11px;color:#888;flex:1}
+/* レポートプレビュー内スタイル */
+#rptPreview{border:1px solid #dde8f3;border-radius:8px;padding:0;overflow:hidden;margin-top:12px;font-family:sans-serif}
 /* ── CSV Import Modal ── */
 .imp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center}
 .imp-modal{background:#fff;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:min(600px,94vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
@@ -410,6 +423,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
       <!-- データ操作 -->
       <span class="tb-group-label">Data</span>
       <div class="tg" style="gap:4px">
+        <button class="btn" onclick="openReportModal()" style="color:#0E7A5C;border-color:#1D9E75;font-weight:600" title="Generate 2-week activity report for email">📊 Report</button>
         <button class="btn" onclick="exportCSV()">📤 Export CSV</button>
         <button class="btn" onclick="openImportModal()"
           style="color:#1D9E75;border-color:#1D9E75;font-weight:600"
@@ -2090,7 +2104,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v48.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v49.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -2294,6 +2308,109 @@ function execImport(){
   setTimeout(()=>closeImportModal(),2500);
 }
 
+
+// ══════════════════════════════════════════════
+// ── 2-Week Activity Report ──
+// ══════════════════════════════════════════════
+function openReportModal(){
+  const overlay=document.getElementById('rptOverlay');
+  overlay.style.display='flex';
+  const from=new Date(t0),to=new Date(t0);to.setDate(to.getDate()+13);
+  const opts={month:'short',day:'numeric'};
+  document.getElementById('rptDateRange').textContent=
+    `${from.toLocaleDateString('en-US',opts)} – ${to.toLocaleDateString('en-US',opts)}, ${from.getFullYear()}`;
+  document.getElementById('rptPreview').innerHTML='';
+  document.getElementById('rptCopyBtn').style.display='none';
+  document.getElementById('rptDlBtn').style.display='none';
+  document.getElementById('rptStatus').textContent='';
+  document.getElementById('rptHint').style.display='';
+}
+function closeReportModal(){document.getElementById('rptOverlay').style.display='none';}
+
+function getReportTasks(){
+  const today=fmt(t0);
+  const end14=new Date(t0);end14.setDate(end14.getDate()+13);
+  const end14s=fmt(end14);
+  return tasks.filter(t=>t.start&&t.end&&t.start<=end14s&&t.end>=today)
+    .sort((a,b)=>a.start.localeCompare(b.start));
+}
+
+async function generateReport(){
+  const btn=document.getElementById('rptGenBtn');
+  const status=document.getElementById('rptStatus');
+  const preview=document.getElementById('rptPreview');
+  document.getElementById('rptHint').style.display='none';
+  const reportTasks=getReportTasks();
+  if(!reportTasks.length){
+    preview.innerHTML='<div style="padding:24px;text-align:center;color:#888">No tasks found in the next 2 weeks.</div>';
+    return;
+  }
+  btn.disabled=true;btn.textContent='⏳ Generating...';status.textContent='Calling AI...';
+  const taskLines=reportTasks.map(t=>{
+    const ms=(t.start===t.end&&t.days===1)?'[MILESTONE]':'';
+    return `- ${t.wbs} ${t.title}${t.titleEn?' ('+t.titleEn+')':''} | ${t.assignee||'—'} | ${t.start}–${t.end} | ${t.days}d ${ms}`;
+  }).join('\n');
+  const today=fmt(t0),end14=new Date(t0);end14.setDate(end14.getDate()+13);
+  const end14s=fmt(end14);
+  const prompt=`You are a project coordinator for ARIAFINA, a premium kitchen appliance brand (joint venture: Fujioh Japan × Elica Italy).
+
+Scheduled tasks for the next 2 weeks (${today} to ${end14s}):
+${taskLines}
+
+Write a professional bilingual activity report for team members.
+Reply with ONLY valid HTML (no markdown, no code fences). Structure:
+<div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;color:#1a1a1a">
+  [Japanese executive summary: 2-3 sentences in a <p> with style="background:#EAF3FB;padding:14px 18px;border-left:4px solid #185FA5;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:13px;line-height:1.7"]
+  [English executive summary: 2-3 sentences in a <p> with style="background:#EAF7EE;padding:14px 18px;border-left:4px solid #1D9E75;border-radius:0 8px 8px 0;margin-bottom:16px;font-size:13px;line-height:1.7"]
+  [Task table: clean, email-safe HTML table. Milestone rows: background #f0ecfb. Header: background #185FA5, color white. Columns: WBS | Task (Japanese + English) | Assignee | Start | End | Days]
+</div>`;
+  try{
+    const apiKey=getApiKey();
+    if(!apiKey){
+      const ok=confirm('Anthropic API key is not set.\nSet it now?');
+      if(ok)promptApiKey();
+      btn.disabled=false;btn.textContent='✨ Generate AI Summary';return;
+    }
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,
+               'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2500,
+        messages:[{role:'user',content:prompt}]})
+    });
+    if(!res.ok)throw new Error(`API ${res.status}`);
+    const data=await res.json();
+    let html=data?.content?.[0]?.text?.trim()||'';
+    html=html.replace(/^```html?\n?/,'').replace(/\n?```$/,'').trim();
+    preview.innerHTML=html;window._reportHtml=html;
+    document.getElementById('rptCopyBtn').style.display='';
+    document.getElementById('rptDlBtn').style.display='';
+    status.textContent=`✅ ${reportTasks.length} tasks · ${today}`;
+  }catch(e){
+    preview.innerHTML=`<div style="padding:16px;color:#A32D2D;background:#FDF0EF;border-radius:8px">Error: ${escH(e.message)}</div>`;
+    status.textContent='Generation failed';
+  }
+  btn.disabled=false;btn.textContent='✨ Generate AI Summary';
+}
+
+function copyReportHtml(){
+  if(!window._reportHtml)return;
+  const full=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ARIAFINA Activity Report</title></head><body style="background:#f5f5f5;padding:32px">${window._reportHtml}</body></html>`;
+  navigator.clipboard.writeText(full).then(()=>{
+    const b=document.getElementById('rptCopyBtn');
+    b.textContent='✅ Copied!';setTimeout(()=>b.textContent='📋 Copy HTML for Email',2000);
+  }).catch(()=>{alert('Copy failed. Please use Save as HTML instead.');});
+}
+
+function downloadReportHtml(){
+  if(!window._reportHtml)return;
+  const d=fmt(t0).replace(/-/g,'');
+  const full=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>ARIAFINA Report ${fmt(t0)}</title></head><body style="background:#f5f5f5;padding:32px;font-family:sans-serif">${window._reportHtml}</body></html>`;
+  const blob=new Blob([full],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=`ariafina_report_${d}.html`;a.click();URL.revokeObjectURL(url);
+}
+
 // インポート用TemplateCSVのダウンロード
 function downloadTemplate(){
   const bom='\uFEFF';
@@ -2491,6 +2608,39 @@ window.startEditing = startEditing;
 window.stopEditing = stopEditing;
 window.forceUnlock = forceUnlock;
 </script>
+<!-- ── Report Modal ── -->
+<div class="rpt-overlay" id="rptOverlay" style="display:none" onclick="if(event.target===this)closeReportModal()">
+  <div class="rpt-modal">
+    <div class="rpt-head">
+      <div>
+        <h3>📊 2-Week Activity Report</h3>
+        <div class="sub" id="rptDateRange"></div>
+      </div>
+      <button class="rpt-close" onclick="closeReportModal()">✕</button>
+    </div>
+    <div class="rpt-body">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn" onclick="generateReport()" id="rptGenBtn"
+          style="background:#1D9E75;color:#fff;border-color:#1D9E75;font-weight:600">
+          ✨ Generate AI Summary
+        </button>
+        <button class="btn" onclick="copyReportHtml()" id="rptCopyBtn" style="display:none">
+          📋 Copy HTML for Email
+        </button>
+        <button class="btn" onclick="downloadReportHtml()" id="rptDlBtn" style="display:none">
+          💾 Save as HTML
+        </button>
+        <span style="font-size:11px;color:#888" id="rptHint">Press "Generate AI Summary" to create the report</span>
+      </div>
+      <div id="rptPreview"></div>
+    </div>
+    <div class="rpt-foot">
+      <span class="rpt-status" id="rptStatus"></span>
+      <button class="btn" onclick="closeReportModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── CSV Import Modal ── -->
 <div class="imp-overlay" id="impOverlay" style="display:none" onclick="if(event.target===this)closeImportModal()">
   <div class="imp-modal">
