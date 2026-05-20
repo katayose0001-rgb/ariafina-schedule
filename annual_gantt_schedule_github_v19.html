@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>度Schedule・ガントチャート v45</title>
+<title>年度Schedule・ガントチャート v50</title>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -311,18 +311,65 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .btn.danger{background:#FDF0EF;color:#A32D2D;border-color:#E74C3C}.btn.danger:hover{background:#FADDDA}
 
 /* ── Report Modal ── */
-.rpt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center}
-.rpt-modal{background:#fff;border-radius:12px;box-shadow:0 8px 48px rgba(0,0,0,.22);width:min(760px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
-.rpt-head{padding:20px 28px 16px;border-bottom:1px solid #e0e4ea;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0E7A5C,#1D9E75);color:#fff}
-.rpt-head h3{font-size:16px;font-weight:700}
-.rpt-head .sub{font-size:11px;opacity:.8;margin-top:2px}
+.rpt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;align-items:center;justify-content:center}
+.rpt-modal{background:#fff;border-radius:14px;box-shadow:0 12px 60px rgba(0,0,0,.28);width:min(900px,96vw);max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.rpt-head{padding:20px 28px 16px;border-bottom:1px solid #e0e4ea;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0E4F8A 0%,#185FA5 50%,#1D9E75 100%);color:#fff}
+.rpt-head h3{font-size:17px;font-weight:700;letter-spacing:.3px}
+.rpt-head .sub{font-size:11px;opacity:.8;margin-top:3px}
 .rpt-close{width:28px;height:28px;border:none;background:rgba(255,255,255,.2);cursor:pointer;font-size:16px;color:#fff;display:flex;align-items:center;justify-content:center;border-radius:6px}
 .rpt-close:hover{background:rgba(255,255,255,.35)}
 .rpt-body{padding:20px 28px;overflow-y:auto;flex:1}
-.rpt-foot{padding:14px 28px;border-top:1px solid #e0e4ea;display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.rpt-foot{padding:14px 28px;border-top:1px solid #e0e4ea;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
 .rpt-status{font-size:11px;color:#888;flex:1}
 /* レポートプレビュー内スタイル */
-#rptPreview{border:1px solid #dde8f3;border-radius:8px;padding:0;overflow:hidden;margin-top:12px;font-family:sans-serif}
+#rptPreview{border:1px solid #dde8f3;border-radius:10px;padding:0;overflow:hidden;margin-top:12px;font-family:'Hiragino Sans','Yu Gothic UI',sans-serif}
+/* レポートセクション */
+.rpt-section{margin-bottom:20px;border:1px solid #e8edf5;border-radius:10px;overflow:hidden}
+.rpt-section-head{background:linear-gradient(135deg,#185FA5,#378ADD);color:#fff;padding:10px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px}
+.rpt-section-body{padding:14px 16px;background:#fff}
+.rpt-kv{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0}
+.rpt-kv-item{background:#f7f9fc;border-radius:7px;padding:10px 13px;border:1px solid #e8edf5}
+.rpt-kv-label{font-size:10px;color:#888;font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px}
+.rpt-kv-value{font-size:20px;font-weight:700;color:#185FA5}
+.rpt-kv-sub{font-size:10px;color:#999;margin-top:1px}
+/* AI生成コンテンツ */
+.rpt-ai-content{font-size:12.5px;line-height:1.75;color:#1a1a1a}
+.rpt-ai-content h4{font-size:13px;font-weight:700;color:#185FA5;margin:14px 0 6px;padding-left:8px;border-left:3px solid #378ADD}
+.rpt-ai-content p{margin-bottom:10px}
+.rpt-ai-content ul{padding-left:18px;margin-bottom:10px}
+.rpt-ai-content li{margin-bottom:4px}
+.rpt-ai-content table{width:100%;border-collapse:collapse;font-size:11.5px;margin:8px 0}
+.rpt-ai-content th{background:#185FA5;color:#fff;padding:7px 10px;text-align:left;font-weight:600}
+.rpt-ai-content td{padding:6px 10px;border:1px solid #e0e8f0}
+.rpt-ai-content tr:nth-child(even) td{background:#f5f8fc}
+/* 進捗グラフ */
+.rpt-chart-wrap{padding:16px;background:#f9fbff;border-radius:8px;margin-top:4px}
+.rpt-progress-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.rpt-progress-label{width:130px;font-size:11px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.rpt-progress-bar-bg{flex:1;height:14px;background:#e8edf5;border-radius:7px;overflow:hidden;position:relative}
+.rpt-progress-bar-fill{height:100%;border-radius:7px;transition:width .6s ease;min-width:2px}
+.rpt-progress-pct{width:36px;font-size:11px;font-weight:700;color:#185FA5;text-align:right;flex-shrink:0}
+/* donut chart */
+.rpt-donut-wrap{display:flex;align-items:center;justify-content:center;gap:28px;padding:12px 0}
+.rpt-donut-legend{display:flex;flex-direction:column;gap:8px}
+.rpt-donut-leg-item{display:flex;align-items:center;gap:7px;font-size:12px}
+.rpt-donut-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+/* 担当者カード */
+.rpt-assignee-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:4px}
+.rpt-assignee-card{border:1px solid #e0e8f5;border-radius:9px;overflow:hidden}
+.rpt-assignee-card-head{padding:9px 13px;font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+.rpt-assignee-card-body{padding:9px 13px;font-size:11px;color:#444;line-height:1.7;background:#fff}
+.rpt-assignee-badge{background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:600}
+/* 催促・アドバイスカード */
+.rpt-alert-card{border-left:4px solid #E74C3C;background:#FEF9F9;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px;font-size:12px}
+.rpt-alert-card.warn{border-left-color:#EF9F27;background:#FFFBF0}
+.rpt-alert-card.green{border-left-color:#1D9E75;background:#F0FBF7}
+.rpt-advice-card{border:1px solid #e0ebf8;background:#f7faff;border-radius:8px;padding:11px 14px;margin-bottom:8px;font-size:12px;line-height:1.7}
+.rpt-advice-card .adv-title{font-weight:700;color:#185FA5;font-size:12px;margin-bottom:4px}
+/* generating animation */
+.rpt-generating{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:14px;color:#888}
+.rpt-generating .spinner{width:36px;height:36px;border:3px solid #e0e8f5;border-top-color:#378ADD;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 /* ── CSV Import Modal ── */
 .imp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center}
 .imp-modal{background:#fff;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:min(600px,94vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
@@ -2104,7 +2151,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v49.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v50.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -2310,102 +2357,340 @@ function execImport(){
 
 
 // ══════════════════════════════════════════════
-// ── 2-Week Activity Report ──
+// ── Advanced Activity Report ──
 // ══════════════════════════════════════════════
+
+// ── レポート用データ算出ヘルパー ──
+function getRptToday(){ return fmt(t0); }
+function getRptDate(offsetDays){
+  const d=new Date(t0); d.setDate(d.getDate()+offsetDays); return fmt(d);
+}
+function taskStatus(t){
+  const td=getRptToday();
+  if(t.end<td) return 'done';
+  if(t.start<=td) return 'in-progress';
+  return 'upcoming';
+}
+function getProgressPct(t){
+  if(!t.start||!t.end) return 0;
+  const h=hs(currentYear);
+  const total=countWD(parseD(t.start),parseD(t.end),h);
+  if(total<=0) return 100;
+  const done_=countWD(parseD(t.start),t0,h);
+  const pct=Math.round((done_/total)*100);
+  return Math.min(100,Math.max(0,pct));
+}
+function buildReportData(){
+  const today=getRptToday();
+  const in2w=getRptDate(14);
+  const ago1m=getRptDate(-30);
+  // 全タスク（Lv1のみ除外しない）
+  const allT=tasks.filter(t=>t.start&&t.end);
+  const done_=allT.filter(t=>t.end<today);
+  const inProg=allT.filter(t=>t.start<=today&&t.end>=today);
+  const upcoming2w=allT.filter(t=>t.start>today&&t.start<=in2w);
+  const past1m=allT.filter(t=>t.start>=ago1m&&t.start<today);
+  // 担当者別
+  const byAssignee={};
+  inProg.forEach(t=>{
+    const a=t.assignee||'未設定';
+    if(!byAssignee[a]) byAssignee[a]={name:a,inProg:[],upcoming:[],done:[]};
+    byAssignee[a].inProg.push(t);
+  });
+  upcoming2w.forEach(t=>{
+    const a=t.assignee||'未設定';
+    if(!byAssignee[a]) byAssignee[a]={name:a,inProg:[],upcoming:[],done:[]};
+    byAssignee[a].upcoming.push(t);
+  });
+  done_.forEach(t=>{
+    const a=t.assignee||'未設定';
+    if(!byAssignee[a]) byAssignee[a]={name:a,inProg:[],upcoming:[],done:[]};
+    byAssignee[a].done.push(t);
+  });
+  return {allT,done_,inProg,upcoming2w,past1m,byAssignee,today,in2w,ago1m};
+}
+
+// ── モーダルを開く ──
 function openReportModal(){
   const overlay=document.getElementById('rptOverlay');
   overlay.style.display='flex';
-  const from=new Date(t0),to=new Date(t0);to.setDate(to.getDate()+13);
-  const opts={month:'short',day:'numeric'};
+  const opts={year:'numeric',month:'long',day:'numeric'};
   document.getElementById('rptDateRange').textContent=
-    `${from.toLocaleDateString('en-US',opts)} – ${to.toLocaleDateString('en-US',opts)}, ${from.getFullYear()}`;
+    new Date(t0).toLocaleDateString('ja-JP',opts)+' 時点';
   document.getElementById('rptPreview').innerHTML='';
   document.getElementById('rptCopyBtn').style.display='none';
   document.getElementById('rptDlBtn').style.display='none';
   document.getElementById('rptStatus').textContent='';
   document.getElementById('rptHint').style.display='';
+  // サマリーKPIを即時表示
+  renderReportKPI();
 }
 function closeReportModal(){document.getElementById('rptOverlay').style.display='none';}
 
-function getReportTasks(){
-  const today=fmt(t0);
-  const end14=new Date(t0);end14.setDate(end14.getDate()+13);
-  const end14s=fmt(end14);
-  return tasks.filter(t=>t.start&&t.end&&t.start<=end14s&&t.end>=today)
-    .sort((a,b)=>a.start.localeCompare(b.start));
+// ── KPI即時表示（AI不要部分）──
+function renderReportKPI(){
+  const d=buildReportData();
+  const total=d.allT.length;
+  const doneN=d.done_.length;
+  const inpN=d.inProg.length;
+  const upN=d.upcoming2w.length;
+  const pct=total>0?Math.round((doneN/total)*100):0;
+  const kpi=document.getElementById('rptKPI');
+  if(!kpi)return;
+  kpi.innerHTML=`
+    <div class="rpt-kv">
+      <div class="rpt-kv-item">
+        <div class="rpt-kv-label">Total Tasks</div>
+        <div class="rpt-kv-value">${total}</div>
+        <div class="rpt-kv-sub">全タスク</div>
+      </div>
+      <div class="rpt-kv-item" style="--v:#1D9E75">
+        <div class="rpt-kv-label">Completed</div>
+        <div class="rpt-kv-value" style="color:#1D9E75">${doneN}</div>
+        <div class="rpt-kv-sub">完了 ${pct}%</div>
+      </div>
+      <div class="rpt-kv-item">
+        <div class="rpt-kv-label">In Progress</div>
+        <div class="rpt-kv-value" style="color:#378ADD">${inpN}</div>
+        <div class="rpt-kv-sub">進行中</div>
+      </div>
+      <div class="rpt-kv-item">
+        <div class="rpt-kv-label">Starting in 2W</div>
+        <div class="rpt-kv-value" style="color:#EF9F27">${upN}</div>
+        <div class="rpt-kv-sub">2週間以内着手</div>
+      </div>
+    </div>`;
+  // donutグラフ
+  renderDonutChart(doneN,inpN,total-doneN-inpN);
 }
 
+// ── Donutグラフ（SVG）──
+function renderDonutChart(done,inprog,todo){
+  const el=document.getElementById('rptDonut');
+  if(!el)return;
+  const total=done+inprog+todo||1;
+  const r=54,cx=70,cy=70,sw=22;
+  function arc(pct,offset){
+    if(pct<=0)return'';
+    if(pct>=1)pct=0.9999;
+    const a=pct*2*Math.PI;
+    const sx=cx+r*Math.sin(-Math.PI/2+offset*2*Math.PI);
+    const sy=cy+r*Math.cos(-Math.PI/2+offset*2*Math.PI);
+    const ex=cx+r*Math.sin(-Math.PI/2+(offset+pct)*2*Math.PI);
+    const ey=cy+r*Math.cos(-Math.PI/2+(offset+pct)*2*Math.PI);
+    const large=pct>0.5?1:0;
+    return`M${sx},${sy} A${r},${r} 0 ${large},1 ${ex},${ey}`;
+  }
+  const p1=done/total,p2=inprog/total,p3=todo/total;
+  const pct=Math.round((done/total)*100);
+  el.innerHTML=`
+    <div class="rpt-donut-wrap">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e8edf5" stroke-width="${sw}"/>
+        ${p3>0?`<path d="${arc(p3,p1+p2)}" fill="none" stroke="#dde8f3" stroke-width="${sw}" stroke-linecap="butt"/>`:''}
+        ${p2>0?`<path d="${arc(p2,p1)}" fill="none" stroke="#378ADD" stroke-width="${sw}" stroke-linecap="butt"/>`:''}
+        ${p1>0?`<path d="${arc(p1,0)}" fill="none" stroke="#1D9E75" stroke-width="${sw}" stroke-linecap="butt"/>`:''}
+        <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="22" font-weight="700" fill="#185FA5">${pct}%</text>
+        <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="10" fill="#888">完了率</text>
+      </svg>
+      <div class="rpt-donut-legend">
+        <div class="rpt-donut-leg-item"><div class="rpt-donut-dot" style="background:#1D9E75"></div>完了 ${done}件</div>
+        <div class="rpt-donut-leg-item"><div class="rpt-donut-dot" style="background:#378ADD"></div>進行中 ${inprog}件</div>
+        <div class="rpt-donut-leg-item"><div class="rpt-donut-dot" style="background:#dde8f3"></div>未着手 ${todo}件</div>
+      </div>
+    </div>`;
+}
+
+// ── 進捗バーチャート（担当者別）──
+function renderProgressBars(byAssignee){
+  const el=document.getElementById('rptProgressBars');
+  if(!el)return;
+  const entries=Object.values(byAssignee);
+  if(!entries.length){el.innerHTML='<div style="color:#aaa;font-size:12px;padding:8px">担当者データなし</div>';return;}
+  let html='<div class="rpt-chart-wrap">';
+  entries.forEach(a=>{
+    const total=a.inProg.length+a.upcoming.length+a.done.length;
+    if(!total)return;
+    const pct=Math.round((a.done.length/total)*100);
+    const colors=['#1D9E75','#378ADD','#EF9F27'];
+    const barColor=pct>=80?colors[0]:pct>=40?colors[1]:colors[2];
+    html+=`<div class="rpt-progress-row">
+      <div class="rpt-progress-label" title="${escH(a.name)}">${escH(a.name)}</div>
+      <div class="rpt-progress-bar-bg">
+        <div class="rpt-progress-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+      </div>
+      <div class="rpt-progress-pct">${pct}%</div>
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+// ── 担当者カードの即時レンダリング ──
+function renderAssigneeCards(byAssignee){
+  const el=document.getElementById('rptAssigneeCards');
+  if(!el)return;
+  const entries=Object.values(byAssignee).filter(a=>a.inProg.length||a.upcoming.length);
+  if(!entries.length){el.innerHTML='<div style="color:#aaa;font-size:12px">進行中・近日着手タスクなし</div>';return;}
+  const cardColors=['#185FA5','#1D9E75','#BA7517','#533AB7','#A32D2D','#0E7A5C','#639922','#8E44AD'];
+  let html='<div class="rpt-assignee-grid">';
+  entries.forEach((a,i)=>{
+    const bg=cardColors[i%cardColors.length];
+    const allTasks=[...a.inProg.map(t=>({...t,_s:'進行中'})),...a.upcoming.map(t=>({...t,_s:'近日着手'}))];
+    const taskItems=allTasks.slice(0,5).map(t=>`
+      <div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:4px">
+        <span style="font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap;margin-top:1px;${t._s==='進行中'?'background:#EAF3FB;color:#185FA5':'background:#FFF4E5;color:#BA7517'}">${t._s}</span>
+        <span style="font-size:11px;color:#333">${escH(t.title)}${t.titleEn?'<span style="font-size:9px;color:#999;margin-left:3px">'+escH(t.titleEn)+'</span>':''}</span>
+      </div>`).join('');
+    html+=`<div class="rpt-assignee-card">
+      <div class="rpt-assignee-card-head" style="background:${bg}">
+        <span>${escH(a.name)}</span>
+        <span class="rpt-assignee-badge">${a.inProg.length+a.upcoming.length}件</span>
+      </div>
+      <div class="rpt-assignee-card-body">${taskItems}${allTasks.length>5?`<div style="color:#aaa;font-size:10px;margin-top:4px">…他${allTasks.length-5}件</div>`:''}</div>
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+// ── AI生成（3セクション：催促・過去1ヶ月コンサル・進捗中一覧）──
 async function generateReport(){
   const btn=document.getElementById('rptGenBtn');
   const status=document.getElementById('rptStatus');
-  const preview=document.getElementById('rptPreview');
   document.getElementById('rptHint').style.display='none';
-  const reportTasks=getReportTasks();
-  if(!reportTasks.length){
-    preview.innerHTML='<div style="padding:24px;text-align:center;color:#888">No tasks found in the next 2 weeks.</div>';
+  const apiKey=getApiKey();
+  if(!apiKey){
+    const ok=confirm('Anthropic APIキーが未設定です。今すぐ設定しますか？');
+    if(ok)promptApiKey();
     return;
   }
-  btn.disabled=true;btn.textContent='⏳ Generating...';status.textContent='Calling AI...';
-  const taskLines=reportTasks.map(t=>{
-    const ms=(t.start===t.end&&t.days===1)?'[MILESTONE]':'';
-    return `- ${t.wbs} ${t.title}${t.titleEn?' ('+t.titleEn+')':''} | ${t.assignee||'—'} | ${t.start}–${t.end} | ${t.days}d ${ms}`;
-  }).join('\n');
-  const today=fmt(t0),end14=new Date(t0);end14.setDate(end14.getDate()+13);
-  const end14s=fmt(end14);
-  const prompt=`You are a project coordinator for ARIAFINA, a premium kitchen appliance brand (joint venture: Fujioh Japan × Elica Italy).
+  const d=buildReportData();
+  if(!d.allT.length){
+    document.getElementById('rptAISection').innerHTML='<div style="padding:20px;text-align:center;color:#aaa">タスクデータがありません</div>';
+    return;
+  }
+  btn.disabled=true;btn.textContent='⏳ Generating...';status.textContent='AI分析中…';
+  // グラフ・カードは即時描画
+  renderProgressBars(d.byAssignee);
+  renderAssigneeCards(d.byAssignee);
+  const aiSection=document.getElementById('rptAISection');
+  aiSection.innerHTML=`<div class="rpt-generating"><div class="spinner"></div><div>AIがレポートを生成中です…</div></div>`;
+  document.getElementById('rptCopyBtn').style.display='none';
+  document.getElementById('rptDlBtn').style.display='none';
 
-Scheduled tasks for the next 2 weeks (${today} to ${end14s}):
-${taskLines}
+  // AI向けデータ整形
+  const fmt2w=d.upcoming2w.map(t=>`- [${t.wbs}] ${t.title}${t.titleEn?' ('+t.titleEn+')':''} | 担当:${t.assignee||'—'} | ${t.start}〜${t.end} | ${t.days}日`).join('\n')||'（なし）';
+  const fmt1m=d.past1m.map(t=>`- [${t.wbs}] ${t.title}${t.titleEn?' ('+t.titleEn+')':''} | 担当:${t.assignee||'—'} | ${t.start}〜${t.end} | ${t.days}日`).join('\n')||'（なし）';
+  const fmtInp=d.inProg.map(t=>`- [${t.wbs}] ${t.title}${t.titleEn?' ('+t.titleEn+')':''} | 担当:${t.assignee||'—'} | ${t.start}〜${t.end} | ${t.days}日`).join('\n')||'（なし）';
 
-Write a professional bilingual activity report for team members.
-Reply with ONLY valid HTML (no markdown, no code fences). Structure:
-<div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;color:#1a1a1a">
-  [Japanese executive summary: 2-3 sentences in a <p> with style="background:#EAF3FB;padding:14px 18px;border-left:4px solid #185FA5;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:13px;line-height:1.7"]
-  [English executive summary: 2-3 sentences in a <p> with style="background:#EAF7EE;padding:14px 18px;border-left:4px solid #1D9E75;border-radius:0 8px 8px 0;margin-bottom:16px;font-size:13px;line-height:1.7"]
-  [Task table: clean, email-safe HTML table. Milestone rows: background #f0ecfb. Header: background #185FA5, color white. Columns: WBS | Task (Japanese + English) | Assignee | Start | End | Days]
+  const prompt=`あなたはARIAFINA（富士工業×Elica SpAのJV）のプロジェクト管理コーディネーターです。以下のスケジュールデータを元に、日本語でプロフェッショナルなレポートを生成してください。
+
+本日：${d.today}
+
+【2週間以内に着手するタスク（催促対象）】
+${fmt2w}
+
+【過去1ヶ月に着手したタスク（振り返り対象）】
+${fmt1m}
+
+【現在進行中のタスク】
+${fmtInp}
+
+以下の3セクションをHTMLで出力してください。
+マークダウン・コードフェンス不要。HTMLのみを出力。各セクションはdivで区切る。
+
+セクション1：<div id="ai-sec1">
+<h4>⏰ 2週間以内の着手タスク — 担当者への催促ポイント</h4>
+各タスクについて担当者へのアクションを促す具体的なコメントを箇条書き（<ul><li>）で。
+「〇〇さん、△△の準備を〇日までに開始してください」という形式で。
+</div>
+
+セクション2：<div id="ai-sec2">
+<h4>💡 過去1ヶ月の業務 — 進め方アドバイス</h4>
+過去1ヶ月の業務について、よかった点・改善点・次回への提案を簡潔にコンサルティング風に。
+箇条書き（<ul><li>）3〜5件程度。
+</div>
+
+セクション3：<div id="ai-sec3">
+<h4>📋 進捗中タスク — 担当者別クローズアップ</h4>
+進捗中タスクを担当者ごとにまとめた短いコメント文を。担当者名を<strong>で強調。
+各担当者2〜3文でその担当者の状況・注意点を記述。
 </div>`;
+
   try{
-    const apiKey=getApiKey();
-    if(!apiKey){
-      const ok=confirm('Anthropic API key is not set.\nSet it now?');
-      if(ok)promptApiKey();
-      btn.disabled=false;btn.textContent='✨ Generate AI Summary';return;
-    }
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,
-               'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2500,
-        messages:[{role:'user',content:prompt}]})
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:3000,
+        messages:[{role:'user',content:prompt}]
+      })
     });
     if(!res.ok)throw new Error(`API ${res.status}`);
     const data=await res.json();
     let html=data?.content?.[0]?.text?.trim()||'';
     html=html.replace(/^```html?\n?/,'').replace(/\n?```$/,'').trim();
-    preview.innerHTML=html;window._reportHtml=html;
+    // スタイルを適用
+    html=html.replace(/<h4>/g,'<h4 style="font-size:13px;font-weight:700;color:#185FA5;margin:0 0 10px;padding-left:8px;border-left:3px solid #378ADD">');
+    html=html.replace(/<ul>/g,'<ul style="padding-left:18px;margin:0">');
+    html=html.replace(/<li>/g,'<li style="margin-bottom:6px;font-size:12px;line-height:1.7;color:#333">');
+    html=html.replace(/<strong>/g,'<strong style="color:#185FA5">');
+    aiSection.innerHTML=`<div class="rpt-ai-content">${html}</div>`;
+    window._reportHtml=buildFullReportHtml(d);
     document.getElementById('rptCopyBtn').style.display='';
     document.getElementById('rptDlBtn').style.display='';
-    status.textContent=`✅ ${reportTasks.length} tasks · ${today}`;
+    status.textContent=`✅ 生成完了 · ${d.today} · ${d.allT.length}件分析`;
   }catch(e){
-    preview.innerHTML=`<div style="padding:16px;color:#A32D2D;background:#FDF0EF;border-radius:8px">Error: ${escH(e.message)}</div>`;
-    status.textContent='Generation failed';
+    aiSection.innerHTML=`<div style="padding:16px;color:#A32D2D;background:#FDF0EF;border-radius:8px">エラー: ${escH(e.message)}</div>`;
+    status.textContent='生成失敗';
   }
-  btn.disabled=false;btn.textContent='✨ Generate AI Summary';
+  btn.disabled=false;btn.textContent='✨ AIレポート生成';
+}
+
+// ── フルHTMLレポートを組み立て（ダウンロード用）──
+function buildFullReportHtml(d){
+  const kpiEl=document.getElementById('rptKPI');
+  const donutEl=document.getElementById('rptDonut');
+  const barsEl=document.getElementById('rptProgressBars');
+  const cardsEl=document.getElementById('rptAssigneeCards');
+  const aiEl=document.getElementById('rptAISection');
+  return `<div style="font-family:'Hiragino Sans','Yu Gothic UI',sans-serif;max-width:820px;margin:0 auto;color:#1a1a1a;font-size:12px">
+    <h2 style="font-size:18px;font-weight:700;color:#185FA5;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #EAF3FB">
+      📊 ARIAFINAプロジェクト進捗レポート — ${d.today}
+    </h2>
+    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:0 0 8px">KPIサマリー</h3>
+    ${kpiEl?.innerHTML||''}
+    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px">完了率</h3>
+    ${donutEl?.innerHTML||''}
+    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px">担当者別進捗</h3>
+    ${barsEl?.innerHTML||''}
+    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px">担当者別タスク一覧</h3>
+    ${cardsEl?.innerHTML||''}
+    <h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px">AIアドバイス</h3>
+    ${aiEl?.innerHTML||''}
+  </div>`;
 }
 
 function copyReportHtml(){
   if(!window._reportHtml)return;
-  const full=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ARIAFINA Activity Report</title></head><body style="background:#f5f5f5;padding:32px">${window._reportHtml}</body></html>`;
+  const full=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ARIAFINA進捗レポート</title><style>body{background:#f5f7fa;padding:32px}ul{padding-left:18px}li{margin-bottom:6px;font-size:12px;line-height:1.7}.rpt-assignee-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}.rpt-assignee-card{border:1px solid #e0e8f5;border-radius:9px;overflow:hidden}.rpt-assignee-card-head{padding:9px 13px;font-size:12px;font-weight:700;color:#fff}.rpt-kv{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rpt-kv-item{background:#f7f9fc;border-radius:7px;padding:10px 13px;border:1px solid #e8edf5}</style></head><body>${window._reportHtml}</body></html>`;
   navigator.clipboard.writeText(full).then(()=>{
     const b=document.getElementById('rptCopyBtn');
-    b.textContent='✅ Copied!';setTimeout(()=>b.textContent='📋 Copy HTML for Email',2000);
-  }).catch(()=>{alert('Copy failed. Please use Save as HTML instead.');});
+    b.textContent='✅ Copied!';setTimeout(()=>b.textContent='📋 HTMLをコピー',2000);
+  }).catch(()=>alert('コピー失敗。Save as HTMLをご利用ください。'));
 }
 
 function downloadReportHtml(){
   if(!window._reportHtml)return;
   const d=fmt(t0).replace(/-/g,'');
-  const full=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>ARIAFINA Report ${fmt(t0)}</title></head><body style="background:#f5f5f5;padding:32px;font-family:sans-serif">${window._reportHtml}</body></html>`;
+  const full=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>ARIAFINAレポート ${fmt(t0)}</title><style>body{background:#f5f7fa;padding:32px;font-family:'Hiragino Sans','Yu Gothic UI',sans-serif}ul{padding-left:18px}li{margin-bottom:6px;font-size:12px;line-height:1.7}.rpt-assignee-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}.rpt-assignee-card{border:1px solid #e0e8f5;border-radius:9px;overflow:hidden}.rpt-assignee-card-head{padding:9px 13px;font-size:12px;font-weight:700;color:#fff}.rpt-kv{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rpt-kv-item{background:#f7f9fc;border-radius:7px;padding:10px 13px;border:1px solid #e8edf5}h3{font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px;padding-left:8px;border-left:3px solid #378ADD}</style></head><body>${window._reportHtml}</body></html>`;
   const blob=new Blob([full],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=`ariafina_report_${d}.html`;a.click();URL.revokeObjectURL(url);
@@ -2613,30 +2898,72 @@ window.forceUnlock = forceUnlock;
   <div class="rpt-modal">
     <div class="rpt-head">
       <div>
-        <h3>📊 2-Week Activity Report</h3>
+        <h3>📊 ARIAFINAプロジェクト進捗レポート</h3>
         <div class="sub" id="rptDateRange"></div>
       </div>
       <button class="rpt-close" onclick="closeReportModal()">✕</button>
     </div>
     <div class="rpt-body">
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+
+      <!-- アクションバー -->
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
         <button class="btn" onclick="generateReport()" id="rptGenBtn"
-          style="background:#1D9E75;color:#fff;border-color:#1D9E75;font-weight:600">
-          ✨ Generate AI Summary
+          style="background:#185FA5;color:#fff;border-color:#185FA5;font-weight:600">
+          ✨ AIレポート生成
         </button>
         <button class="btn" onclick="copyReportHtml()" id="rptCopyBtn" style="display:none">
-          📋 Copy HTML for Email
+          📋 HTMLをコピー
         </button>
         <button class="btn" onclick="downloadReportHtml()" id="rptDlBtn" style="display:none">
-          💾 Save as HTML
+          💾 HTMLで保存
         </button>
-        <span style="font-size:11px;color:#888" id="rptHint">Press "Generate AI Summary" to create the report</span>
+        <span style="font-size:11px;color:#888" id="rptHint">「AIレポート生成」でAIによる分析コメントが追加されます</span>
       </div>
-      <div id="rptPreview"></div>
+
+      <!-- Section 1: KPIサマリー -->
+      <div class="rpt-section">
+        <div class="rpt-section-head">📈 KPIサマリー</div>
+        <div class="rpt-section-body">
+          <div id="rptKPI"><div style="color:#aaa;font-size:12px;padding:8px">読み込み中…</div></div>
+        </div>
+      </div>
+
+      <!-- Section 2: 完了率グラフ + 担当者別進捗バー -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="rpt-section" style="margin-bottom:0">
+          <div class="rpt-section-head" style="background:linear-gradient(135deg,#1D9E75,#0E7A5C)">🥧 完了率</div>
+          <div class="rpt-section-body" style="padding:10px 12px">
+            <div id="rptDonut"><div style="color:#aaa;font-size:12px;padding:8px">読み込み中…</div></div>
+          </div>
+        </div>
+        <div class="rpt-section" style="margin-bottom:0">
+          <div class="rpt-section-head" style="background:linear-gradient(135deg,#533AB7,#7B5DC4)">📊 担当者別進捗</div>
+          <div class="rpt-section-body" style="padding:10px 12px">
+            <div id="rptProgressBars"><div style="color:#aaa;font-size:12px;padding:8px">AIレポート生成後に表示</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: 担当者別タスクカード -->
+      <div class="rpt-section">
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#BA7517,#EF9F27)">👥 担当者別タスク（進行中・近日着手）</div>
+        <div class="rpt-section-body">
+          <div id="rptAssigneeCards"><div style="color:#aaa;font-size:12px;padding:8px">AIレポート生成後に表示</div></div>
+        </div>
+      </div>
+
+      <!-- Section 4: AI生成コンテンツ（催促・コンサル・クローズアップ）-->
+      <div class="rpt-section">
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#A32D2D,#E74C3C)">🤖 AIアドバイス（催促・コンサルティング・担当者クローズアップ）</div>
+        <div class="rpt-section-body">
+          <div id="rptAISection"><div style="color:#aaa;font-size:12px;padding:8px">「AIレポート生成」ボタンを押すとAIによる分析・アドバイスが生成されます</div></div>
+        </div>
+      </div>
+
     </div>
     <div class="rpt-foot">
       <span class="rpt-status" id="rptStatus"></span>
-      <button class="btn" onclick="closeReportModal()">Close</button>
+      <button class="btn" onclick="closeReportModal()">閉じる</button>
     </div>
   </div>
 </div>
