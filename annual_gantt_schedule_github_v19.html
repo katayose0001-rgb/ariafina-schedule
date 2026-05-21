@@ -6,7 +6,11 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v50</title>
+<title>年度Schedule・ガントチャート v51</title>
+<!-- html2canvas (PNG/JPEG出力) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- SheetJS (Excel出力) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -2214,7 +2218,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v50.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v51.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -2484,6 +2488,8 @@ function openReportModal(){
   document.getElementById('rptPreview').innerHTML='';
   document.getElementById('rptCopyBtn').style.display='none';
   document.getElementById('rptDlBtn').style.display='none';
+  document.getElementById('rptPngBtn').style.display='none';
+  document.getElementById('rptXlsBtn').style.display='none';
   document.getElementById('rptStatus').textContent='';
   document.getElementById('rptHint').style.display='';
   // ヘッダーを日本語にリセット（null安全）
@@ -2598,6 +2604,8 @@ function generateReport(lang){
   renderAssigneeCards(d.byAssignee,isEn);
   document.getElementById('rptCopyBtn').style.display='none';
   document.getElementById('rptDlBtn').style.display='none';
+  document.getElementById('rptPngBtn').style.display='none';
+  document.getElementById('rptXlsBtn').style.display='none';
 
   const L={
     noUpcoming: isEn?'No tasks starting within 2 weeks.':'2週間以内に新たに着手するタスクはありません。',
@@ -2802,6 +2810,8 @@ function generateReport(lang){
   window._reportHtml=buildFullReportHtml(d,isEn);
   document.getElementById('rptCopyBtn').style.display='';
   document.getElementById('rptDlBtn').style.display='';
+  document.getElementById('rptPngBtn').style.display='';
+  document.getElementById('rptXlsBtn').style.display='';
   status.textContent=isEn
     ?`✅ Done · ${d.today} · ${d.allT.length} tasks analyzed`
     :`✅ 生成完了 · ${d.today} · ${d.allT.length}件分析`;
@@ -2903,6 +2913,127 @@ function downloadReportHtml(){
   const blob=new Blob([full],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=`ariafina_report_${d}.html`;a.click();URL.revokeObjectURL(url);
+}
+
+// ── PNG出力 (html2canvas) ──
+async function downloadReportPng(){
+  const btn=document.getElementById('rptPngBtn');
+  if(!btn)return;
+  const modal=document.querySelector('.rpt-modal');
+  if(!modal){alert('レポートが表示されていません');return;}
+  const orig=btn.textContent;
+  btn.textContent='⏳ 出力中...';btn.disabled=true;
+  try{
+    // モーダル全体をキャプチャ（スクロール対応）
+    const rptBody=modal.querySelector('.rpt-body');
+    const scrollTop=rptBody?rptBody.scrollTop:0;
+    if(rptBody)rptBody.scrollTop=0;
+    const canvas=await html2canvas(modal,{
+      scale:2,
+      useCORS:true,
+      backgroundColor:'#ffffff',
+      scrollX:0,
+      scrollY:0,
+      windowWidth:modal.scrollWidth,
+      windowHeight:modal.scrollHeight,
+      logging:false
+    });
+    if(rptBody)rptBody.scrollTop=scrollTop;
+    const d=fmt(t0).replace(/-/g,'');
+    const link=document.createElement('a');
+    link.download=`ariafina_report_${d}.png`;
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+    btn.textContent='✅ 保存完了';
+    setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2000);
+  }catch(e){
+    console.error('PNG出力エラー:',e);
+    alert('PNG出力に失敗しました: '+e.message);
+    btn.textContent=orig;btn.disabled=false;
+  }
+}
+
+// ── Excel出力 (SheetJS) ──
+function downloadReportExcel(){
+  const btn=document.getElementById('rptXlsBtn');
+  if(!btn)return;
+  if(!window.XLSX){alert('SheetJSの読み込みに失敗しました。ページをリロードしてください。');return;}
+  const orig=btn.textContent;
+  btn.textContent='⏳ 出力中...';btn.disabled=true;
+  try{
+    const wb=XLSX.utils.book_new();
+    const today=fmt(t0);
+
+    // ── Sheet1: タスク一覧 ──
+    const header=['WBS','タスク名','英語名','担当者','実働日数','開始日','終了日','レベル','先行タスク','完了','完了日','ステータス'];
+    const rows=tasks.map(t=>{
+      const st=taskStatus(t);
+      const stLabel=st==='done'?'完了':st==='early'?'早期完了':st==='overdue'?'未完了（遅延）':st==='upcoming'?'近日着手':'進行中';
+      return[
+        t.wbs||'',
+        t.title||'',
+        t.titleEn||'',
+        t.assignee||'',
+        t.days||'',
+        t.start||'',
+        t.end||'',
+        t.level||1,
+        t.predecessorId||'',
+        t.done?'✓':'',
+        t.doneAt||'',
+        stLabel
+      ];
+    });
+    const ws1=XLSX.utils.aoa_to_sheet([header,...rows]);
+    // 列幅設定
+    ws1['!cols']=[{wch:10},{wch:30},{wch:30},{wch:12},{wch:8},{wch:12},{wch:12},{wch:6},{wch:10},{wch:6},{wch:12},{wch:14}];
+    XLSX.utils.book_append_sheet(wb,ws1,'タスク一覧');
+
+    // ── Sheet2: 担当者別集計 ──
+    const byA={};
+    tasks.forEach(t=>{
+      const a=t.assignee||'未設定';
+      if(!byA[a])byA[a]={total:0,done:0,overdue:0,inProgress:0,upcoming:0};
+      byA[a].total++;
+      const st=taskStatus(t);
+      if(st==='done'||st==='early')byA[a].done++;
+      else if(st==='overdue')byA[a].overdue++;
+      else if(st==='upcoming')byA[a].upcoming++;
+      else byA[a].inProgress++;
+    });
+    const h2=['担当者','総タスク数','完了','進行中','近日着手','遅延（未完了）','完了率(%)'];
+    const r2=Object.entries(byA).map(([name,v])=>[
+      name,v.total,v.done,v.inProgress,v.upcoming,v.overdue,
+      v.total>0?Math.round(v.done/v.total*100):0
+    ]);
+    const ws2=XLSX.utils.aoa_to_sheet([h2,...r2]);
+    ws2['!cols']=[{wch:14},{wch:12},{wch:8},{wch:8},{wch:10},{wch:14},{wch:10}];
+    XLSX.utils.book_append_sheet(wb,ws2,'担当者別集計');
+
+    // ── Sheet3: KPIサマリー ──
+    const d=buildReportData();
+    const ws3=XLSX.utils.aoa_to_sheet([
+      ['KPI項目','値'],
+      ['出力日',today],
+      ['総タスク数',d.allT.length],
+      ['完了タスク数',d.doneTasks.length],
+      ['進行中タスク数',d.inProg.length],
+      ['遅延タスク数（未完了）',d.overdue.length],
+      ['2週間以内着手タスク数',d.upcoming.length],
+      ['完了率(%)',d.allT.length>0?Math.round(d.doneTasks.length/d.allT.length*100):0]
+    ]);
+    ws3['!cols']=[{wch:22},{wch:12}];
+    XLSX.utils.book_append_sheet(wb,ws3,'KPIサマリー');
+
+    const dateStr=today.replace(/-/g,'');
+    XLSX.writeFile(wb,`ariafina_report_${dateStr}.xlsx`);
+    btn.textContent='✅ 保存完了';
+    setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2000);
+  }catch(e){
+    console.error('Excel出力エラー:',e);
+    alert('Excel出力に失敗しました: '+e.message);
+    btn.textContent=orig;btn.disabled=false;
+  }
 }
 
 // インポート用TemplateCSVのダウンロード
@@ -3129,6 +3260,12 @@ window.forceUnlock = forceUnlock;
         </button>
         <button class="btn" onclick="downloadReportHtml()" id="rptDlBtn" style="display:none">
           💾 HTMLで保存
+        </button>
+        <button class="btn" onclick="downloadReportPng()" id="rptPngBtn" style="display:none;background:#F0EAF8;color:#533AB7;border-color:#7B5DC4;font-weight:600">
+          🖼 PNG出力
+        </button>
+        <button class="btn" onclick="downloadReportExcel()" id="rptXlsBtn" style="display:none;background:#EAF7EE;color:#0E7A5C;border-color:#1D9E75;font-weight:600">
+          📊 Excel出力
         </button>
         <span style="font-size:11px;color:#888" id="rptHint">スケジュールデータを自動分析します（APIキー不要）</span>
       </div>
