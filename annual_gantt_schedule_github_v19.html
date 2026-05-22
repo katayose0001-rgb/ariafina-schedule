@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v54</title>
+<title>年度Schedule・ガントチャート v55</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -1078,6 +1078,20 @@ function toggleCollapse(id,event){
   render();
 }
 
+// ── すべて折りたたむ ──
+function collapseAll(){
+  tasks.filter(t=>tasks.some(c=>c.parentId===t.id)).forEach(t=>collapsedIds.add(t.id));
+  localStorage.setItem('gt5_col',JSON.stringify([...collapsedIds]));
+  render();
+}
+
+// ── すべて展開 ──
+function expandAll(){
+  collapsedIds.clear();
+  localStorage.setItem('gt5_col','[]');
+  render();
+}
+
 function toggleDepView(){
   showDeps=!showDeps;
   const btn=document.getElementById('depToggle');
@@ -1134,7 +1148,14 @@ function render(){
     `<table class="left-table" style="width:${getLeftW()}px"><thead><tr style="height:${HDRH}px">${LEFT_COLS.map(c=>{
       const w=c.k==='title'?titleColW:c.w;
       const handle=c.k==='title'?`<span class="col-resize-handle" onmousedown="initColResize(event)"></span>`:'';
-      return`<th style="width:${w}px;position:relative">${c.l}${handle}</th>`;
+      const extra=c.k==='title'
+        ?`<span style="display:flex;gap:2px;margin-left:4px;flex-shrink:0">
+            <button onclick="collapseAll()" title="すべて折りたたむ"
+              style="font-size:9px;padding:1px 4px;border:1px solid #bbb;border-radius:3px;background:#f5f5f5;cursor:pointer;line-height:1.4;color:#555" >▶▶</button>
+            <button onclick="expandAll()" title="すべて展開"
+              style="font-size:9px;padding:1px 4px;border:1px solid #bbb;border-radius:3px;background:#f5f5f5;cursor:pointer;line-height:1.4;color:#555">▼▼</button>
+          </span>`:'';
+      return`<th style="width:${w}px;position:relative;white-space:nowrap">${c.k==='title'?`<div style="display:flex;align-items:center;gap:0">${c.l}${handle}${extra}</div>`:c.l+handle}</th>`;
     }).join('')}</tr></thead></table>`;
 
   let lb=`<table class="left-table" style="width:${getLeftW()}px" id="leftTable"><tbody>`;
@@ -2231,7 +2252,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v54.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v55.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
