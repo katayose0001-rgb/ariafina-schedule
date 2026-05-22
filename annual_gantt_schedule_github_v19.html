@@ -1157,9 +1157,9 @@ function render(){
     const hasPred=task.predecessorId!=null;
     const pad=(lv-1)*12; // インデント幅
     // Lv1・Lv2の折りたたみボタン表示
-    const hasChildren=tasks.some(t=>t.parentId===task.id);
+    const _taskHasChildren=tasks.some(t=>t.parentId===task.id);
     const isCollapsed=collapsedIds.has(task.id);
-    const toggleHtml=((lv===1||lv===2||lv===3)&&hasChildren)
+    const toggleHtml=((lv===1||lv===2||lv===3)&&_taskHasChildren)
       ?`<span class="toggle-btn${isCollapsed?' collapsed':''}" onclick="toggleCollapse(${task.id},event)">▼</span>`
       :`<span style="width:19px;display:inline-block;flex-shrink:0"></span>`;
     const depIcon=hasPred?`<span title="Has Predecessor" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
