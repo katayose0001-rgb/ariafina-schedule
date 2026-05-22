@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v62</title>
+<title>年度Schedule・ガントチャート v66</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -195,6 +195,9 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .date-btn:hover{background:rgba(55,138,221,.08)}
 .gantt-cell-td{position:relative;padding:0}
 .gantt-bar{position:absolute;border-radius:3px;cursor:pointer;z-index:2;transition:opacity .1s}
+.gantt-bar.parent-bar{border-radius:2px;opacity:.75}
+.gantt-bar.parent-bar .gantt-bar-lbl{font-size:9px;opacity:.85}
+.gantt-bar.parent-bar .g-resize-l,.gantt-bar.parent-bar .g-resize-r{width:4px}
 .gantt-bar-en{position:absolute;font-size:8px;font-weight:400;letter-spacing:.3px;opacity:.75;white-space:nowrap;overflow:hidden;pointer-events:none;z-index:2;display:flex;align-items:center;padding-left:4px}
 .gantt-bar:hover{opacity:.82}
 .gantt-bar.active{outline:2px solid #185FA5;outline-offset:1px}
@@ -203,10 +206,11 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .gantt-bar.task-done .gantt-bar-lbl::after{content:'✓';margin-left:4px;font-size:10px;opacity:.9}
 .gantt-bar.task-overdue{animation:overdue-pulse 2s ease-in-out infinite}
 @keyframes overdue-pulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.4)}50%{box-shadow:0 0 0 4px rgba(231,76,60,0)}}
-.done-badge{position:absolute;top:-7px;right:2px;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;pointer-events:none;z-index:4;white-space:nowrap;line-height:1.6}
-.done-badge.early{background:#1D9E75;color:#fff}
-.done-badge.done{background:#0E7A5C;color:#fff}
-.done-badge.overdue{background:#E74C3C;color:#fff}
+/* done-badge: バー左端に縦に貼り付くフラグ */
+.done-badge{position:absolute;left:0;top:0;bottom:0;width:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;pointer-events:none;z-index:6;border-radius:3px 0 0 3px}
+.done-badge.early{background:rgba(29,158,117,.55);color:#fff}
+.done-badge.done{background:rgba(14,122,92,.55);color:#fff}
+.done-badge.overdue{background:rgba(180,0,0,.55);color:#fff}
 .gantt-bar-lbl{position:absolute;inset:0;display:flex;align-items:center;padding:0 6px;font-size:9px;color:#fff;pointer-events:none;overflow:hidden}
 .g-resize-l,.g-resize-r{position:absolute;top:0;width:7px;height:100%;cursor:ew-resize;z-index:3}
 .g-resize-l{left:0}.g-resize-r{right:0}
@@ -1209,17 +1213,21 @@ function render(){
           rb+=`<span class="milestone-lbl" style="color:${col}">${escH(task.title)}</span>`;
           rb+=`</div>`;
         }else{
-          // ── 通常ガントバー ──
+          // ── 通常ガントバー（親/子で高さ・位置を変える）──
           const L=si*DAY_W,W2=(ei-si+1)*DAY_W;
           const isDone=task.done===true;
           const isOverdue=!isDone&&task.end&&task.end<fmt(t0);
           const doneClass=isDone?' task-done':isOverdue?' task-overdue':'';
-          const doneBarStyle=isDone?`background:${col};opacity:.8;filter:saturate(1.2)`:isOverdue?`background:#E74C3C`:col;
+          const isParentBar=hasChildren(task.id);
+          // 親バー：細く中央寄せ　子バー：通常
+          const barTop   =isParentBar?11:4;
+          const barHeight=isParentBar?12:26;
+          const parentClass=isParentBar?' parent-bar':'';
           const badgeHtml=isDone&&task.doneAt&&task.doneAt<task.end
-            ?`<div class="done-badge early">🏁 早期完了</div>`
-            :isDone?`<div class="done-badge done">✅ 完了</div>`
-            :isOverdue?`<div class="done-badge overdue">⚠️ 未完了</div>`:'';
-          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}" data-tid="${task.id}" style="left:${L}px;top:4px;width:${W2}px;height:26px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="openSide('editTask',${task.id})">${badgeHtml}`;
+            ?`<div class="done-badge early" title="早期完了">🏁</div>`
+            :isDone?`<div class="done-badge done" title="完了">✔</div>`
+            :isOverdue?`<div class="done-badge overdue" title="未完了・期限超過">!</div>`:'';
+          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}${parentClass}" data-tid="${task.id}" style="left:${L}px;top:${barTop}px;width:${W2}px;height:${barHeight}px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="openSide('editTask',${task.id})">${badgeHtml}`;
           rb+=`<div class="g-resize-l" onmousedown="initRS(event,${task.id},'left')"></div>`;
           rb+=`<div class="gantt-bar-lbl">${escH(task.title)}</div>`;
           rb+=`<div class="g-resize-r" onmousedown="initRS(event,${task.id},'right')"></div></div>`;
@@ -2286,11 +2294,11 @@ function renderBarsOnly(){
         bar.style.cssText=`left:${si*DAY_W}px;width:${(ei-si+1)*DAY_W}px;background:${_isOd?'#E74C3C':col};${_isDone?'opacity:.82':''}`;
         bar.onclick=()=>openSide('editTask',task.id);
         if(_isDone&&task.doneAt&&task.doneAt<task.end){
-          const b=document.createElement('div');b.className='done-badge early';b.textContent='🏁 早期完了';bar.appendChild(b);
+          const b=document.createElement('div');b.className='done-badge early';b.title='早期完了';b.textContent='🏁';bar.appendChild(b);
         }else if(_isDone){
-          const b=document.createElement('div');b.className='done-badge done';b.textContent='✅ 完了';bar.appendChild(b);
+          const b=document.createElement('div');b.className='done-badge done';b.title='完了';b.textContent='✔';bar.appendChild(b);
         }else if(_isOd){
-          const b=document.createElement('div');b.className='done-badge overdue';b.textContent='⚠️ 未完了';bar.appendChild(b);
+          const b=document.createElement('div');b.className='done-badge overdue';b.title='未完了・期限超過';b.textContent='!';bar.appendChild(b);
         }
         const rl=document.createElement('div');rl.className='g-resize-l';rl.onmousedown=ev=>initRS(ev,task.id,'left');
         const rr=document.createElement('div');rr.className='g-resize-r';rr.onmousedown=ev=>initRS(ev,task.id,'right');
@@ -2306,7 +2314,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v62.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v66.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
