@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v56</title>
+<title>年度Schedule・ガントチャート v57</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -1151,13 +1151,13 @@ function render(){
       const w=c.k==='title'?titleColW:c.w;
       const handle=c.k==='title'?`<span class="col-resize-handle" onmousedown="initColResize(event)"></span>`:'';
       const extra=c.k==='title'
-        ?`<span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:1px">
+        ?`<span style="position:absolute;left:4px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:1px">
             <button onclick="collapseAll()" title="すべて折りたたむ（Lv2以下）"
               style="font-size:8px;width:18px;height:13px;border:1px solid #bbb;border-radius:2px;background:#f5f5f5;cursor:pointer;line-height:1;color:#555;padding:0;display:flex;align-items:center;justify-content:center">▲</button>
             <button onclick="expandAll()" title="すべて展開"
               style="font-size:8px;width:18px;height:13px;border:1px solid #bbb;border-radius:2px;background:#f5f5f5;cursor:pointer;line-height:1;color:#555;padding:0;display:flex;align-items:center;justify-content:center">▼</button>
           </span>`:'';
-      return`<th style="width:${w}px;position:relative">${c.l}${handle}${extra}</th>`;
+      return`<th style="width:${w}px;position:relative;padding-left:26px">${c.l}${handle}${extra}</th>`;
     }).join('')}</tr></thead></table>`;
 
   let lb=`<table class="left-table" style="width:${getLeftW()}px" id="leftTable"><tbody>`;
@@ -2254,7 +2254,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v56.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v57.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
