@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v60</title>
+<title>年度Schedule・ガントチャート v61</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -1353,27 +1353,30 @@ function jumpToToday(){
 }
 
 // FIX: Task Name専用の更新関数（UNDOを壊さないようrendar()を呼ばない）
-// ── 親タスクの日数・開始・終了を子タスクから自動計算（祖先まで再帰）──
-function recalcParent(taskId){
-  const t=tasks.find(t=>t.id===taskId);
-  if(!t)return;
-  const parentId=t.parentId;
-  if(parentId==null)return; // Lv1は親なし
+// ── 1つの親タスクを直下の子から再計算（内部用）──
+function _calcOneParent(parentId){
   const parent=tasks.find(p=>p.id===parentId);
   if(!parent)return;
   const children=tasks.filter(c=>c.parentId===parentId&&c.start&&c.end);
-  if(!children.length)return; // 子がなければスキップ
-  // start: 子の最小開始日
+  if(!children.length)return; // 子がなければ計算しない（手動値を保持）
   const minStart=children.reduce((m,c)=>c.start<m?c.start:m, children[0].start);
-  // end: 子の最大終了日
-  const maxEnd=children.reduce((m,c)=>c.end>m?c.end:m, children[0].end);
-  // days: 子のdays合計
+  const maxEnd  =children.reduce((m,c)=>c.end  >m?c.end  :m, children[0].end);
   const totalDays=children.reduce((s,c)=>s+(+c.days||0),0);
   parent.start=minStart;
-  parent.end=maxEnd;
-  parent.days=Math.max(1,totalDays);
-  // 祖先へ再帰
-  recalcParent(parentId);
+  parent.end  =maxEnd;
+  parent.days =Math.max(1,totalDays);
+}
+
+// ── 変更されたタスクから祖先チェーンを全て上に向かって再計算 ──
+function recalcParent(taskId){
+  // 変更タスク自身のparentIdから順に最上位まで遡る
+  let cur=tasks.find(t=>t.id===taskId);
+  while(cur){
+    const parentId=cur.parentId;
+    if(parentId==null)break; // Lv1の親はなし
+    _calcOneParent(parentId);
+    cur=tasks.find(t=>t.id===parentId);
+  }
 }
 
 // ── 子を持つタスクか判定 ──
@@ -2288,7 +2291,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v60.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v61.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
