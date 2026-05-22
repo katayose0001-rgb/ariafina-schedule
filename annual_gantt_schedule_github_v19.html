@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v67</title>
+<title>年度Schedule・ガントチャート v68</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -1211,7 +1211,7 @@ function render(){
           const cx=si*DAY_W+(DAY_W/2);
           const _enTMs=task.titleEn||lookupDict(task.title);
           const top=(ROW_H-20)/2;
-          rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})">`;
+          rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})">`;
           rb+=`<div class="milestone-diamond" style="background:${col}"></div>`;
           rb+=`<span class="milestone-lbl" style="color:${col}">${escH(task.title)}</span>`;
           rb+=`</div>`;
@@ -1230,7 +1230,7 @@ function render(){
             ?`<div class="done-badge early" title="早期完了">🏁</div>`
             :isDone?`<div class="done-badge done" title="完了">✔</div>`
             :isOverdue?`<div class="done-badge overdue" title="未完了・期限超過">!</div>`:'';
-          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}${parentClass}" data-tid="${task.id}" style="left:${L}px;top:${barTop}px;width:${W2}px;height:${barHeight}px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})">${badgeHtml}`;
+          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}${parentClass}" data-tid="${task.id}" style="left:${L}px;top:${barTop}px;width:${W2}px;height:${barHeight}px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})">${badgeHtml}`;
           rb+=`<div class="g-resize-l" onmousedown="initRS(event,${task.id},'left')"></div>`;
           rb+=`<div class="gantt-bar-lbl">${escH(task.title)}</div>`;
           rb+=`<div class="g-resize-r" onmousedown="initRS(event,${task.id},'right')"></div></div>`;
@@ -2431,7 +2431,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v67.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v68.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
