@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v69</title>
+<title>年度Schedule・ガントチャート v70</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -445,50 +445,57 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
       <div class="tb-sep"></div>
 
       <!-- 表示フィルター -->
-      <span class="tb-group-label">View</span>
-      <div class="tg"><label>Year</label><select id="yearSel"></select></div>
-      <div class="tg"><label>Period</label>
+      <span class="tb-group-label" id="tbLabelView">View</span>
+      <div class="tg"><label id="tbLabelYear">Year</label><select id="yearSel"></select></div>
+      <div class="tg"><label id="tbLabelPeriod">Period</label>
         <select id="monthSel">
-          <option value="0">All</option><option value="1">Q1 (Jan–Mar)</option>
-          <option value="2">Q2 (Apr–Jun)</option><option value="3">Q3 (Jul–Sep)</option>
-          <option value="4">Q4 (Oct–Dec)</option>
+          <option value="0">全期間</option><option value="1">Q1 (1–3月)</option>
+          <option value="2">Q2 (4–6月)</option><option value="3">Q3 (7–9月)</option>
+          <option value="4">Q4 (10–12月)</option>
         </select>
       </div>
-      <div class="tg"><label>Assignee</label><select id="filterAsgn"><option value="">All</option></select></div>
-      <div class="tg"><label>Tasks</label><select id="filterParent"><option value="">All Tasks</option></select></div>
+      <div class="tg"><label id="tbLabelAsgn">担当</label><select id="filterAsgn"><option value="">全員</option></select></div>
+      <div class="tg"><label id="tbLabelTasks">Tasks</label><select id="filterParent"><option value="">全タスク</option></select></div>
 
       <div class="tb-sep"></div>
 
       <!-- 移動・表示切替 -->
       <div class="tg">
-        <button class="btn today-btn" onclick="jumpToToday()">▶ Today</button>
+        <button class="btn today-btn" id="btnToday" onclick="jumpToToday()">▶ Today</button>
         <button class="btn dep-btn" id="depToggle" onclick="toggleDepView()">⇢ 依存関係</button>
         <button class="ms-filter-toggle" id="msFilterBtn" onclick="toggleMsFilter()">
           <span class="ms-diamond-icon" style="width:10px;height:10px;background:#533AB7;transform:rotate(45deg);border-radius:2px;flex-shrink:0"></span>
-          <span class="ms-sw"></span>Milestones Only
+          <span class="ms-sw"></span><span id="msFilterTxt">マイルストーンのみ</span>
         </button>
       </div>
+
+      <div class="tb-sep"></div>
+
+      <!-- UI言語切替 -->
+      <button class="btn" id="langToggleBtn" onclick="toggleUiLang()"
+        style="font-size:11px;padding:0 8px;background:#F0F4FF;border-color:#7B9BD4;color:#185FA5;font-weight:600"
+        title="Switch UI language / UI言語切替">🌐 EN</button>
     </div>
 
-    <!-- ── Row 2: タスク操作 ＋ 翻訳 ＋ データ ── -->
+    <!-- ── Row 2: タスク操作 ＋ データ ── -->
     <div class="toolbar-row toolbar-row-2">
 
       <!-- タスク操作 -->
-      <span class="tb-group-label">Tasks</span>
+      <span class="tb-group-label" id="tbLabelTasksGrp">Tasks</span>
       <div class="tg" style="gap:4px">
-        <button class="btn primary" onclick="openSide('addTask')">＋ Add Task</button>
-        <button class="btn" onclick="openSide('addSub')">＋ Subtask</button>
-        <button class="btn" onclick="openSide('assignees')">Manage Assignees</button>
+        <button class="btn primary" id="btnAddTask" onclick="openSide('addTask')">＋ タスク追加</button>
+        <button class="btn" id="btnAddSub" onclick="openSide('addSub')">＋ サブタスク</button>
+        <button class="btn" id="btnManageAsgn" onclick="openSide('assignees')">担当者管理</button>
       </div>
 
       <div class="tb-sep"></div>
 
       <!-- データ操作 -->
-      <span class="tb-group-label">Data</span>
+      <span class="tb-group-label" id="tbLabelData">Data</span>
       <div class="tg" style="gap:4px">
-        <button class="btn" onclick="openReportModal()" style="color:#0E7A5C;border-color:#1D9E75;font-weight:600" title="進捗レポートを生成（APIキー不要）">📊 Report</button>
-        <button class="btn" onclick="exportCSV()">📤 Export CSV</button>
-        <button class="btn" onclick="openImportModal()"
+        <button class="btn" id="btnReport" onclick="openReportModal()" style="color:#0E7A5C;border-color:#1D9E75;font-weight:600" title="進捗レポートを生成（APIキー不要）">📊 レポート</button>
+        <button class="btn" id="btnExportCSV" onclick="exportCSV()">📤 Export CSV</button>
+        <button class="btn" id="btnImportCSV" onclick="openImportModal()"
           style="color:#1D9E75;border-color:#1D9E75;font-weight:600"
           title="CSVファイルからタスクを一括インポート">📥 Import CSV</button>
       </div>
@@ -497,7 +504,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 
       <!-- UNDO -->
       <div class="tg" style="gap:6px;align-items:center">
-        <span id="undoLabel" style="font-size:11px;color:#888;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis">No History</span>
+        <span id="undoLabel" style="font-size:11px;color:#888;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis">履歴なし</span>
         <button class="btn" id="undoBtn" onclick="doUndo()" disabled
           style="color:#533AB7;border-color:#7B5DC4;white-space:nowrap">↩ Undo</button>
       </div>
@@ -510,12 +517,12 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
     <div class="li"><div class="lb" style="background:#EAF3DE"></div>Q2</div>
     <div class="li"><div class="lb" style="background:#FAEEDA"></div>Q3</div>
     <div class="li"><div class="lb" style="background:#FBEAF0"></div>Q4</div>
-    <div class="li"><div class="lb" style="background:#F1EFE8"></div>Weekends</div>
-    <div class="li"><div class="lb" style="background:#FAECE7"></div>Holidays</div>
-    <div class="li"><div class="lb" style="background:#FFF9CC;border:1px solid #EF9F27"></div>Today</div>
-    <div class="li"><div class="lb" style="background:#378ADD;border-color:#185FA5"></div>Gantt Bar</div>
-    <div class="li"><div style="width:11px;height:11px;background:#533AB7;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div>Milestone</div>
-    <div class="li"><div class="lb" style="background:#533AB7;border-color:#533AB7"></div>Dependencies</div>
+    <div class="li"><div class="lb" style="background:#F1EFE8"></div><span id="lgWeekends">週末</span></div>
+    <div class="li"><div class="lb" style="background:#FAECE7"></div><span id="lgHolidays">祝日</span></div>
+    <div class="li"><div class="lb" style="background:#FFF9CC;border:1px solid #EF9F27"></div><span id="lgToday">Today</span></div>
+    <div class="li"><div class="lb" style="background:#378ADD;border-color:#185FA5"></div><span id="lgGanttBar">ガントバー</span></div>
+    <div class="li"><div style="width:11px;height:11px;background:#533AB7;transform:rotate(45deg);border-radius:1px;flex-shrink:0"></div><span id="lgMilestone">マイルストーン</span></div>
+    <div class="li"><div class="lb" style="background:#533AB7;border-color:#533AB7"></div><span id="lgDeps">依存関係</span></div>
   </div>
   <div class="main-area">
     <div class="gantt-container">
@@ -558,6 +565,88 @@ const COLORS=[
   '#FF5722','#607D8B','#795548','#009688'
 ];
 
+// ── UI言語切替（JA / EN）──
+let uiLang = localStorage.getItem('gt5_uiLang') || 'ja';
+
+const UI_TEXT = {
+  langToggle:        {ja:'🌐 EN',          en:'🌐 JA'},
+  labelView:         {ja:'View',          en:'View'},
+  labelYear:         {ja:'Year',          en:'Year'},
+  labelPeriod:       {ja:'Period',        en:'Period'},
+  labelAssignee:     {ja:'担当',           en:'Assignee'},
+  labelTasks:        {ja:'Tasks',         en:'Tasks'},
+  periodAll:         {ja:'全期間',         en:'All'},
+  periodQ1:          {ja:'Q1 (1–3月)',     en:'Q1 (Jan–Mar)'},
+  periodQ2:          {ja:'Q2 (4–6月)',     en:'Q2 (Apr–Jun)'},
+  periodQ3:          {ja:'Q3 (7–9月)',     en:'Q3 (Jul–Sep)'},
+  periodQ4:          {ja:'Q4 (10–12月)',   en:'Q4 (Oct–Dec)'},
+  filterAllAssignee: {ja:'全員',           en:'All'},
+  filterAllTasks:    {ja:'全タスク',        en:'All Tasks'},
+  btnToday:          {ja:'▶ Today',        en:'▶ Today'},
+  btnDepsShow:       {ja:'⇢ 依存関係',      en:'⇢ Dependencies'},
+  btnDepsHide:       {ja:'⇢ 依存関係を隠す', en:'⇢ Hide Deps'},
+  btnMsOnly:         {ja:'マイルストーンのみ', en:'Milestones Only'},
+  labelTasksGroup:   {ja:'Tasks',         en:'Tasks'},
+  btnAddTask:        {ja:'＋ タスク追加',   en:'＋ Add Task'},
+  btnAddSub:         {ja:'＋ サブタスク',   en:'＋ Subtask'},
+  btnManageAsgn:     {ja:'担当者管理',      en:'Manage Assignees'},
+  labelData:         {ja:'Data',          en:'Data'},
+  btnReport:         {ja:'📊 レポート',     en:'📊 Report'},
+  btnExportCSV:      {ja:'📤 Export CSV',  en:'📤 Export CSV'},
+  btnImportCSV:      {ja:'📥 Import CSV',  en:'📥 Import CSV'},
+  undoNoHistory:     {ja:'履歴なし',        en:'No History'},
+  btnUndo:           {ja:'↩ Undo',         en:'↩ Undo'},
+  colWbs:            {ja:'WBS',           en:'WBS'},
+  colTaskName:       {ja:'タスク名',        en:'Task Name'},
+  colAssignee:       {ja:'担当',           en:'Assignee'},
+  colDays:           {ja:'日数',           en:'Days'},
+  colStart:          {ja:'開始',           en:'Start'},
+  colEnd:            {ja:'終了',           en:'End'},
+  btnDelete:         {ja:'削除',           en:'Delete'},
+  statsYear:         {ja:'年度:',          en:'Year:'},
+  statsWorkDays:     {ja:'稼働日:',         en:'Working Days:'},
+  statsHolidays:     {ja:'祝日:',          en:'Holidays:'},
+  statsTasks:        {ja:'タスク:',         en:'Tasks:'},
+  statsDeps:         {ja:'依存関係:',       en:'Dependencies:'},
+  statsNichi:        {ja:'日',             en:'days'},
+  statsKen:          {ja:'件',             en:''},
+  lgWeekends:        {ja:'週末',           en:'Weekends'},
+  lgHolidays:        {ja:'祝日',           en:'Holidays'},
+  lgToday:           {ja:'Today',          en:'Today'},
+  lgGanttBar:        {ja:'ガントバー',       en:'Gantt Bar'},
+  lgMilestone:       {ja:'マイルストーン',   en:'Milestone'},
+  lgDeps:            {ja:'依存関係',        en:'Dependencies'},
+};
+
+function t(key){ return (UI_TEXT[key]||{})[uiLang] || (UI_TEXT[key]||{})['ja'] || key; }
+
+function toggleUiLang(){
+  uiLang = uiLang === 'ja' ? 'en' : 'ja';
+  localStorage.setItem('gt5_uiLang', uiLang);
+  applyUiLang();
+  render();
+}
+
+function applyUiLang(){
+  const btn = document.getElementById('langToggleBtn');
+  if(btn) btn.textContent = t('langToggle');
+
+  const ms = document.getElementById('monthSel');
+  if(ms && ms.options.length >= 5){
+    ms.options[0].textContent = t('periodAll');
+    ms.options[1].textContent = t('periodQ1');
+    ms.options[2].textContent = t('periodQ2');
+    ms.options[3].textContent = t('periodQ3');
+    ms.options[4].textContent = t('periodQ4');
+  }
+  const fa = document.getElementById('filterAsgn');
+  if(fa && fa.options[0]) fa.options[0].textContent = t('filterAllAssignee');
+  const fp = document.getElementById('filterParent');
+  if(fp && fp.options[0]) fp.options[0].textContent = t('filterAllTasks');
+
+  document.documentElement.lang = uiLang === 'en' ? 'en' : 'ja';
+}
+
 // ── UNDO スタック ──
 let undoStack=[];
 const UNDO_MAX=20;
@@ -583,11 +672,12 @@ function updateUndoBar(){
   const lbl=document.getElementById('undoLabel');
   if(!btn||!lbl)return;
   if(undoStack.length===0){
-    lbl.textContent='No History';
+    lbl.textContent=t('undoNoHistory');
     btn.disabled=true;
   }else{
     const last=undoStack[undoStack.length-1];
-    lbl.textContent=`「${last.label}」を元に戻す（${undoStack.length} items）`;
+    const _undoSuffix=uiLang==='en'?` → Undo (${undoStack.length})`:` 「${last.label}」を元に戻す（${undoStack.length}）`;
+    lbl.textContent=(uiLang==='en'?last.label:last.label)+_undoSuffix;
     btn.disabled=false;
   }
 }
@@ -1033,7 +1123,7 @@ function setTitleColW(w){
   localStorage.setItem('gt5_titleW',String(titleColW));
 }
 
-const LEFT_COLS=[{k:'wbs',l:'WBS',w:56},{k:'title',l:'Task Name',w:148},{k:'assignee',l:'Assignee',w:86},{k:'days',l:'Days',w:46},{k:'start',l:'Start',w:84},{k:'end',l:'End',w:84}];
+const LEFT_COLS=[{k:'wbs',lk:'colWbs',w:56},{k:'title',lk:'colTaskName',w:148},{k:'assignee',lk:'colAssignee',w:86},{k:'days',lk:'colDays',w:46},{k:'start',lk:'colStart',w:84},{k:'end',lk:'colEnd',w:84}];
 function getLeftW(){return LEFT_COLS.reduce((s,c)=>s+(c.k==='title'?titleColW:c.w),0);}
 const LEFT_W=500;// 後方互換用・実際はgetLeftW()を使用
 function getParents(){return tasks.filter(t=>t.parentId===null)}
@@ -1114,9 +1204,13 @@ function buildHeader(days,h){
   const W=days.length*DAY_W;
   let html=`<div style="width:${W}px">`;
   html+=`<div style="display:flex;height:20px;border-bottom:0.5px solid var(--color-border-tertiary)">`;
-  quarters.forEach(q=>{html+=`<div class="q${q.q}" style="width:${q.count*DAY_W}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;border-right:0.5px solid var(--color-border-tertiary);overflow:hidden">Q${q.q} (${(q.q-1)*3+1}–${q.q*3}月)</div>`});
+  const _qLabel=(q)=>uiLang==='en'
+    ?`Q${q} (${['Jan','Apr','Jul','Oct'][(q-1)]}–${['Mar','Jun','Sep','Dec'][(q-1)]})`
+    :`Q${q} (${(q-1)*3+1}–3月)`.replace('3月',`${q*3}月`);
+  quarters.forEach(q=>{html+=`<div class="q${q.q}" style="width:${q.count*DAY_W}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;border-right:0.5px solid var(--color-border-tertiary);overflow:hidden">${_qLabel(q.q)}</div>`});
   html+=`</div><div style="display:flex;height:20px;border-bottom:0.5px solid var(--color-border-tertiary)">`;
-  months.forEach(m=>{html+=`<div class="${qBg(m.m)}" style="width:${m.count*DAY_W}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;border-right:0.5px solid var(--color-border-tertiary)">${m.m+1}月</div>`});
+  const _EN_M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  months.forEach(m=>{const _mLabel=uiLang==='en'?_EN_M[m.m]:(m.m+1)+'月';html+=`<div class="${qBg(m.m)}" style="width:${m.count*DAY_W}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;border-right:0.5px solid var(--color-border-tertiary)">${_mLabel}</div>`});
   html+=`</div>`;
   [true,false].forEach(isDate=>{
     html+=`<div style="display:flex;height:20px;border-bottom:0.5px solid var(--color-border-tertiary)">`;
@@ -1153,7 +1247,7 @@ function render(){
             <button onclick="expandAll()" title="すべて展開"
               style="font-size:8px;width:18px;height:13px;border:1px solid #bbb;border-radius:2px;background:#f5f5f5;cursor:pointer;line-height:1;color:#555;padding:0;display:flex;align-items:center;justify-content:center">▼</button>
           </span>`:'';
-      return`<th style="width:${w}px;position:relative;padding-left:26px">${c.l}${handle}${extra}</th>`;
+      return`<th style="width:${w}px;position:relative;padding-left:26px">${t(c.lk)}${handle}${extra}</th>`;
     }).join('')}</tr></thead></table>`;
 
   let lb=`<table class="left-table" style="width:${getLeftW()}px" id="leftTable"><tbody>`;
@@ -1213,7 +1307,8 @@ function render(){
           const top=(ROW_H-20)/2;
           rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})">`;
           rb+=`<div class="milestone-diamond" style="background:${col}"></div>`;
-          rb+=`<span class="milestone-lbl" style="color:${col}">${escH(task.title)}</span>`;
+          const _msLabel=uiLang==='en'?(task.titleEn||lookupDict(task.title)||task.title):task.title;
+          rb+=`<span class="milestone-lbl" style="color:${col}">${escH(_msLabel)}</span>`;
           rb+=`</div>`;
         }else{
           // ── 通常ガントバー（親/子で高さ・位置を変える）──
@@ -1232,12 +1327,13 @@ function render(){
             :isOverdue?`<div class="done-badge overdue" title="未完了・期限超過">!</div>`:'';
           rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}${parentClass}" data-tid="${task.id}" style="left:${L}px;top:${barTop}px;width:${W2}px;height:${barHeight}px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})">${badgeHtml}`;
           rb+=`<div class="g-resize-l" onmousedown="initRS(event,${task.id},'left')"></div>`;
-          rb+=`<div class="gantt-bar-lbl">${escH(task.title)}</div>`;
+          const _barLabel=uiLang==='en'?(task.titleEn||lookupDict(task.title)||task.title):task.title;
+          rb+=`<div class="gantt-bar-lbl">${escH(_barLabel)}</div>`;
           rb+=`<div class="g-resize-r" onmousedown="initRS(event,${task.id},'right')"></div></div>`;
         }
       }
     }
-    rb+=`</div></td><td style="width:54px;height:${rowH2}px;text-align:center;padding:0 4px"><button class="btn del-btn" onclick="deleteTask(${task.id})">Delete</button></td></tr>`;
+    rb+=`</div></td><td style="width:54px;height:${rowH2}px;text-align:center;padding:0 4px"><button class="btn del-btn" onclick="deleteTask(${task.id})">${t('btnDelete')}</button></td></tr>`;
   });
   document.getElementById('rightBody').innerHTML=rb+`</tbody></table><svg id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:5;overflow:visible"></svg>`;
   syncScroll();
@@ -1345,14 +1441,15 @@ function renderStats(){
   const h=hs(currentYear),all=yearDays(currentYear,0);
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
-  document.getElementById('statsBar').innerHTML=`<div class="si">Year: <span class="sv">${currentYear}</span></div><div class="si">Working Days: <span class="sv">${work}日</span></div><div class="si">Holidays: <span class="sv">${hols}日</span></div><div class="si">Tasks: <span class="sv">${tasks.length} items</span></div><div class="si">Dependencies: <span class="sv">${depCount} items</span></div>`;
+  const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
-  sa.innerHTML='<option value="">All</option>';
+  sa.innerHTML=`<option value="">${t('filterAllAssignee')}</option>`;
   assignees.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;if(a===pa)o.selected=true;sa.appendChild(o)});
   const sp=document.getElementById('filterParent'),pp=sp.value;
-  sp.innerHTML='<option value="">All Tasks</option>';
+  sp.innerHTML=`<option value="">${t('filterAllTasks')}</option>`;
   tasks.forEach(t=>{const o=document.createElement('option');o.value=String(t.id);o.textContent=`${'　'.repeat((t.level||1)-1)}${t.wbs} ${t.title}`;if(String(t.id)===pp)o.selected=true;sp.appendChild(o)});
 }
 function jumpToToday(){
@@ -2448,7 +2545,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v69.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v70.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -3409,6 +3506,7 @@ function downloadTemplate(){
 }
 
 async function init(){
+  applyUiLang(); // UI言語を初期化
   await loadUserDict(); // ユーザー辞書をFirebaseから読み込み
   const ys=document.getElementById('yearSel');
   [2024,2025,2026,2027,2028].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'';if(y===currentYear)o.selected=true;ys.appendChild(o)});
