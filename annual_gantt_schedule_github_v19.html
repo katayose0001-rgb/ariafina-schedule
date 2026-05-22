@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v66</title>
+<title>年度Schedule・ガントチャート v67</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -236,6 +236,9 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .lock-btn:active{transform:translateY(0)}
 .col-resize-handle{position:absolute;right:0;top:0;width:5px;height:100%;cursor:col-resize;background:transparent;z-index:10}
 .col-resize-handle:hover,.col-resize-handle.dragging{background:rgba(55,138,221,.4)}
+.dep-link-mode .gantt-bar{cursor:crosshair!important;outline:2px dashed #533AB7;outline-offset:1px}
+.dep-link-mode .gantt-bar:hover{background:rgba(83,58,183,.18)!important;opacity:1!important}
+#depLinkToast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#533AB7;color:#fff;padding:8px 20px;border-radius:20px;font-size:12px;font-weight:600;z-index:19999;pointer-events:none;box-shadow:0 4px 16px rgba(83,58,183,.4);white-space:nowrap}
 .ctx-menu{position:fixed;z-index:9998;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);box-shadow:0 4px 16px rgba(0,0,0,.15);padding:4px 0;min-width:180px;font-size:12px}
 .ctx-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;color:var(--color-text-primary);white-space:nowrap;transition:background .1s}
 .ctx-item:hover{background:var(--color-background-secondary)}
@@ -1208,7 +1211,7 @@ function render(){
           const cx=si*DAY_W+(DAY_W/2);
           const _enTMs=task.titleEn||lookupDict(task.title);
           const top=(ROW_H-20)/2;
-          rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="openSide('editTask',${task.id})">`;
+          rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})">`;
           rb+=`<div class="milestone-diamond" style="background:${col}"></div>`;
           rb+=`<span class="milestone-lbl" style="color:${col}">${escH(task.title)}</span>`;
           rb+=`</div>`;
@@ -1227,7 +1230,7 @@ function render(){
             ?`<div class="done-badge early" title="早期完了">🏁</div>`
             :isDone?`<div class="done-badge done" title="完了">✔</div>`
             :isOverdue?`<div class="done-badge overdue" title="未完了・期限超過">!</div>`:'';
-          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}${parentClass}" data-tid="${task.id}" style="left:${L}px;top:${barTop}px;width:${W2}px;height:${barHeight}px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="openSide('editTask',${task.id})">${badgeHtml}`;
+          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}${parentClass}" data-tid="${task.id}" style="left:${L}px;top:${barTop}px;width:${W2}px;height:${barHeight}px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})">${badgeHtml}`;
           rb+=`<div class="g-resize-l" onmousedown="initRS(event,${task.id},'left')"></div>`;
           rb+=`<div class="gantt-bar-lbl">${escH(task.title)}</div>`;
           rb+=`<div class="g-resize-r" onmousedown="initRS(event,${task.id},'right')"></div></div>`;
@@ -1925,6 +1928,111 @@ function scrollToTaskStart(taskId){
   const rb=document.getElementById('rightBody');if(!rb)return;
   rb.scrollTo({left:Math.max(0,idx*DAY_W-rb.clientWidth/3),behavior:'smooth'});
 }
+// ── 依存関係リンクモード管理 ──
+let _depFromId=null; // 起点タスクID
+
+function startDepLink(fromId){
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
+  _depFromId=fromId;
+  document.getElementById('app').classList.add('dep-link-mode');
+  const t=tasks.find(t=>t.id===fromId);
+  const toast=document.getElementById('depLinkToast');
+  if(toast){
+    toast.textContent=`🔗 「${t?.title||''}」の後続タスクをクリックして選択　　ESCでキャンセル`;
+    toast.style.display='';
+  }
+  // ESCでキャンセル
+  document.addEventListener('keydown',_depEscHandler,{once:true});
+}
+
+function _depEscHandler(e){
+  if(e.key==='Escape')cancelDepLink();
+}
+
+function cancelDepLink(){
+  _depFromId=null;
+  document.getElementById('app').classList.remove('dep-link-mode');
+  const toast=document.getElementById('depLinkToast');
+  if(toast)toast.style.display='none';
+  document.removeEventListener('keydown',_depEscHandler);
+}
+
+function finishDepLink(toId){
+  if(!_depFromId)return false;
+  const fromId=_depFromId;
+  cancelDepLink();
+  if(fromId===toId){showSyncNotice('⚠️ 同じタスクには設定できません');return true;}
+  if(hasCircle(fromId,toId)){showSyncNotice('⚠️ 循環依存になるため設定できません');return true;}
+  const toTask=tasks.find(t=>t.id===toId);
+  if(!toTask)return true;
+  pushUndo(`依存関係設定「${tasks.find(t=>t.id===fromId)?.title}→${toTask.title}」`);
+  toTask.predecessorId=fromId;
+  propagateDeps(fromId);
+  recalcAllParents();
+  saveData();render();
+  showSyncNotice(`🔗 依存関係を設定しました`);
+  return true;
+}
+
+// 依存関係を削除（単一または選択式）
+function removeDepLink(taskId){
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
+  // このタスクを後続に持つ関係（predecessorId===taskId の後続タスク）
+  const successors=tasks.filter(t=>t.predecessorId===taskId);
+  // このタスク自身が後続である関係（predecessorId）
+  const myPred=tasks.find(t=>t.id===taskId)?.predecessorId!=null
+    ?[tasks.find(t=>t.id===taskId)]
+    :[];
+  const allDeps=[
+    ...myPred.map(t=>({label:`${tasks.find(p=>p.id===t.predecessorId)?.title||'?'} → ${t.title}（このタスクへの依存）`,type:'incoming',taskId:t.id})),
+    ...successors.map(t=>({label:`${tasks.find(p=>p.id===taskId)?.title||'?'} → ${t.title}（このタスクからの依存）`,type:'outgoing',taskId:t.id}))
+  ];
+  if(!allDeps.length){showSyncNotice('このタスクに依存関係はありません');return;}
+  if(allDeps.length===1){
+    // 1件のみ → 確認して即削除
+    const dep=allDeps[0];
+    if(!confirm(`依存関係を削除しますか？
+${dep.label}`))return;
+    _deleteDep(dep);
+    return;
+  }
+  // 複数 → サブメニュー表示
+  _showDepDeleteMenu(taskId, allDeps);
+}
+
+function _deleteDep(dep){
+  const t=tasks.find(t=>t.id===dep.taskId);
+  if(!t)return;
+  pushUndo(`依存関係削除「${dep.label}」`);
+  t.predecessorId=null;
+  recalcAllParents();
+  saveData();render();
+  showSyncNotice('🔗 依存関係を削除しました');
+}
+
+function _showDepDeleteMenu(taskId, deps){
+  closeCtxMenu();
+  const menu=document.createElement('div');
+  menu.className='ctx-menu';menu.id='ctxMenu';
+  menu.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;color:#888;font-weight:600">削除する依存関係を選択</div>`
+    +deps.map((dep,i)=>`<div class="ctx-item" onclick="_deleteDep(window._depDeleteList[${i}]);closeCtxMenu()" style="font-size:11px">
+      <span class="ctx-icon">🔗</span>${escH(dep.label)}
+    </div>`).join('<div class="ctx-sep"></div>')
+    +`<div class="ctx-sep"></div>
+     <div class="ctx-item" onclick="closeCtxMenu()" style="color:#888"><span class="ctx-icon">✕</span>キャンセル</div>`;
+  window._depDeleteList=deps;
+  document.body.appendChild(menu);
+  const mw=menu.offsetWidth,mh=menu.offsetHeight;
+  const x=Math.min(window.innerWidth/2, window.innerWidth-mw-4);
+  const y=Math.min(window.innerHeight/2, window.innerHeight-mh-4);
+  menu.style.left=x+'px';menu.style.top=y+'px';
+  setTimeout(()=>document.addEventListener('mousedown',closeCtxOnOutside,true),0);
+}
+window.startDepLink=startDepLink;
+window.finishDepLink=finishDepLink;
+window.removeDepLink=removeDepLink;
+window._deleteDep=_deleteDep;
+
 function showCtxMenu(e, taskId){
   e.preventDefault();e.stopPropagation();
   closeCtxMenu();
@@ -1933,6 +2041,8 @@ function showCtxMenu(e, taskId){
   const canAddChild=lv<6; // Lv6まで子タスク追加可能
   const menu=document.createElement('div');
   menu.className='ctx-menu';menu.id='ctxMenu';
+  // 依存関係の有無を確認
+  const hasDep=t.predecessorId!=null||tasks.some(s=>s.predecessorId===taskId);
   menu.innerHTML=`
     <div class="ctx-item" onclick="openSide('editTask',${taskId});closeCtxMenu()">
       <span class="ctx-icon">✏️</span>Edit Task
@@ -1947,6 +2057,13 @@ function showCtxMenu(e, taskId){
       <span class="ctx-icon">⬆️</span>Insert Before
     </div>
     <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="startDepLink(${taskId});closeCtxMenu()" style="color:#533AB7;font-weight:600">
+      <span class="ctx-icon">🔗</span>依存関係の起点に設定
+    </div>
+    ${hasDep?`
+    <div class="ctx-item" onclick="removeDepLink(${taskId});closeCtxMenu()" style="color:#A32D2D">
+      <span class="ctx-icon">✂️</span>依存関係を削除
+    </div>`:''}
     <div class="ctx-sep"></div>
     <div class="ctx-item" onclick="toggleTaskDone(${taskId});closeCtxMenu()" style="color:${t.done?'#888':'#1D9E75'}">
       <span class="ctx-icon">${t.done?'↩️':'✅'}</span>${t.done?'完了を取り消す':'✅ 完了にする'}
@@ -2314,7 +2431,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v66.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v67.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -3543,6 +3660,8 @@ window.forceUnlock = forceUnlock;
 
 <!-- ── ジャンプトースト ── -->
 <div id="rptJumpToast"></div>
+<!-- ── 依存関係リンクトースト ── -->
+<div id="depLinkToast" style="display:none"></div>
 
 <!-- ── CSV Import Modal ── -->
 <div class="imp-overlay" id="impOverlay" style="display:none" onclick="if(event.target===this)closeImportModal()">
