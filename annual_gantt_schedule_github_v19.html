@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v59</title>
+<title>年度Schedule・ガントチャート v60</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -1170,7 +1170,8 @@ function render(){
     lb+=`<td style="width:52px;text-align:left;padding-left:4px;height:${rowH2}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:left;cursor:pointer;background:transparent;border:none;width:100%"></td>`;
     lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:34px;position:relative;max-height:34px"><div style="display:flex;align-items:center;height:34px;overflow:hidden;max-height:34px">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;position:relative;height:34px;max-height:34px"><div style="display:flex;align-items:center;height:22px"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`;
     lb+=`<td style="width:86px;height:${rowH2}px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`;
-    lb+=`<td style="width:46px;text-align:center;height:${rowH2}px"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" style="text-align:center;width:40px"></td>`;
+    const _hasChild=hasChildren(task.id);
+    lb+=`<td style="width:46px;text-align:center;height:${rowH2}px"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" ${_hasChild?'readonly title="子タスクから自動計算"':''} style="text-align:center;width:40px;${_hasChild?'background:#f0f4f8;color:#888;cursor:default;':''}"></td>`;
     lb+=`<td style="width:84px;height:${rowH2}px"><button class="date-btn" onclick="openCal(event,${task.id},'start')">${task.start||'Select'}</button></td>`;
     lb+=`<td style="width:84px;height:${rowH2}px"><button class="date-btn" onclick="openCal(event,${task.id},'end')">${task.end||'Select'}</button></td>`;
     lb+=`</tr>`;
@@ -1352,6 +1353,32 @@ function jumpToToday(){
 }
 
 // FIX: Task Name専用の更新関数（UNDOを壊さないようrendar()を呼ばない）
+// ── 親タスクの日数・開始・終了を子タスクから自動計算（祖先まで再帰）──
+function recalcParent(taskId){
+  const t=tasks.find(t=>t.id===taskId);
+  if(!t)return;
+  const parentId=t.parentId;
+  if(parentId==null)return; // Lv1は親なし
+  const parent=tasks.find(p=>p.id===parentId);
+  if(!parent)return;
+  const children=tasks.filter(c=>c.parentId===parentId&&c.start&&c.end);
+  if(!children.length)return; // 子がなければスキップ
+  // start: 子の最小開始日
+  const minStart=children.reduce((m,c)=>c.start<m?c.start:m, children[0].start);
+  // end: 子の最大終了日
+  const maxEnd=children.reduce((m,c)=>c.end>m?c.end:m, children[0].end);
+  // days: 子のdays合計
+  const totalDays=children.reduce((s,c)=>s+(+c.days||0),0);
+  parent.start=minStart;
+  parent.end=maxEnd;
+  parent.days=Math.max(1,totalDays);
+  // 祖先へ再帰
+  recalcParent(parentId);
+}
+
+// ── 子を持つタスクか判定 ──
+function hasChildren(id){return tasks.some(c=>c.parentId===id);}
+
 function uTaskTitle(id, val){
   if(!_isEditing)return;
   const t=tasks.find(t=>t.id===id);if(!t)return;
@@ -1371,8 +1398,11 @@ function uTask(id,field,val){
 }
 function uDays(id,val){
   if(!_isEditing)return;
-  const n=Math.max(1,+val||1),t=tasks.find(t=>t.id===id);if(!t)return;
+  const t=tasks.find(t=>t.id===id);if(!t)return;
+  if(hasChildren(id))return; // 子がいる場合は手動変更不可
+  const n=Math.max(1,+val||1);
   t.days=n;if(t.start){const h=hs(currentYear);t.end=fmt(addWD(parseD(t.start),n,h));propagateDeps(id);}
+  recalcParent(id);
   saveData();render();
 }
 function deleteTask(id){
@@ -1392,9 +1422,21 @@ function deleteTask(id){
   }
   const toDelete=new Set(collectIds(id));
   tasks.forEach(t=>{if(toDelete.has(t.predecessorId))t.predecessorId=null});
+  // 削除前に親IDを取得
+  const _deletedParentId=tasks.find(t=>t.id===id)?.parentId??null;
   tasks=tasks.filter(t=>!toDelete.has(t.id));
   if(toDelete.has(editId)){editId=null;closeSide()}
-  reNumberWbs();saveData();render();
+  reNumberWbs();
+  // 親の再計算（削除後に子がなくなっても親は通常入力に戻る）
+  if(_deletedParentId!=null){
+    const _dp=tasks.find(t=>t.id===_deletedParentId);
+    if(_dp){
+      const _dpc=tasks.filter(c=>c.parentId===_deletedParentId&&c.start&&c.end);
+      if(_dpc.length>0)recalcParent(id); // 子がまだいれば再計算
+      // 子がゼロになった場合は親のdays/start/endはそのまま保持し手動入力可能に戻る
+    }
+  }
+  saveData();render();
 }
 
 // ── SIDE PANEL ──
@@ -1778,7 +1820,9 @@ function saveNewTask(){
     const beforeIdx=tasks.findIndex(t=>t.id===beforeId);
     if(beforeIdx>=0)tasks.splice(beforeIdx,0,newTask);else tasks.push(newTask);
   }
-  reNumberWbs();saveData();closeSide();render();
+  reNumberWbs();
+  if(newTask.parentId!=null)recalcParent(newTask.id);
+  saveData();closeSide();render();
 }
 // ── マイルストーントグル ──
 window.onMsToggle=function(){
@@ -2077,7 +2121,7 @@ function saveEditTask(id){
   const predSel=document.getElementById('s_pred');
   const predId=predSel?.value?parseInt(predSel.value):null;
   if(!predId||!hasCircle(id,predId)){t.predecessorId=predId??null;}
-  reNumberWbs();propagateDeps(id);
+  reNumberWbs();propagateDeps(id);recalcParent(id);
   saveData();render();
 }
 function closeSide(){editId=null;sideMode=null;document.getElementById('sidePanel').classList.remove('open');render()}
@@ -2165,6 +2209,7 @@ function showCal(anchor,initD,taskId,mode){
       el.onclick=e2=>{e2.stopPropagation();const ds=el.dataset.ds;const t=tasks.find(t=>t.id===taskId);if(!t)return;const h2=hs(currentYear);
         if(mode==='start'){t.start=ds;if(t.days)t.end=fmt(addWD(parseD(ds),t.days,h2));propagateDeps(taskId);}
         else{t.end=ds;const s=parseD(t.start);const en=parseD(ds);if(s&&en&&en>=s){t.days=countWD(s,en,h2);}propagateDeps(taskId);}
+        recalcParent(taskId);
         popup.remove();saveData();render();}
     });
   }
@@ -2243,7 +2288,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v59.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v60.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
