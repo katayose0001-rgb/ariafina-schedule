@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v58</title>
+<title>年度Schedule・ガントチャート v59</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -314,10 +314,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .cp-hex{flex:1;height:28px;padding:0 6px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;background:var(--color-background-primary);color:var(--color-text-primary);font-family:monospace}
 
 /* ── UNDO バー ── */
-.undo-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:9px 16px;border-radius:20px;font-size:12px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:9999}
-.undo-bar-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 10px;border-radius:12px;cursor:pointer;font-size:11px}
-.undo-bar-btn:hover{background:rgba(255,255,255,.35)}
-.undo-bar-btn:disabled{opacity:.35;cursor:default}
+
 
 /* ── 全Deleteボタン ── */
 .btn.danger{background:#FDF0EF;color:#A32D2D;border-color:#E74C3C}.btn.danger:hover{background:#FADDDA}
@@ -479,19 +476,6 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 
       <div class="tb-sep"></div>
 
-      <!-- 翻訳 -->
-      <span class="tb-group-label">Translate</span>
-      <div class="tg" style="gap:4px">
-        <button class="btn" id="bulkTranslateBtn" onclick="bulkTranslateAll()"
-          style="color:#185FA5;border-color:#378ADD;font-weight:600"
-          title="英語タイトル未入力のタスクをAIで一括翻訳">🌐 Bulk Translate</button>
-        <button class="btn" onclick="promptApiKey()"
-          style="color:#666;font-size:10px"
-          title="Anthropic APIキーを設定">🔑 API Key</button>
-      </div>
-
-      <div class="tb-sep"></div>
-
       <!-- データ操作 -->
       <span class="tb-group-label">Data</span>
       <div class="tg" style="gap:4px">
@@ -500,6 +484,15 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
         <button class="btn" onclick="openImportModal()"
           style="color:#1D9E75;border-color:#1D9E75;font-weight:600"
           title="CSVファイルからタスクを一括インポート">📥 Import CSV</button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <!-- UNDO -->
+      <div class="tg" style="gap:6px;align-items:center">
+        <span id="undoLabel" style="font-size:11px;color:#888;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis">No History</span>
+        <button class="btn" id="undoBtn" onclick="doUndo()" disabled
+          style="color:#533AB7;border-color:#7B5DC4;white-space:nowrap">↩ Undo</button>
       </div>
 
     </div>
@@ -537,11 +530,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
     </div>
   </div>
 </div>
-<!-- UNDO バー -->
-<div class="undo-bar" id="undoBar">
-  <span id="undoLabel">No History</span>
-  <button class="undo-bar-btn" id="undoBtn" onclick="doUndo()" disabled>↩ Undo</button>
-</div>
+
 <!-- 同期通知 -->
 <div class="sync-notice" id="syncNotice">🔄 Data Updated</div>
 <script>
@@ -2254,7 +2243,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v58.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v59.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
