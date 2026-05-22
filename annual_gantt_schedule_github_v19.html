@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v51</title>
+<title>年度Schedule・ガントチャート v52</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -324,7 +324,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 
 /* ── Report Modal ── */
 .rpt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;align-items:center;justify-content:center}
-.rpt-modal{background:#fff;border-radius:14px;box-shadow:0 12px 60px rgba(0,0,0,.28);width:min(900px,96vw);max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.rpt-modal{background:#fff;border-radius:14px;box-shadow:0 12px 60px rgba(0,0,0,.28);width:min(1100px,98vw);max-height:98vh;display:flex;flex-direction:column;overflow:hidden}
 .rpt-head{padding:20px 28px 16px;border-bottom:1px solid #e0e4ea;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0E4F8A 0%,#185FA5 50%,#1D9E75 100%);color:#fff}
 .rpt-head h3{font-size:17px;font-weight:700;letter-spacing:.3px}
 .rpt-head .sub{font-size:11px;opacity:.8;margin-top:3px}
@@ -2218,7 +2218,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v51.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v52.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -2485,27 +2485,16 @@ function openReportModal(){
   const opts={year:'numeric',month:'long',day:'numeric'};
   document.getElementById('rptDateRange').textContent=
     new Date(t0).toLocaleDateString('ja-JP',opts)+' 時点';
-  document.getElementById('rptPreview').innerHTML='';
   document.getElementById('rptCopyBtn').style.display='none';
   document.getElementById('rptDlBtn').style.display='none';
   document.getElementById('rptPngBtn').style.display='none';
   document.getElementById('rptXlsBtn').style.display='none';
+  document.getElementById('rptRefreshBtn').style.display='none';
   document.getElementById('rptStatus').textContent='';
   document.getElementById('rptHint').style.display='';
-  // ヘッダーを日本語にリセット（null安全）
-  const _sh={1:'📈 KPIサマリー',2:'🥧 完了率',3:'📊 担当者別進捗',4:'👥 担当者別タスク（進行中・近日着手）',5:'📝 自動分析（催促・振り返りアドバイス・担当者クローズアップ）'};
-  Object.entries(_sh).forEach(([k,v])=>{const el=document.getElementById('rptSecHead'+k);if(el)el.textContent=v;});
-  const _rh=document.querySelector('.rpt-head h3');if(_rh)_rh.textContent='📊 ARIAFINAプロジェクト進捗レポート';
-  const _b1=document.getElementById('rptGenBtn');if(_b1)_b1.textContent='📊 レポート生成（日本語）';
-  const _b2=document.getElementById('rptGenBtnEn');if(_b2)_b2.textContent='📊 Generate Report (EN)';
-  const _ai=document.getElementById('rptAISection');
-  if(_ai)_ai.innerHTML='<div style="color:#aaa;font-size:12px;padding:8px">「レポート生成」ボタンを押すとスケジュールデータを自動分析してアドバイスを表示します</div>';
-  const _pb=document.getElementById('rptProgressBars');
-  if(_pb)_pb.innerHTML='<div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div>';
-  const _ac=document.getElementById('rptAssigneeCards');
-  if(_ac)_ac.innerHTML='<div style="color:#aaa;font-size:12px">レポート生成後に表示</div>';
-  // サマリーKPIを即時表示
-  renderReportKPI();
+  const _b1=document.getElementById('rptGenBtn');if(_b1)_b1.textContent='📊 レポート生成';
+  // 開くたびに最新データで自動生成
+  generateReport('ja');
 }
 function closeReportModal(){document.getElementById('rptOverlay').style.display='none';}
 
@@ -2583,242 +2572,256 @@ function renderDonutChart(done,inprog,todo){
     </div>`;
 }
 
-// ── レポート生成（APIキー不要・ロジックベース）lang='ja'|'en' ──
+// ── レポート生成（新設計 v52）──
 function generateReport(lang){
   if(!lang)lang='ja';
-  const isEn=(lang==='en');
-  const btn=document.getElementById(isEn?'rptGenBtnEn':'rptGenBtn');
-  const btnOther=document.getElementById(isEn?'rptGenBtn':'rptGenBtnEn');
+  const d=buildReportData();
+  const btn=document.getElementById('rptGenBtn');
   const status=document.getElementById('rptStatus');
   document.getElementById('rptHint').style.display='none';
-  const d=buildReportData();
+
   if(!d.allT.length){
-    document.getElementById('rptAISection').innerHTML='<div style="padding:20px;text-align:center;color:#aaa">'+(isEn?'No task data found.':'タスクデータがありません')+'</div>';
+    ['rptOverdueSection','rptUpcomingSection','rptReviewSection','rptAssigneeSection','rptTaskSection']
+      .forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<div style="color:#aaa;font-size:12px;padding:8px">タスクデータがありません</div>';});
     return;
   }
-  btn.disabled=true;
-  btn.textContent=isEn?'⏳ Generating...':'⏳ 生成中...';
-  if(btnOther)btnOther.disabled=true;
-  // グラフ・カード描画
-  renderProgressBars(d.byAssignee,isEn);
-  renderAssigneeCards(d.byAssignee,isEn);
+
+  if(btn){btn.disabled=true;btn.textContent='⏳ 生成中...';}
   document.getElementById('rptCopyBtn').style.display='none';
   document.getElementById('rptDlBtn').style.display='none';
   document.getElementById('rptPngBtn').style.display='none';
   document.getElementById('rptXlsBtn').style.display='none';
+  document.getElementById('rptRefreshBtn').style.display='none';
 
-  const L={
-    noUpcoming: isEn?'No tasks starting within 2 weeks.':'2週間以内に新たに着手するタスクはありません。',
-    urgent:'URGENT', thisWeek:'This Week', in2w:'Within 2W',
-    daysLater: n=>isEn?`in ${n} day${n>1?'s':''}:`:`${n}日後：`,
-    startOn: isEn?'Start':'着手',
-    noInProg: isEn?'No tasks currently in progress.':'現在進行中のタスクはありません。',
-    inProgress: isEn?'In Progress':'進行中',
-    secHead1: isEn?'⏰ Upcoming Tasks (2 weeks) — Action Required':'⏰ 2週間以内の着手タスク — 担当者への催促',
-    secHead2: isEn?'💡 Last Month Review — Advisory':'💡 過去1ヶ月の業務 — 振り返りと進め方アドバイス',
-    secHead3: isEn?'📋 In-Progress Tasks — Assignee Closeup':'📋 進捗中タスク — 担当者別クローズアップ',
-    tblWbs:'WBS', tblTask: isEn?'Task':'タスク名',
-    tblAssignee: isEn?'Assignee':'担当',
-    tblStart: isEn?'Start':'開始',
-    tblEnd: isEn?'End':'終了',
-    tblStatus: isEn?'Status':'状態',
-    statusDone: isEn?'Done':'完了',
-    statusOverdue: isEn?'Overdue ⚠️':'未完了 ⚠️',
-    statusInProg: isEn?'In Progress':'進行中',
-    statusTodo: isEn?'Pending':'未着手',
-    noAdvice: isEn?'Operations over the past month are on track. Keep up the current pace.':'過去1ヶ月の業務は概ね順調です。引き続き現状のペースを維持してください。',
-    past1mTitle: isEn?'▸ Tasks Started in the Last Month':'▸ 過去1ヶ月の着手タスク一覧',
-    noPast: isEn?'No tasks started in the last month.':'過去1ヶ月に着手したタスクはありません。',
-    inProgCount: n=>isEn?`${n} In Progress`:`${n}件 進行中`,
-  };
+  const h=hs(currentYear);
+  const cardColors=['#185FA5','#1D9E75','#BA7517','#533AB7','#A32D2D','#0E7A5C','#639922','#8E44AD'];
 
-  // ── セクション1：2週間以内の催促リスト ──
-  let sec1Html='';
-  if(d.upcoming2w.length===0){
-    sec1Html=`<div class="rpt-alert-card green">${L.noUpcoming}</div>`;
+  // ── Section A: 未完了タスク ──
+  const overdueT=d.allT.filter(t=>!t.done&&t.end<d.today).sort((a,b)=>a.end.localeCompare(b.end));
+  let secA='';
+  if(!overdueT.length){
+    secA='<div class="rpt-alert-card" style="border-left-color:#1D9E75;background:#F0FBF7">✅ 現在、未完了・遅延のタスクはありません。</div>';
   }else{
-    sec1Html='<ul style="padding-left:0;list-style:none;margin:0">';
-    d.upcoming2w.sort((a,b)=>a.start.localeCompare(b.start)).forEach(t=>{
-      const diffMs=parseD(t.start)-t0;
-      const diffDays=Math.ceil(diffMs/(1000*60*60*24));
-      const urgColor=diffDays<=3?'#E74C3C':diffDays<=7?'#EF9F27':'#1D9E75';
-      const urgLabel=diffDays<=3?L.urgent:diffDays<=7?L.thisWeek:L.in2w;
-      const asgn=t.assignee||(isEn?'Unassigned':'担当者未定');
-      const taskName=isEn?(t.titleEn||t.title):t.title;
-      const taskSub=isEn?'':(t.titleEn?`<span style="font-size:10px;color:#888;font-weight:400;margin-left:5px">${escH(t.titleEn)}</span>`:'');
-      sec1Html+=`<li style="display:flex;align-items:flex-start;gap:10px;margin-bottom:9px;padding:9px 12px;background:#fafcff;border:1px solid #e8edf5;border-radius:8px;border-left:4px solid ${urgColor}">
-        <span style="font-size:10px;font-weight:700;color:#fff;background:${urgColor};border-radius:4px;padding:2px 7px;white-space:nowrap;flex-shrink:0;margin-top:1px">${urgLabel}</span>
+    secA='<div style="font-size:11px;color:#A32D2D;font-weight:600;margin-bottom:8px">⚠️ '+overdueT.length+'件のタスクが未完了です。早急に担当者へ確認してください。</div>';
+    secA+='<ul style="padding-left:0;list-style:none;margin:0">';
+    overdueT.forEach(t=>{
+      const overDays=Math.ceil((t0-parseD(t.end))/(1000*60*60*24));
+      const asgn=t.assignee||'担当者未定';
+      secA+=`<li style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;padding:9px 12px;background:#fef9f9;border:1px solid #f5c6c6;border-radius:8px;border-left:4px solid #E74C3C">
+        <div style="flex-shrink:0;background:#E74C3C;color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;margin-top:1px;white-space:nowrap">${overDays}日超過</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:2px">${escH(taskName)}${taskSub}</div>
-          <div style="font-size:11px;color:#555"><strong style="color:#185FA5">${escH(asgn)}</strong> / ${L.startOn}：${t.start}（${L.daysLater(diffDays)}）〜${t.end} / ${t.days}d</div>
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:2px">${escH(t.title)}</div>
+          <div style="font-size:11px;color:#555">担当：<strong style="color:#A32D2D">${escH(asgn)}</strong> ／ 期限：${t.end} ／ WBS：${t.wbs}</div>
+        </div>
+      </li>`;
+    });
+    secA+='</ul>';
+  }
+  const elA=document.getElementById('rptOverdueSection');if(elA)elA.innerHTML=secA;
+
+  // ── Section B: 着手前タスク（2週間以内）──
+  const upT=d.upcoming2w.sort((a,b)=>a.start.localeCompare(b.start));
+  let secB='';
+  if(!upT.length){
+    secB='<div class="rpt-alert-card" style="border-left-color:#1D9E75;background:#F0FBF7">✅ 2週間以内に着手予定のタスクはありません。</div>';
+  }else{
+    secB='<div style="font-size:11px;color:#BA7517;font-weight:600;margin-bottom:8px">📌 '+upT.length+'件のタスクが近日スタート予定です。担当者へ事前に共有してください。</div>';
+    secB+='<ul style="padding-left:0;list-style:none;margin:0">';
+    upT.forEach(t=>{
+      const diffDays=Math.ceil((parseD(t.start)-t0)/(1000*60*60*24));
+      const urgColor=diffDays<=3?'#E74C3C':diffDays<=7?'#EF9F27':'#1D9E75';
+      const urgLabel=diffDays<=3?'3日以内':diffDays<=7?'今週中':'2週間以内';
+      const asgn=t.assignee||'担当者未定';
+      secB+=`<li style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;padding:9px 12px;background:#fffbf0;border:1px solid #fde3a0;border-radius:8px;border-left:4px solid ${urgColor}">
+        <div style="flex-shrink:0;background:${urgColor};color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;margin-top:1px;white-space:nowrap">${urgLabel}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:2px">${escH(t.title)}</div>
+          <div style="font-size:11px;color:#555">担当：<strong style="color:#185FA5">${escH(asgn)}</strong> ／ 開始：${t.start}（${diffDays}日後）〜${t.end} ／ ${t.days}日間</div>
         </div>
         <span style="font-size:10px;color:#aaa;white-space:nowrap;flex-shrink:0">${t.wbs}</span>
       </li>`;
     });
-    sec1Html+='</ul>';
+    secB+='</ul>';
   }
+  const elB=document.getElementById('rptUpcomingSection');if(elB)elB.innerHTML=secB;
 
-  // ── セクション2：過去1ヶ月の振り返り・アドバイス ──
-  const h=hs(currentYear);
-  const overdue=d.inProg.filter(t=>{
+  // ── Section C: 先週の振り返り・アドバイス ──
+  const ago7=getRptDate(-7);
+  const lastWeekT=d.allT.filter(t=>t.start>=ago7&&t.start<d.today||t.end>=ago7&&t.end<d.today);
+  const lastWeekDone=lastWeekT.filter(t=>t.done===true||(t.end<d.today&&t.done!==false));
+  const overdueProg=d.inProg.filter(t=>{
     if(!t.start||!t.end)return false;
     const elapsed=countWD(parseD(t.start),t0,h);
     const total=countWD(parseD(t.start),parseD(t.end),h);
     return total>0&&(elapsed/total)>1.1;
   });
-  const longTasks=d.past1m.filter(t=>t.days>=10);
-  const shortTasks=d.past1m.filter(t=>t.days<=2);
-  const noAssignee=d.past1m.filter(t=>!t.assignee);
-  let adviceItems=[];
-  if(d.past1m.length>0){
-    const doneCount=d.past1m.filter(t=>t.end<d.today).length;
-    adviceItems.push({type:'green',icon:'✅',text:isEn
-      ?`<strong>${d.past1m.length} tasks</strong> were started in the last month, of which <strong>${doneCount}</strong> are already completed.`
-      :`過去1ヶ月で<strong>${d.past1m.length}件</strong>のタスクに着手しました。うち<strong>${doneCount}件</strong>が完了済みです。`});
+  const longT=lastWeekT.filter(t=>t.days>=10);
+  const noAssT=lastWeekT.filter(t=>!t.assignee);
+  let advItems=[];
+  if(lastWeekT.length>0){
+    advItems.push({type:'green',icon:'✅',text:`先週（7日間）で<strong>${lastWeekT.length}件</strong>のタスクが動きました。うち<strong>${lastWeekDone.length}件</strong>が完了済みです。`});
+  }else{
+    advItems.push({type:'warn',icon:'📭',text:'先週着手・完了したタスクの記録がありません。スケジュールを最新状態に更新してください。'});
   }
-  if(longTasks.length>0){
-    adviceItems.push({type:'warn',icon:'📌',text:isEn
-      ?`<strong>${longTasks.length}</strong> long-term tasks (10+ days) detected (e.g. ${longTasks.slice(0,2).map(t=>escH(t.titleEn||t.title)).join(', ')}). Consider adding intermediate milestones.`
-      :`10日以上の長期タスクが<strong>${longTasks.length}件</strong>あります（${longTasks.slice(0,2).map(t=>escH(t.title)).join('、')}など）。中間マイルストーンを設けて進捗を管理することを推奨します。`});
+  if(overdueProg.length>0){
+    advItems.push({type:'red',icon:'⚠️',text:`進行中タスクのうち<strong>${overdueProg.length}件</strong>が予定工数を超過しています（${overdueProg.slice(0,2).map(t=>escH(t.title)).join('、')}など）。担当者と原因を確認し、スケジュール見直しを検討してください。`});
   }
-  if(overdue.length>0){
-    adviceItems.push({type:'red',icon:'⚠️',text:isEn
-      ?`<strong>${overdue.length}</strong> in-progress task(s) appear to be behind schedule (${overdue.slice(0,2).map(t=>escH(t.titleEn||t.title)).join(', ')}). Please review and update the schedule.`
-      :`進行中タスクのうち<strong>${overdue.length}件</strong>が予定工数を超過しています（${overdue.slice(0,2).map(t=>escH(t.title)).join('、')}）。担当者と原因を確認し、スケジュール見直しを検討してください。`});
+  if(longT.length>0){
+    advItems.push({type:'warn',icon:'📌',text:`10日以上の長期タスクが<strong>${longT.length}件</strong>あります（${longT.slice(0,2).map(t=>escH(t.title)).join('、')}など）。中間マイルストーンを設けて進捗を管理することを推奨します。`});
   }
-  if(shortTasks.length>=3){
-    adviceItems.push({type:'green',icon:'💡',text:isEn
-      ?`<strong>${shortTasks.length}</strong> short tasks (1–2 days) were identified. Batching similar tasks could reduce context-switching overhead.`
-      :`2日以内の短期タスクが<strong>${shortTasks.length}件</strong>あります。類似タスクをまとめてバッチ処理することで、切り替えコストの削減が見込めます。`});
+  if(noAssT.length>0){
+    advItems.push({type:'warn',icon:'👤',text:`担当者未設定のタスクが<strong>${noAssT.length}件</strong>あります。責任の所在を明確にするため、早急に担当者を割り当ててください。`});
   }
-  if(noAssignee.length>0){
-    adviceItems.push({type:'warn',icon:'👤',text:isEn
-      ?`<strong>${noAssignee.length}</strong> task(s) have no assignee. Please assign owners to clarify accountability.`
-      :`担当者未設定のタスクが<strong>${noAssignee.length}件</strong>あります。責任の所在を明確にするため、早急に担当者を割り当ててください。`});
-  }
-  if(adviceItems.length===0){
-    adviceItems.push({type:'green',icon:'✅',text:L.noAdvice});
+  if(d.inProg.length>0&&overdueT.length===0){
+    advItems.push({type:'green',icon:'💡',text:`現在<strong>${d.inProg.length}件</strong>が進行中で、遅延タスクはありません。引き続き現状のペースを維持してください。`});
   }
   const typeStyle={red:'border-left-color:#E74C3C;background:#FEF9F9',warn:'border-left-color:#EF9F27;background:#FFFBF0',green:'border-left-color:#1D9E75;background:#F0FBF7'};
-  let sec2Html=adviceItems.map(a=>`<div class="rpt-alert-card" style="${typeStyle[a.type]||typeStyle.green}"><span style="margin-right:5px">${a.icon}</span>${a.text}</div>`).join('');
-  if(d.past1m.length){
-    sec2Html+=`<div style="margin-top:10px;font-size:11px;font-weight:700;color:#185FA5;margin-bottom:5px">${L.past1mTitle}</div>
-    <table style="width:100%;border-collapse:collapse;font-size:11px">
-      <thead><tr>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">${L.tblWbs}</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">${L.tblTask}</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600">${L.tblAssignee}</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">${L.tblStart}</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">${L.tblEnd}</th>
-        <th style="background:#185FA5;color:#fff;padding:6px 8px;text-align:center;font-weight:600">${L.tblStatus}</th>
-      </tr></thead><tbody>`;
-    d.past1m.sort((a,b)=>a.start.localeCompare(b.start)).forEach((t,i)=>{
-      const st=taskStatus(t);
-      const stLabel=st==='done'?L.statusDone:st==='overdue'?L.statusOverdue:st==='in-progress'?L.statusInProg:L.statusTodo;
-      const stColor=st==='done'?'#1D9E75':st==='overdue'?'#E74C3C':st==='in-progress'?'#378ADD':'#888';
-      const tName=isEn?(t.titleEn||t.title):t.title;
-      sec2Html+=`<tr style="${i%2===1?'background:#f7f9fc':''}">
-        <td style="padding:5px 8px;border:1px solid #e8edf5;color:#888">${escH(t.wbs)}</td>
-        <td style="padding:5px 8px;border:1px solid #e8edf5">${escH(tName)}</td>
-        <td style="padding:5px 8px;border:1px solid #e8edf5">${escH(t.assignee||'—')}</td>
-        <td style="padding:5px 8px;border:1px solid #e8edf5;text-align:center">${t.start}</td>
-        <td style="padding:5px 8px;border:1px solid #e8edf5;text-align:center">${t.end}</td>
-        <td style="padding:5px 8px;border:1px solid #e8edf5;text-align:center;font-weight:600;color:${stColor}">${stLabel}</td>
-      </tr>`;
-    });
-    sec2Html+='</tbody></table>';
-  }else{
-    sec2Html+=`<div style="color:#aaa;font-size:12px;margin-top:8px">${L.noPast}</div>`;
-  }
+  let secC=advItems.map(a=>`<div class="rpt-alert-card" style="${typeStyle[a.type]}"><span style="margin-right:6px">${a.icon}</span>${a.text}</div>`).join('');
+  const elC=document.getElementById('rptReviewSection');if(elC)elC.innerHTML=secC;
 
-  // ── セクション3：進捗中タスク 担当者別クローズアップ ──
-  let sec3Html='';
-  if(d.inProg.length===0){
-    sec3Html=`<div class="rpt-alert-card green">${L.noInProg}</div>`;
-  }else{
-    const byAsgn={};
-    d.inProg.forEach(t=>{const a=t.assignee||(isEn?'Unassigned':'担当者未設定');if(!byAsgn[a])byAsgn[a]=[];byAsgn[a].push(t);});
-    const cardColors=['#185FA5','#1D9E75','#BA7517','#533AB7','#A32D2D','#0E7A5C','#639922','#8E44AD'];
-    let ci=0;
-    sec3Html='<div style="display:flex;flex-direction:column;gap:10px">';
-    Object.entries(byAsgn).forEach(([asgn,tlist])=>{
-      const bg=cardColors[ci++%cardColors.length];
-      const rows=tlist.map(t=>{
-        const pct=getProgressPct(t);
-        const barColor=pct>=80?'#1D9E75':pct>=40?'#378ADD':'#EF9F27';
-        const tName=isEn?(t.titleEn||t.title):t.title;
-        const tSub=isEn?(t.title!==t.titleEn&&t.titleEn?'':`<span style="font-size:9px;color:#999;margin-left:4px">${escH(t.title)}</span>`):(t.titleEn?`<span style="font-size:9px;color:#999;margin-left:4px">${escH(t.titleEn)}</span>`:'');
-        return `<div style="margin-bottom:7px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-            <span style="font-size:11px;color:#333;font-weight:500">${escH(tName)}${tSub}</span>
-            <span style="font-size:10px;color:#888;white-space:nowrap;margin-left:8px">${t.start}〜${t.end}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:7px">
-            <div style="flex:1;height:8px;background:#e8edf5;border-radius:4px;overflow:hidden">
-              <div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px"></div>
-            </div>
-            <span style="font-size:10px;font-weight:700;color:${barColor};width:32px;text-align:right">${pct}%</span>
-          </div>
-        </div>`;
-      }).join('');
-      sec3Html+=`<div style="border:1px solid #e0e8f5;border-radius:9px;overflow:hidden">
-        <div style="background:${bg};color:#fff;padding:9px 14px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between">
-          <span>${escH(asgn)}</span>
-          <span style="background:rgba(255,255,255,.22);border-radius:10px;padding:1px 8px;font-size:10px">${L.inProgCount(tlist.length)}</span>
-        </div>
-        <div style="padding:12px 14px;background:#fff">${rows}</div>
+  // ── Section D: 担当者別 ──
+  // D-1: 近日タスク（担当者ごと）
+  // D-2: 進捗率＋タスク名
+  // D-3: 完了・未完了・進行中クローズアップ
+  const allAssignees=[...new Set(d.allT.map(t=>t.assignee||'未設定'))].sort();
+  let secD='';
+  allAssignees.forEach((asgn,ai)=>{
+    const bg=cardColors[ai%cardColors.length];
+    const myTasks=d.allT.filter(t=>(t.assignee||'未設定')===asgn);
+    const myDone=myTasks.filter(t=>t.done===true||(t.end<d.today&&t.done!==false));
+    const myOverdue=myTasks.filter(t=>!t.done&&t.end<d.today);
+    const myInProg=myTasks.filter(t=>!t.done&&t.start<=d.today&&t.end>=d.today);
+    const myUpcoming=myTasks.filter(t=>t.start>d.today&&t.start<=d.in2w);
+    const total=myTasks.length;
+    const pct=total>0?Math.round(myDone.length/total*100):0;
+    const barColor=pct>=80?'#1D9E75':pct>=40?'#378ADD':'#EF9F27';
+
+    // 近日タスク行
+    const upRows=myUpcoming.length?myUpcoming.sort((a,b)=>a.start.localeCompare(b.start)).slice(0,3).map(t=>{
+      const diff=Math.ceil((parseD(t.start)-t0)/(1000*60*60*24));
+      return `<div style="font-size:11px;padding:3px 0;border-bottom:1px dashed #f0f0f0;display:flex;gap:6px;align-items:center">
+        <span style="background:#FFF4E5;color:#BA7517;font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap">${diff}日後</span>
+        <span style="color:#333">${escH(t.title)}</span>
+        <span style="color:#aaa;font-size:10px;margin-left:auto;white-space:nowrap">${t.start}</span>
       </div>`;
-    });
-    sec3Html+='</div>';
-  }
+    }).join(''):'<div style="font-size:11px;color:#aaa">近日着手予定なし</div>';
 
-  const aiSection=document.getElementById('rptAISection');
-  const sHead=s=>`<div style="font-size:13px;font-weight:700;color:#185FA5;margin:0 0 10px;padding-left:8px;border-left:3px solid #378ADD">${s}</div>`;
-  aiSection.innerHTML=`
-    <div style="margin-bottom:18px">${sHead(L.secHead1)}${sec1Html}</div>
-    <div style="margin-bottom:18px">${sHead(L.secHead2)}${sec2Html}</div>
-    <div>${sHead(L.secHead3)}${sec3Html}</div>`;
+    // 完了・進行中・未完了バッジ
+    const statusRow=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+      <span style="background:#F0FBF7;color:#1D9E75;border:1px solid #1D9E75;font-size:10px;padding:2px 8px;border-radius:10px">✅ 完了 ${myDone.length}件</span>
+      <span style="background:#EAF3FB;color:#185FA5;border:1px solid #185FA5;font-size:10px;padding:2px 8px;border-radius:10px">🔵 進行中 ${myInProg.length}件</span>
+      <span style="background:#FEF9F9;color:#E74C3C;border:1px solid #E74C3C;font-size:10px;padding:2px 8px;border-radius:10px">⚠️ 未完了 ${myOverdue.length}件</span>
+    </div>`;
 
-  // ── セクションヘッダーを言語切替 ──
-  const SH={
-    1: isEn?'📈 KPI Summary':'📈 KPIサマリー',
-    2: isEn?'🥧 Completion Rate':'🥧 完了率',
-    3: isEn?'📊 Progress by Assignee':'📊 担当者別進捗',
-    4: isEn?'👥 Tasks by Assignee (In Progress / Upcoming)':'👥 担当者別タスク（進行中・近日着手）',
-    5: isEn?'📝 Auto Analysis (Reminders · Advice · Closeup)':'📝 自動分析（催促・振り返りアドバイス・担当者クローズアップ）',
-  };
-  Object.entries(SH).forEach(([k,v])=>{
-    const el=document.getElementById('rptSecHead'+k);
-    if(el)el.textContent=v;
+    // 進行中タスク詳細
+    const inProgRows=myInProg.length?myInProg.slice(0,4).map(t=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px dashed #f0f0f0;display:flex;gap:6px;align-items:center">
+      <span style="background:#EAF3FB;color:#185FA5;font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap">進行中</span>
+      <span style="color:#333">${escH(t.title)}</span>
+      <span style="color:#aaa;font-size:10px;margin-left:auto;white-space:nowrap">〜${t.end}</span>
+    </div>`).join(''):'';
+
+    const overdueRows=myOverdue.length?myOverdue.slice(0,3).map(t=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px dashed #fee;display:flex;gap:6px;align-items:center">
+      <span style="background:#FEF9F9;color:#E74C3C;font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap">未完了</span>
+      <span style="color:#333">${escH(t.title)}</span>
+      <span style="color:#E74C3C;font-size:10px;margin-left:auto;white-space:nowrap">期限${t.end}</span>
+    </div>`).join(''):'';
+
+    secD+=`<div style="border:1px solid #e0e8f5;border-radius:10px;overflow:hidden;margin-bottom:12px">
+      <!-- ヘッダー -->
+      <div style="background:${bg};color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:700">${escH(asgn)}</span>
+        <span style="font-size:11px;opacity:.85">全${total}件</span>
+      </div>
+      <div style="padding:12px 14px;background:#fff">
+        <!-- 進捗率バー＋タスク名 -->
+        <div style="margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <div style="flex:1;height:12px;background:#e8edf5;border-radius:6px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${barColor};border-radius:6px;transition:width .4s"></div>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:${barColor};width:34px;text-align:right">${pct}%</span>
+          </div>
+          ${statusRow}
+        </div>
+        <!-- 進行中・未完了タスク -->
+        ${inProgRows||overdueRows?`<div style="margin-bottom:10px">${inProgRows}${overdueRows}</div>`:''}
+        <!-- 近日着手 -->
+        <div style="font-size:11px;font-weight:600;color:#BA7517;margin-bottom:5px">📌 近日着手予定（2週間以内）</div>
+        ${upRows}
+      </div>
+    </div>`;
   });
-  const donutLabel=document.getElementById('rptDonutLabel');
-  if(donutLabel)donutLabel.textContent=isEn?'Done Rate':'完了率';
-  const rptHead=document.querySelector('.rpt-head h3');
-  if(rptHead)rptHead.textContent=isEn?'📊 ARIAFINA Project Progress Report':'📊 ARIAFINAプロジェクト進捗レポート';
-  const rptDateRange=document.getElementById('rptDateRange');
-  if(rptDateRange){
-    const opts=isEn?{year:'numeric',month:'long',day:'numeric'}:{year:'numeric',month:'long',day:'numeric'};
-    rptDateRange.textContent=isEn
-      ?`As of ${new Date(t0).toLocaleDateString('en-US',opts)}`
-      :`${new Date(t0).toLocaleDateString('ja-JP',opts)} 時点`;
-  }
-  const hint=document.getElementById('rptAIHint');
-  if(hint)hint.textContent=isEn
-    ?'Press "Generate Report (EN)" to auto-analyze schedule data.'
-    :'「レポート生成」ボタンを押すとスケジュールデータを自動分析してアドバイスを表示します';
+  const elD=document.getElementById('rptAssigneeSection');if(elD)elD.innerHTML=secD||'<div style="color:#aaa;font-size:12px">担当者データなし</div>';
 
-  window._reportHtml=buildFullReportHtml(d,isEn);
+  // ── Section E: タスク別（Lv2グループ）過去1ヶ月 ──
+  const lv2Tasks=tasks.filter(t=>(t.level||1)===2);
+  let secE='';
+  if(!d.past1m.length){
+    secE='<div style="color:#aaa;font-size:12px;padding:8px">過去1ヶ月に着手したタスクはありません。</div>';
+  }else{
+    // Lv2グループに振り分け
+    const grouped={};
+    d.past1m.forEach(t=>{
+      // WBSの先頭2桁（例:1.2.3→1.2）でグループ化
+      const wbsParts=(t.wbs||'').split('.');
+      let groupKey='その他';
+      if(wbsParts.length>=2){
+        const parentWbs=wbsParts.slice(0,2).join('.');
+        const parentTask=lv2Tasks.find(p=>p.wbs===parentWbs);
+        groupKey=parentTask?parentTask.title:parentWbs;
+      }else if(wbsParts.length===2){
+        groupKey=t.title;
+      }else if((t.level||1)<=2){
+        groupKey=t.title;
+      }
+      if(!grouped[groupKey])grouped[groupKey]=[];
+      grouped[groupKey].push(t);
+    });
+    Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b,'ja')).forEach(([grpName,grpTasks])=>{
+      const doneC=grpTasks.filter(t=>t.done===true||(t.end<d.today&&t.done!==false)).length;
+      const progC=grpTasks.filter(t=>!t.done&&t.start<=d.today&&t.end>=d.today).length;
+      const odC=grpTasks.filter(t=>!t.done&&t.end<d.today).length;
+      secE+=`<div style="border:1px solid #e8edf5;border-radius:9px;overflow:hidden;margin-bottom:10px">
+        <div style="background:linear-gradient(135deg,#533AB7,#7B5DC4);color:#fff;padding:8px 14px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between">
+          <span>${escH(grpName)}</span>
+          <div style="display:flex;gap:6px;font-size:10px;font-weight:400">
+            <span style="background:rgba(255,255,255,.2);padding:1px 7px;border-radius:8px">✅${doneC}</span>
+            <span style="background:rgba(255,255,255,.2);padding:1px 7px;border-radius:8px">🔵${progC}</span>
+            ${odC?`<span style="background:rgba(231,76,60,.5);padding:1px 7px;border-radius:8px">⚠️${odC}</span>`:''}
+          </div>
+        </div>
+        <div style="padding:8px 12px;background:#fff">`;
+      grpTasks.sort((a,b)=>a.start.localeCompare(b.start)).forEach(t=>{
+        const isDone=t.done===true||(t.end<d.today&&t.done!==false);
+        const isOd=!t.done&&t.end<d.today;
+        const isIP=!t.done&&t.start<=d.today&&t.end>=d.today;
+        const stLabel=isDone?'完了':isOd?'未完了':isIP?'進行中':'未着手';
+        const stBg=isDone?'#F0FBF7':isOd?'#FEF9F9':isIP?'#EAF3FB':'#f5f5f5';
+        const stColor=isDone?'#1D9E75':isOd?'#E74C3C':isIP?'#185FA5':'#888';
+        const asgn=t.assignee||'未定';
+        secE+=`<div style="display:flex;align-items:center;gap:7px;padding:5px 4px;border-bottom:1px dashed #f0f0f0">
+          <span style="background:${stBg};color:${stColor};font-size:9px;font-weight:600;padding:1px 6px;border-radius:8px;white-space:nowrap;border:1px solid ${stColor}40">${stLabel}</span>
+          <span style="font-size:11px;color:#1a1a1a;flex:1">${escH(t.title)}</span>
+          <span style="font-size:10px;color:#185FA5;white-space:nowrap">${escH(asgn)}</span>
+          <span style="font-size:10px;color:#aaa;white-space:nowrap">${t.start}〜${t.end}</span>
+        </div>`;
+      });
+      secE+='</div></div>';
+    });
+  }
+  const elE=document.getElementById('rptTaskSection');if(elE)elE.innerHTML=secE;
+
+  // ── 出力ボタン表示・ステータス更新 ──
+  window._reportHtml=buildFullReportHtml(d,false);
   document.getElementById('rptCopyBtn').style.display='';
   document.getElementById('rptDlBtn').style.display='';
   document.getElementById('rptPngBtn').style.display='';
   document.getElementById('rptXlsBtn').style.display='';
-  status.textContent=isEn
-    ?`✅ Done · ${d.today} · ${d.allT.length} tasks analyzed`
-    :`✅ 生成完了 · ${d.today} · ${d.allT.length}件分析`;
-  btn.disabled=false;
-  btn.textContent=isEn?'🔄 Regenerate (EN)':'🔄 再生成（日本語）';
-  if(btnOther)btnOther.disabled=false;
+  document.getElementById('rptRefreshBtn').style.display='';
+  if(status)status.textContent=`✅ 生成完了 · ${d.today} · ${d.allT.length}件分析`;
+  if(btn){btn.disabled=false;btn.textContent='📊 再生成';}
 }
+
 
 // ── renderProgressBars：英語対応 ──
 function renderProgressBars(byAssignee,isEn){
@@ -2879,21 +2882,20 @@ function renderAssigneeCards(byAssignee,isEn){
 
 // ── フルHTMLレポートを組み立て（ダウンロード用）──
 function buildFullReportHtml(d,isEn){
-  if(!isEn)isEn=false;
-  const kpiEl=document.getElementById('rptKPI');
-  const donutEl=document.getElementById('rptDonut');
-  const barsEl=document.getElementById('rptProgressBars');
-  const cardsEl=document.getElementById('rptAssigneeCards');
-  const aiEl=document.getElementById('rptAISection');
-  const title=isEn?`ARIAFINA Project Progress Report — ${d.today}`:`ARIAFINAプロジェクト進捗レポート — ${d.today}`;
   const h=s=>`<h3 style="font-size:13px;font-weight:700;color:#185FA5;margin:16px 0 8px;padding-left:8px;border-left:3px solid #378ADD">${s}</h3>`;
-  return `<div style="font-family:'Hiragino Sans','Yu Gothic UI',sans-serif;max-width:820px;margin:0 auto;color:#1a1a1a;font-size:12px">
+  const title=`ARIAFINAプロジェクト進捗レポート — ${d.today}`;
+  const elA=document.getElementById('rptOverdueSection');
+  const elB=document.getElementById('rptUpcomingSection');
+  const elC=document.getElementById('rptReviewSection');
+  const elD=document.getElementById('rptAssigneeSection');
+  const elE=document.getElementById('rptTaskSection');
+  return `<div style="font-family:'Hiragino Sans','Yu Gothic UI',sans-serif;max-width:860px;margin:0 auto;color:#1a1a1a;font-size:12px">
     <h2 style="font-size:18px;font-weight:700;color:#185FA5;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #EAF3FB">📊 ${title}</h2>
-    ${h(isEn?'KPI Summary':'KPIサマリー')}${kpiEl?.innerHTML||''}
-    ${h(isEn?'Completion Rate':'完了率')}${donutEl?.innerHTML||''}
-    ${h(isEn?'Progress by Assignee':'担当者別進捗')}${barsEl?.innerHTML||''}
-    ${h(isEn?'Tasks by Assignee':'担当者別タスク一覧')}${cardsEl?.innerHTML||''}
-    ${h(isEn?'Analysis & Advice':'分析・アドバイス')}${aiEl?.innerHTML||''}
+    ${h('⚠️ 未完了タスク — 担当者クローズアップ')}${elA?.innerHTML||''}
+    ${h('📌 着手前タスク — 近日スタート予定')}${elB?.innerHTML||''}
+    ${h('💡 先週の振り返りと進め方アドバイス')}${elC?.innerHTML||''}
+    ${h('👤 担当者別 — 近日タスク・進捗・クローズアップ')}${elD?.innerHTML||''}
+    ${h('📋 過去1ヶ月の着手タスク — Lv2グループ別')}${elE?.innerHTML||''}
   </div>`;
 }
 
@@ -2919,26 +2921,30 @@ function downloadReportHtml(){
 async function downloadReportPng(){
   const btn=document.getElementById('rptPngBtn');
   if(!btn)return;
-  const modal=document.querySelector('.rpt-modal');
-  if(!modal){alert('レポートが表示されていません');return;}
+  const rptBody=document.querySelector('.rpt-body');
+  if(!rptBody){alert('レポートが表示されていません');return;}
   const orig=btn.textContent;
   btn.textContent='⏳ 出力中...';btn.disabled=true;
   try{
-    // モーダル全体をキャプチャ（スクロール対応）
-    const rptBody=modal.querySelector('.rpt-body');
-    const scrollTop=rptBody?rptBody.scrollTop:0;
-    if(rptBody)rptBody.scrollTop=0;
-    const canvas=await html2canvas(modal,{
+    // rpt-bodyの高さ制限を一時解除して全体キャプチャ
+    const prevMaxH=rptBody.style.maxHeight;
+    const prevOverflow=rptBody.style.overflow;
+    rptBody.style.maxHeight='none';
+    rptBody.style.overflow='visible';
+    await new Promise(r=>setTimeout(r,150));
+    const canvas=await html2canvas(rptBody,{
       scale:2,
       useCORS:true,
       backgroundColor:'#ffffff',
       scrollX:0,
       scrollY:0,
-      windowWidth:modal.scrollWidth,
-      windowHeight:modal.scrollHeight,
+      windowWidth:rptBody.scrollWidth,
+      windowHeight:rptBody.scrollHeight,
       logging:false
     });
-    if(rptBody)rptBody.scrollTop=scrollTop;
+    // スタイルを元に戻す
+    rptBody.style.maxHeight=prevMaxH;
+    rptBody.style.overflow=prevOverflow;
     const d=fmt(t0).replace(/-/g,'');
     const link=document.createElement('a');
     link.download=`ariafina_report_${d}.png`;
@@ -3012,15 +3018,17 @@ function downloadReportExcel(){
 
     // ── Sheet3: KPIサマリー ──
     const d=buildReportData();
+    // buildReportData返り値: {allT, done_, inProg, upcoming2w, ...}
+    const xlsOverdue=d.allT.filter(t=>!t.done&&t.end<d.today).length;
     const ws3=XLSX.utils.aoa_to_sheet([
       ['KPI項目','値'],
       ['出力日',today],
       ['総タスク数',d.allT.length],
-      ['完了タスク数',d.doneTasks.length],
+      ['完了タスク数',d.done_.length],
       ['進行中タスク数',d.inProg.length],
-      ['遅延タスク数（未完了）',d.overdue.length],
-      ['2週間以内着手タスク数',d.upcoming.length],
-      ['完了率(%)',d.allT.length>0?Math.round(d.doneTasks.length/d.allT.length*100):0]
+      ['遅延タスク数（未完了）',xlsOverdue],
+      ['2週間以内着手タスク数',d.upcoming2w.length],
+      ['完了率(%)',d.allT.length>0?Math.round(d.done_.length/d.allT.length*100):0]
     ]);
     ws3['!cols']=[{wch:22},{wch:12}];
     XLSX.utils.book_append_sheet(wb,ws3,'KPIサマリー');
@@ -3249,11 +3257,11 @@ window.forceUnlock = forceUnlock;
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
         <button class="btn" onclick="generateReport('ja')" id="rptGenBtn"
           style="background:#185FA5;color:#fff;border-color:#185FA5;font-weight:600">
-          📊 レポート生成（日本語）
+          📊 レポート生成
         </button>
-        <button class="btn" onclick="generateReport('en')" id="rptGenBtnEn"
-          style="background:#1D9E75;color:#fff;border-color:#0E7A5C;font-weight:600">
-          📊 Generate Report (EN)
+        <button class="btn" onclick="generateReport('ja')" id="rptRefreshBtn"
+          style="background:#fff;color:#185FA5;border-color:#185FA5;font-weight:600;display:none">
+          🔄 リフレッシュ
         </button>
         <button class="btn" onclick="copyReportHtml()" id="rptCopyBtn" style="display:none">
           📋 HTMLをコピー
@@ -3270,43 +3278,43 @@ window.forceUnlock = forceUnlock;
         <span style="font-size:11px;color:#888" id="rptHint">スケジュールデータを自動分析します（APIキー不要）</span>
       </div>
 
-      <!-- Section 1: KPIサマリー -->
+      <!-- Section A: 未完了タスク クローズアップ -->
       <div class="rpt-section">
-        <div class="rpt-section-head" id="rptSecHead1">📈 KPIサマリー</div>
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#A32D2D,#E74C3C)">⚠️ 未完了タスク — 担当者クローズアップ</div>
         <div class="rpt-section-body">
-          <div id="rptKPI"><div style="color:#aaa;font-size:12px;padding:8px">読み込み中…</div></div>
+          <div id="rptOverdueSection"><div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div></div>
         </div>
       </div>
 
-      <!-- Section 2: 完了率グラフ + 担当者別進捗バー -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-        <div class="rpt-section" style="margin-bottom:0">
-          <div class="rpt-section-head" style="background:linear-gradient(135deg,#1D9E75,#0E7A5C)" id="rptSecHead2">🥧 完了率</div>
-          <div class="rpt-section-body" style="padding:10px 12px">
-            <div id="rptDonut"><div style="color:#aaa;font-size:12px;padding:8px">読み込み中…</div></div>
-          </div>
-        </div>
-        <div class="rpt-section" style="margin-bottom:0">
-          <div class="rpt-section-head" style="background:linear-gradient(135deg,#533AB7,#7B5DC4)" id="rptSecHead3">📊 担当者別進捗</div>
-          <div class="rpt-section-body" style="padding:10px 12px">
-            <div id="rptProgressBars"><div style="color:#aaa;font-size:12px;padding:8px">AIレポート生成後に表示</div></div>
-          </div>
+      <!-- Section B: 着手前タスク クローズアップ -->
+      <div class="rpt-section">
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#BA7517,#EF9F27)">📌 着手前タスク — 近日スタート予定</div>
+        <div class="rpt-section-body">
+          <div id="rptUpcomingSection"><div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div></div>
         </div>
       </div>
 
-      <!-- Section 3: 担当者別タスクカード -->
+      <!-- Section C: 先週振り返り・アドバイス -->
       <div class="rpt-section">
-        <div class="rpt-section-head" style="background:linear-gradient(135deg,#BA7517,#EF9F27)" id="rptSecHead4">👥 担当者別タスク（進行中・近日着手）</div>
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#1D9E75,#0E7A5C)">💡 先週の振り返りと進め方アドバイス</div>
         <div class="rpt-section-body">
-          <div id="rptAssigneeCards"><div style="color:#aaa;font-size:12px;padding:8px">AIレポート生成後に表示</div></div>
+          <div id="rptReviewSection"><div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div></div>
         </div>
       </div>
 
-      <!-- Section 4: 分析コンテンツ（催促・コンサル・クローズアップ）-->
+      <!-- Section D: 担当者別 -->
       <div class="rpt-section">
-        <div class="rpt-section-head" style="background:linear-gradient(135deg,#A32D2D,#E74C3C)" id="rptSecHead5">📝 自動分析（催促・振り返りアドバイス・担当者クローズアップ）</div>
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#185FA5,#378ADD)">👤 担当者別 — 近日タスク・進捗・クローズアップ</div>
         <div class="rpt-section-body">
-          <div id="rptAISection"><div style="color:#aaa;font-size:12px;padding:8px" id="rptAIHint">「レポート生成」ボタンを押すとスケジュールデータを自動分析してアドバイスを表示します</div></div>
+          <div id="rptAssigneeSection"><div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div></div>
+        </div>
+      </div>
+
+      <!-- Section E: タスク別（Lv2グループ） -->
+      <div class="rpt-section">
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#533AB7,#7B5DC4)">📋 過去1ヶ月の着手タスク — Lv2グループ別</div>
+        <div class="rpt-section-body">
+          <div id="rptTaskSection"><div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div></div>
         </div>
       </div>
 
