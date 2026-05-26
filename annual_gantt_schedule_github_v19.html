@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v70</title>
+<title>年度Schedule・ガントチャート v71</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -423,6 +423,41 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .imp-tbl th{background:#EAF3FB;color:#185FA5;padding:6px 10px;text-align:left;border:1px solid #d0e4f5;font-weight:700}
 .imp-tbl td{padding:6px 10px;border:1px solid #e0e4ea}
 .imp-tbl tr:nth-child(even) td{background:#fafbfd}
+
+/* ── 一括入力モーダル ── */
+.bulk-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:10000;display:flex;align-items:center;justify-content:center}
+.bulk-modal{background:var(--color-background-primary);border-radius:14px;box-shadow:0 12px 60px rgba(0,0,0,.28);width:min(900px,97vw);max-height:96vh;display:flex;flex-direction:column;overflow:hidden}
+.bulk-head{padding:18px 24px 14px;border-bottom:1px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#185FA5,#1D9E75);color:#fff}
+.bulk-head h3{font-size:16px;font-weight:700}
+.bulk-head .sub{font-size:11px;opacity:.8;margin-top:2px}
+.bulk-close{width:28px;height:28px;border:none;background:rgba(255,255,255,.2);cursor:pointer;font-size:16px;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.bulk-close:hover{background:rgba(255,255,255,.35)}
+.bulk-body{padding:20px 24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px}
+.bulk-foot{padding:14px 24px;border-top:1px solid var(--color-border-tertiary);display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.bulk-section{background:var(--color-background-secondary);border-radius:10px;padding:14px 16px;border:1px solid var(--color-border-tertiary)}
+.bulk-section h4{font-size:12px;font-weight:700;color:#185FA5;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.bulk-paste-area{width:100%;height:160px;font-size:11px;font-family:monospace;padding:10px 12px;border:1.5px solid var(--color-border-secondary);border-radius:8px;resize:vertical;background:var(--color-background-primary);color:var(--color-text-primary);line-height:1.6}
+.bulk-paste-area:focus{outline:none;border-color:#378ADD;box-shadow:0 0 0 2px rgba(55,138,221,.15)}
+.bulk-option-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.bulk-option-card{flex:1;min-width:200px;background:var(--color-background-primary);border:1.5px solid var(--color-border-secondary);border-radius:8px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s}
+.bulk-option-card.selected{border-color:#378ADD;background:#EAF3FB}
+.bulk-option-card label{display:flex;align-items:flex-start;gap:8px;cursor:pointer}
+.bulk-option-card input[type=radio]{margin-top:2px;accent-color:#378ADD;flex-shrink:0}
+.bulk-option-card .opt-title{font-size:12px;font-weight:700;color:var(--color-text-primary)}
+.bulk-option-card .opt-sub{font-size:10px;color:var(--color-text-secondary);margin-top:2px;line-height:1.5}
+.bulk-date-input-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:#EAF3FB;border-radius:6px;border:1px solid #c0d8f0}
+.bulk-date-input-row label{font-size:11px;color:#185FA5;font-weight:600;white-space:nowrap}
+.bulk-date-input-row input{height:28px;padding:0 8px;border:1px solid #378ADD;border-radius:6px;font-size:12px;background:#fff;color:#185FA5;font-weight:600;width:130px}
+.bulk-insert-sel{width:100%;height:30px;padding:0 8px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:12px;background:var(--color-background-primary);color:var(--color-text-primary)}
+.bulk-preview-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+.bulk-preview-tbl th{background:#185FA5;color:#fff;padding:6px 8px;text-align:left;font-weight:600;white-space:nowrap}
+.bulk-preview-tbl td{padding:5px 8px;border:1px solid var(--color-border-tertiary);vertical-align:top;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bulk-preview-tbl tr:nth-child(even) td{background:var(--color-background-secondary)}
+.bulk-preview-tbl .lv1 td{font-weight:600;border-left:3px solid #378ADD}
+.bulk-preview-tbl .lv2 td{border-left:3px solid #1D9E75}
+.bulk-preview-tbl .lv3 td{border-left:3px solid #BA7517}
+.bulk-err{background:#FEF2F2;border:1px solid #fca5a5;border-radius:6px;padding:10px 12px;font-size:11px;color:#991B1B;margin-top:8px}
+.bulk-ok{background:#F0FBF7;border:1px solid #6ee7b7;border-radius:6px;padding:10px 12px;font-size:11px;color:#065F46;margin-top:8px;font-weight:600}
 </style>
 </head>
 <body>
@@ -486,6 +521,9 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
         <button class="btn primary" id="btnAddTask" onclick="openSide('addTask')">＋ タスク追加</button>
         <button class="btn" id="btnAddSub" onclick="openSide('addSub')">＋ サブタスク</button>
         <button class="btn" id="btnManageAsgn" onclick="openSide('assignees')">担当者管理</button>
+        <button class="btn" id="btnBulkInput" onclick="openBulkModal()"
+          style="color:#0E4F8A;border-color:#185FA5;font-weight:600;background:#EAF3FB"
+          title="表をコピペして一括タスク追加">📋 一括入力</button>
       </div>
 
       <div class="tb-sep"></div>
@@ -603,6 +641,7 @@ const UI_TEXT = {
   colStart:          {ja:'開始',           en:'Start'},
   colEnd:            {ja:'終了',           en:'End'},
   btnDelete:         {ja:'削除',           en:'Delete'},
+  btnBulkInput:      {ja:'📋 一括入力',      en:'📋 Bulk Input'},
   statsYear:         {ja:'年度:',          en:'Year:'},
   statsWorkDays:     {ja:'稼働日:',         en:'Working Days:'},
   statsHolidays:     {ja:'祝日:',          en:'Holidays:'},
@@ -1587,6 +1626,22 @@ function openSide(mode,id){
       getParents().map(p=>`<option value="${p.id}">${p.wbs} ${escH(p.title)} Insert Before</option>`).join('');
     body.innerHTML=`
       <div class="sf"><label>Task Name</label><input id="s_title" placeholder="Task Nameを入力" style="font-weight:700;font-size:13px"></div>
+      <div class="sf">
+        <label style="color:var(--color-text-secondary)">English Title (optional)</label>
+        <input id="s_titleEn" placeholder="English title" style="font-size:11px;color:var(--color-text-secondary)">
+      </div>
+      <div class="sf">
+        <label>内容 <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">（タスク説明）</span></label>
+        <textarea id="s_desc" rows="2" style="width:100%;padding:6px 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;background:var(--color-background-primary);color:var(--color-text-primary);resize:vertical;font-family:inherit;line-height:1.5"></textarea>
+      </div>
+      <div class="sf">
+        <label>EN Summary <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">（英語説明）</span></label>
+        <textarea id="s_ensum" rows="2" style="width:100%;padding:6px 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;background:var(--color-background-primary);color:var(--color-text-secondary);resize:vertical;font-family:inherit;line-height:1.5"></textarea>
+      </div>
+      <div class="sf">
+        <label>備考 <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">（メモ・コメント）</span></label>
+        <input id="s_notes" placeholder="備考・メモ" style="font-size:11px">
+      </div>
       <div class="sf"><label>親タスク</label><select id="s_parent_id" onchange="onAddParentChange()">${parentOpts}</select><div class="sf-dep-note">親を選ぶとサブタスクとしてAdd</div></div>
       <div class="sf" id="s_insert_wrap"><label>挿入位置（ルート内）</label><select id="s_insert_pos">${insertOpts}</select></div>
       <div class="sf"><label>Assignee</label><select id="s_asgn">${assignees.map(a=>`<option>${escH(a)}</option>`).join('')}</select></div>
@@ -1645,6 +1700,18 @@ function openSide(mode,id){
         </div>
       </div>
       <div class="sf"><label>WBS (Auto)</label><input id="s_wbs" value="${escH(t.wbs)}" readonly style="background:var(--color-background-secondary);color:var(--color-text-secondary)"></div>
+      <div class="sf">
+        <label>内容 <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">（タスク説明）</span></label>
+        <textarea id="s_desc" rows="2" style="width:100%;padding:6px 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;background:var(--color-background-primary);color:var(--color-text-primary);resize:vertical;font-family:inherit;line-height:1.5">${escH(t.description||'')}</textarea>
+      </div>
+      <div class="sf">
+        <label>EN Summary <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">（英語説明）</span></label>
+        <textarea id="s_ensum" rows="2" style="width:100%;padding:6px 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;background:var(--color-background-primary);color:var(--color-text-secondary);resize:vertical;font-family:inherit;line-height:1.5">${escH(t.enSummary||'')}</textarea>
+      </div>
+      <div class="sf">
+        <label>備考 <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">（メモ・コメント）</span></label>
+        <input id="s_notes" value="${escH(t.notes||'')}" placeholder="備考・メモ" style="font-size:11px">
+      </div>
       <div class="sf"><label>Assignee</label><select id="s_asgn">${assignees.map(a=>`<option${a===t.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></div>
       <div class="sf">
         <label>種別</label>
@@ -1921,7 +1988,13 @@ function saveNewTask(){
   const level=parentTask?(parentTask.level||1)+1:1;
   const title=document.getElementById('s_title')?.value||'New Task';
   pushUndo(`タスクAdd「${title}」`);
+  const _addTitleEn=document.getElementById('s_titleEn')?.value.trim()||'';
+  if(_addTitleEn) registerUserDict(title, _addTitleEn);
   const newTask={id,wbs:'',title,
+    titleEn:_addTitleEn,
+    description:document.getElementById('s_desc')?.value||'',
+    enSummary:document.getElementById('s_ensum')?.value||'',
+    notes:document.getElementById('s_notes')?.value||'',
     assignee:document.getElementById('s_asgn')?.value||'',days,start:actualStart,end,level,
     color:document.getElementById('s_color')?.value||COLORS[0],parentId,predecessorId:predId};
   // 挿入位置
@@ -2350,6 +2423,10 @@ function saveEditTask(id){
   t.titleEn = _newEn;
   // 手入力した英語タイトルをユーザー辞書に自動登録
   if(_newEn) registerUserDict(t.title, _newEn);
+  // 内容・EN Summary・備考
+  t.description = document.getElementById('s_desc')?.value||'';
+  t.enSummary   = document.getElementById('s_ensum')?.value||'';
+  t.notes       = document.getElementById('s_notes')?.value||'';
   t.assignee=document.getElementById('s_asgn').value;
   t.start=document.getElementById('s_start').value;
   if(isMsChk){
@@ -2545,7 +2622,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v70.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v71.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -3683,6 +3760,279 @@ window.addEventListener('beforeunload', () => {
 window.startEditing = startEditing;
 window.stopEditing = stopEditing;
 window.forceUnlock = forceUnlock;
+
+// ═══════════════════════════════════════════════
+// ── 一括入力モーダル ──
+// ═══════════════════════════════════════════════
+let _bulkParsed = []; // パース済みタスク行
+
+function openBulkModal(){
+  if(!_isEditing){ alert('先に「Start Editing」ボタンを押してください。'); return; }
+  // 挿入位置セレクトを最新タスクで更新
+  const sel = document.getElementById('bulkInsertPos');
+  sel.innerHTML = '<option value="end">── 末尾に追加</option>';
+  tasks.forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value = String(t.id);
+    opt.textContent = `${t.wbs}「${t.title}」の後`;
+    sel.appendChild(opt);
+  });
+  document.getElementById('bulkOverlay').style.display = 'flex';
+  document.getElementById('bulkPasteArea').value = '';
+  document.getElementById('bulkParseStatus').innerHTML = '';
+  document.getElementById('bulkPreviewSection').style.display = 'none';
+  document.getElementById('bulkExecBtn').style.display = 'none';
+  document.getElementById('bulkFootStatus').textContent = '';
+  _bulkParsed = [];
+}
+
+function closeBulkModal(){
+  document.getElementById('bulkOverlay').style.display = 'none';
+}
+
+function selectDateMode(mode){
+  document.getElementById('optCardAsIs').classList.toggle('selected', mode==='asis');
+  document.getElementById('optCardShift').classList.toggle('selected', mode==='shift');
+  document.getElementById('optAsIs').checked = (mode==='asis');
+  document.getElementById('optShift').checked = (mode==='shift');
+  document.getElementById('bulkShiftRow').style.display = (mode==='shift') ? 'flex' : 'none';
+  onBulkPaste();
+}
+
+function openBulkCal(e){
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.cal-popup').forEach(p=>p.remove());
+  const inp = document.getElementById('bulkShiftDate');
+  const initD = parseD(inp.value) || t0;
+  showSideCal(e.target, initD, 'bulkShiftDate', null, null, 'start');
+  // カレンダー選択後にプレビュー更新
+  const orig = window._bulkCalCb;
+  window._bulkCalCb = ()=>{ onBulkPaste(); if(orig) orig(); };
+}
+
+// ── テキスト解析 ──
+function parseBulkText(raw){
+  if(!raw.trim()) return [];
+  const rows = raw.trim().split(/\r?\n/);
+  const result = [];
+  for(let i=0;i<rows.length;i++){
+    const row = rows[i];
+    // タブ区切りまたはパイプ区切り（Markdownテーブル）両対応
+    let cols;
+    if(row.includes('|')){
+      // Markdownテーブル形式
+      cols = row.split('|').map(c=>c.trim()).filter((_,idx,arr)=>idx>0&&idx<arr.length-1);
+    } else {
+      cols = row.split('\t').map(c=>c.trim());
+    }
+    if(!cols.length || cols[0]==='' ) continue;
+    // ヘッダー行スキップ: WBSセルが "WBS" や "---" の場合
+    if(/^(WBS|wbs|---|[-: ]+)$/i.test(cols[0])) continue;
+
+    const wbs    = cols[0]||'';
+    const title  = cols[1]||'';
+    const titleEn= cols[2]||'';
+    const desc   = cols[3]||'';
+    const enSum  = cols[4]||'';
+    const startRaw = cols[5]||'';
+    const endRaw   = cols[6]||'';
+    const notes  = cols[7]||'';
+
+    if(!wbs || !title) continue;
+
+    // 日付正規化: YYYY/MM/DD → YYYY-MM-DD
+    const normDate = s => s ? s.replace(/\//g,'-').replace(/[^\d-]/g,'') : '';
+    const startStr = normDate(startRaw);
+    const endStr   = normDate(endRaw);
+
+    // レベル判定（WBSのドット数）
+    const dotCount = (wbs.match(/\./g)||[]).length;
+    const level = dotCount + 1;
+
+    result.push({ wbs, title, titleEn, desc, enSum, startStr, endStr, notes, level, dotCount });
+  }
+  return result;
+}
+
+// ── 日付シフト計算 ──
+function applyDateShift(parsed, shiftDateStr){
+  if(!parsed.length) return parsed;
+  // 先頭タスクの元の開始日を取得
+  const firstStart = parsed.find(r=>r.startStr)?.startStr;
+  if(!firstStart) return parsed;
+  const origBase = parseD(firstStart);
+  const newBase  = parseD(shiftDateStr);
+  if(!origBase || !newBase) return parsed;
+  const diffMs = newBase - origBase;
+  const diffDays = Math.round(diffMs / 86400000);
+
+  return parsed.map(r=>{
+    if(!r.startStr && !r.endStr) return r;
+    const shiftDate = s => {
+      if(!s) return '';
+      const d = parseD(s);
+      if(!d) return s;
+      d.setDate(d.getDate() + diffDays);
+      return fmt(d);
+    };
+    return { ...r, startStr: shiftDate(r.startStr), endStr: shiftDate(r.endStr) };
+  });
+}
+
+// ── パース→プレビュー更新 ──
+function onBulkPaste(){
+  const raw = document.getElementById('bulkPasteArea').value;
+  const mode = document.querySelector('input[name="bulkDateMode"]:checked')?.value || 'asis';
+  const h = hs(currentYear);
+
+  let parsed = parseBulkText(raw);
+
+  if(mode === 'shift'){
+    const sd = document.getElementById('bulkShiftDate').value.trim();
+    if(sd) parsed = applyDateShift(parsed, sd);
+  }
+
+  // Days計算（開始〜終了の稼働日数）
+  parsed = parsed.map(r=>{
+    let days = 1;
+    const s = parseD(r.startStr);
+    const e = parseD(r.endStr);
+    if(s && e && e >= s) days = Math.max(1, countWD(s,e,h));
+    else if(s && !e) { /* days=1 */ }
+    return { ...r, days, startFmt: r.startStr || fmt(t0), endFmt: r.endStr || fmt(addWD(parseD(r.startStr||fmt(t0)),1,h)) };
+  });
+
+  _bulkParsed = parsed;
+
+  const statusEl = document.getElementById('bulkParseStatus');
+  const previewSec = document.getElementById('bulkPreviewSection');
+  const execBtn = document.getElementById('bulkExecBtn');
+
+  if(!raw.trim()){
+    statusEl.innerHTML = '';
+    previewSec.style.display = 'none';
+    execBtn.style.display = 'none';
+    return;
+  }
+  if(!parsed.length){
+    statusEl.innerHTML = '<div class="bulk-err">⚠ データを読み取れませんでした。列順・形式を確認してください。</div>';
+    previewSec.style.display = 'none';
+    execBtn.style.display = 'none';
+    return;
+  }
+
+  statusEl.innerHTML = `<div class="bulk-ok">✅ ${parsed.length}行を読み取りました。プレビューで確認してください。</div>`;
+
+  // プレビューテーブル
+  const tbody = document.getElementById('bulkPreviewBody');
+  const lvColors = ['#378ADD','#1D9E75','#BA7517','#A32D2D','#533AB7','#7F8C8D'];
+  tbody.innerHTML = parsed.map(r=>{
+    const lc = lvColors[Math.min(r.level-1,5)];
+    return `<tr class="lv${Math.min(r.level,3)}" style="border-left:3px solid ${lc}">
+      <td>${escH(r.wbs)}</td>
+      <td style="font-weight:${r.level<=2?600:400};padding-left:${(r.dotCount)*10+5}px">${escH(r.title)}</td>
+      <td style="color:#888">${escH(r.titleEn)}</td>
+      <td>${escH(r.startFmt)}</td>
+      <td>${escH(r.endFmt)}</td>
+      <td style="text-align:center">${r.days}</td>
+      <td style="color:#888;font-size:10px">${escH(r.notes)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('bulkPreviewCount').textContent = `（${parsed.length}件）`;
+  previewSec.style.display = 'block';
+  execBtn.style.display = 'inline-block';
+}
+
+// ── 実行 ──
+function execBulkImport(){
+  if(!_isEditing){ alert('Start Editingが必要です。'); return; }
+  if(!_bulkParsed.length){ alert('データがありません。'); return; }
+
+  pushUndo('一括タスク入力');
+
+  const h = hs(currentYear);
+  const insertAfterIdStr = document.getElementById('bulkInsertPos').value;
+  const insertAfterId = insertAfterIdStr === 'end' ? null : parseInt(insertAfterIdStr);
+
+  // 挿入位置インデックス特定
+  let insertIdx = tasks.length; // デフォルト末尾
+  if(insertAfterId !== null){
+    const pos = tasks.findIndex(t=>t.id === insertAfterId);
+    if(pos >= 0) insertIdx = pos + 1;
+  }
+
+  // WBS→parentId マッピング用（新規追加タスクのWBSからid解決）
+  const wbsToNewId = {};
+
+  // 追加タスク生成
+  const newTasks = _bulkParsed.map((r, idx) => {
+    const newId = getNextId() + idx;
+    wbsToNewId[r.wbs] = newId;
+
+    // 親WBS推定（1.2 → 親は1）
+    let parentId = null;
+    if(r.dotCount > 0){
+      const parentWbs = r.wbs.split('.').slice(0,-1).join('.');
+      // まず新規追加タスク内で探す
+      if(wbsToNewId[parentWbs]) parentId = wbsToNewId[parentWbs];
+      else {
+        // 既存タスクから探す
+        const ep = tasks.find(t=>t.wbs === parentWbs);
+        if(ep) parentId = ep.id;
+      }
+    }
+
+    const startD = parseD(r.startFmt) || t0;
+    const endD   = parseD(r.endFmt)   || addWD(startD, r.days, h);
+
+    // レベルに応じたデフォルトカラー
+    const lvCols = ['#378ADD','#1D9E75','#BA7517','#A32D2D','#533AB7','#7F8C8D'];
+    const color  = lvCols[Math.min(r.level-1,5)];
+
+    return {
+      id: newId,
+      wbs: r.wbs,
+      title: r.title,
+      titleEn: r.titleEn,
+      description: r.desc,
+      enSummary: r.enSum,
+      notes: r.notes,
+      assignee: assignees[0] || '',
+      days: r.days,
+      start: fmt(startD),
+      end: fmt(endD),
+      level: r.level,
+      color,
+      parentId,
+      predecessorId: null,
+      done: false
+    };
+  });
+
+  // IDを正しく採番し直す（getNextId()は静的なので順番に割り当て）
+  const baseId = getNextId();
+  newTasks.forEach((t,i) => {
+    const oldId = t.id;
+    const newId = baseId + i;
+    t.id = newId;
+    // parentId参照を修正
+    newTasks.forEach(nt => { if(nt.parentId === oldId) nt.parentId = newId; });
+  });
+
+  // 挿入
+  tasks.splice(insertIdx, 0, ...newTasks);
+
+  reNumberWbs();
+  recalcAllParents();
+  saveData();
+  render();
+  closeBulkModal();
+
+  // 追加完了メッセージ
+  showSyncNotice(`✅ ${newTasks.length}件のタスクを追加しました`);
+}
+// ── 一括入力モーダルここまで ──
 </script>
 <!-- ── Report Modal ── -->
 <div class="rpt-overlay" id="rptOverlay" style="display:none" onclick="if(event.target===this)closeReportModal()">
@@ -3777,6 +4127,96 @@ window.forceUnlock = forceUnlock;
 <div id="rptJumpToast"></div>
 <!-- ── 依存関係リンクトースト ── -->
 <div id="depLinkToast" style="display:none"></div>
+
+
+<!-- ── 一括入力モーダル ── -->
+<div class="bulk-overlay" id="bulkOverlay" style="display:none" onclick="if(event.target===this)closeBulkModal()">
+  <div class="bulk-modal">
+    <div class="bulk-head">
+      <div>
+        <h3>📋 一括タスク入力</h3>
+        <div class="sub">ExcelやSpreadsheetからコピペで一括登録</div>
+      </div>
+      <button class="bulk-close" onclick="closeBulkModal()">✕</button>
+    </div>
+    <div class="bulk-body">
+
+      <!-- STEP1: ペースト -->
+      <div class="bulk-section">
+        <h4>📌 STEP 1 &nbsp; データをペースト</h4>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px;line-height:1.6">
+          Excel・スプレッドシートから以下の列順でコピー＆ペーストしてください。<br>
+          <strong>列順：WBS ／ タスク名 ／ EN TASK TITLE ／ 内容 ／ EN SUMMARY ／ 開始日 ／ 終了日 ／ 備考</strong><br>
+          ・1行目がヘッダー行の場合は自動スキップします ・日付形式：YYYY/MM/DD または YYYY-MM-DD
+        </div>
+        <textarea class="bulk-paste-area" id="bulkPasteArea"
+          placeholder="ここにExcel・スプレッドシートからコピペ..."
+          oninput="onBulkPaste()"></textarea>
+        <div id="bulkParseStatus"></div>
+      </div>
+
+      <!-- STEP2: 開始日モード -->
+      <div class="bulk-section">
+        <h4>📅 STEP 2 &nbsp; 開始日の設定</h4>
+        <div class="bulk-option-row">
+          <div class="bulk-option-card selected" id="optCardAsIs" onclick="selectDateMode('asis')">
+            <label>
+              <input type="radio" name="bulkDateMode" value="asis" id="optAsIs" checked>
+              <div>
+                <div class="opt-title">📄 表の日付をそのまま使う</div>
+                <div class="opt-sub">ペーストした開始日・終了日をそのまま適用します。<br>日付がない行は本日から計算します。</div>
+              </div>
+            </label>
+          </div>
+          <div class="bulk-option-card" id="optCardShift" onclick="selectDateMode('shift')">
+            <label>
+              <input type="radio" name="bulkDateMode" value="shift" id="optShift">
+              <div>
+                <div class="opt-title">🔀 開始日を指定してシフト</div>
+                <div class="opt-sub">先頭タスクの開始日を指定日に合わせ、<br>全タスクを相対的にシフトします。</div>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div class="bulk-date-input-row" id="bulkShiftRow" style="display:none">
+          <label>先頭タスクの開始日：</label>
+          <input type="text" id="bulkShiftDate" placeholder="例: 2026-06-01" oninput="onBulkPaste()">
+          <button class="btn" onclick="openBulkCal(event)" style="font-size:11px;padding:0 8px">📅</button>
+        </div>
+      </div>
+
+      <!-- STEP3: 挿入位置 -->
+      <div class="bulk-section">
+        <h4>📍 STEP 3 &nbsp; 挿入位置</h4>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">
+          追加するタスクをどこに挿入するか選択してください。
+        </div>
+        <select class="bulk-insert-sel" id="bulkInsertPos">
+          <option value="end">── 末尾に追加</option>
+        </select>
+      </div>
+
+      <!-- STEP4: プレビュー -->
+      <div class="bulk-section" id="bulkPreviewSection" style="display:none">
+        <h4>👁 STEP 4 &nbsp; プレビュー <span id="bulkPreviewCount" style="font-weight:400;font-size:11px;color:#888"></span></h4>
+        <div style="overflow-x:auto;max-height:220px;overflow-y:auto">
+          <table class="bulk-preview-tbl" id="bulkPreviewTbl">
+            <thead><tr>
+              <th>WBS</th><th>タスク名</th><th>EN Title</th><th>開始日</th><th>終了日</th><th>Days</th><th>備考</th>
+            </tr></thead>
+            <tbody id="bulkPreviewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <div class="bulk-foot">
+      <span id="bulkFootStatus" style="font-size:11px;color:var(--color-text-secondary);flex:1"></span>
+      <button class="btn" onclick="closeBulkModal()">キャンセル</button>
+      <button class="btn primary" id="bulkExecBtn" onclick="execBulkImport()" style="display:none">✅ 追加実行</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── CSV Import Modal ── -->
 <div class="imp-overlay" id="impOverlay" style="display:none" onclick="if(event.target===this)closeImportModal()">
