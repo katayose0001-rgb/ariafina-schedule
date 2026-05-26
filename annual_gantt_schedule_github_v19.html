@@ -662,6 +662,7 @@ function t(key){ return (UI_TEXT[key]||{})[uiLang] || (UI_TEXT[key]||{})['ja'] |
 function toggleUiLang(){
   uiLang = uiLang === 'ja' ? 'en' : 'ja';
   localStorage.setItem('gt5_uiLang', uiLang);
+  _headerCache.year=null; _bgCacheKey='';
   applyUiLang();
   render();
 }
@@ -1115,41 +1116,46 @@ function hasCircle(fromId,toId){
   return false;
 }
 
-// ━━ 背景CSS生成（最適化#1）━━
-// 1行につきbackground-imageで週末・祝日・Q色・今日を表現
-// divを1枚も生成せずCSSのみで実現
+// ━━ 背景CSS生成（最適化#1改良版）━━
+// Q単位の背景色をCSS変数で定義し、月単位divで表現（365div→12divに削減）
 let _bgStyleEl = null;
+let _bgCacheKey = '';
 function buildRowBgStyle(days, h){
+  const cacheKey = `${currentYear}-${filt.month}`;
+  if(_bgCacheKey === cacheKey) return; // 変更なければスキップ
+  _bgCacheKey = cacheKey;
+
   if(!_bgStyleEl){
     _bgStyleEl = document.createElement('style');
     _bgStyleEl.id = 'gantt-bg-style';
     document.head.appendChild(_bgStyleEl);
   }
-  // 各列の色をlinear-gradientのstopsで表現
-  // 365列 × 18px = 6570px を1つのgradientで
-  const stops = [];
-  const qColors = ['rgba(230,241,251,.35)','rgba(234,243,222,.35)','rgba(250,238,218,.35)','rgba(251,234,240,.35)'];
-  const wkndColor = 'rgba(241,239,232,.6)';
-  const holColor  = 'rgba(250,236,231,.6)';
-  const todayColor= 'rgba(255,249,200,.9)';
-  const todayFmt  = fmt(t0);
 
-  days.forEach((d,i)=>{
-    const left = i * DAY_W;
-    const right = left + DAY_W;
-    const w = d.getDay(), hol = isHol(d,h);
-    const isToday = fmt(d)===todayFmt;
-    let col;
-    if(isToday)      col = todayColor;
-    else if(hol)     col = holColor;
-    else if(w===0||w===6) col = wkndColor;
-    else { const q=Math.ceil((d.getMonth()+1)/3)-1; col=qColors[q]; }
-    stops.push(`${col} ${left}px,${col} ${right}px`);
-  });
+  // Q背景色をCSSルールで定義（行のdivは使わず、行全体のbackground-imageで）
+  // 月単位のグラデーションstopを構築（12stop = 軽量）
+  const qColors = [
+    'rgba(230,241,251,.35)','rgba(230,241,251,.35)','rgba(230,241,251,.35)',  // Q1
+    'rgba(234,243,222,.35)','rgba(234,243,222,.35)','rgba(234,243,222,.35)',  // Q2
+    'rgba(250,238,218,.35)','rgba(250,238,218,.35)','rgba(250,238,218,.35)',  // Q3
+    'rgba(251,234,240,.35)','rgba(251,234,240,.35)','rgba(251,234,240,.35)'   // Q4
+  ];
 
-  const grad = `linear-gradient(to right,${stops.join(',')})`;
-  // 全行に適用するCSSルール
-  _bgStyleEl.textContent = `.gantt-row-bg{background-image:${grad}!important;background-size:${days.length*DAY_W}px 100%;}`;
+  // 月ごとの開始・終了ピクセル位置
+  const monthStops = [];
+  let pos = 0;
+  for(let m = 0; m < 12; m++){
+    const daysInMonth = days.filter(d => d.getMonth() === m).length;
+    if(daysInMonth === 0) continue;
+    const w = daysInMonth * DAY_W;
+    monthStops.push(`${qColors[m]} ${pos}px,${qColors[m]} ${pos+w}px`);
+    pos += w;
+  }
+
+  const grad = monthStops.length
+    ? `linear-gradient(to right,${monthStops.join(',')})`
+    : 'none';
+
+  _bgStyleEl.textContent = `.gantt-row-bg{background-image:${grad}!important;}`;
 }
 
 // ━━ パフォーマンス最適化 ━━
@@ -1335,10 +1341,21 @@ function renderOnly(){
   const totalW=days.length*DAY_W,HDRH=20*4;
   const visT=getVisibleTasks();
   const pfilt=filt.parent?parseInt(filt.parent):null;
-  // ── Today列インデックス（#1用） ──
+  // ── Today列インデックス ──
   const _todayIdx=dayIdx[fmt(t0)]??-1;
-  // ── 背景CSSグラデーション（#1用）: 行ごとの背景はCSS変数でqブロック化 ──
+  // ── 背景CSS（月単位グラデーション）──
   buildRowBgStyle(days,h);
+  // ── 週末・祝日・今日のみdivを事前生成（全行共通） ──
+  const _specialDivs=[];
+  days.forEach((d,di)=>{
+    const w=d.getDay(),hol=isHol(d,h);
+    const isT=fmt(d)===fmt(t0);
+    let bg='',bdr='';
+    if(isT){bg='rgba(255,249,200,.8)';bdr='border-left:2px solid #EF9F27;';}
+    else if(hol)bg='rgba(250,236,231,.5)';
+    else if(w===0||w===6)bg='rgba(241,239,232,.5)';
+    if(bg)_specialDivs.push(`<div style="position:absolute;left:${di*DAY_W}px;top:0;width:${DAY_W}px;height:100%;background:${bg};${bdr}z-index:1"></div>`);
+  });
 
   document.getElementById('leftHeader').innerHTML=
     `<table class="left-table" style="width:${getLeftW()}px"><thead><tr style="height:${HDRH}px">${LEFT_COLS.map(c=>{
@@ -1392,9 +1409,9 @@ function renderOnly(){
   visT.forEach((task,ri)=>{
     const hasPred=task.predecessorId!=null;
     rbArr.push(`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${ROW_H}px"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;height:${ROW_H}px;position:relative;padding:0">`);
-    rbArr.push(`<div class="gantt-row-bg" style="position:relative;width:${totalW}px;height:${ROW_H}px;overflow:hidden;background:var(--gbg-${ri%2===0?'even':'odd'})">`);
-    // Today強調線（1本だけ）
-    if(_todayIdx>=0)rb+=`<div style="position:absolute;left:${_todayIdx*DAY_W}px;top:0;width:${DAY_W}px;height:100%;background:rgba(255,249,200,.8);border-left:2px solid #EF9F27;z-index:1"></div>`;
+    rbArr.push(`<div class="gantt-row-bg" style="position:relative;width:${totalW}px;height:${ROW_H}px;overflow:hidden">`);
+    // 週末・祝日・今日のみdiv生成（365→最大約70divに削減）
+    _specialDivs.forEach(s=>{rbArr.push(s);});
     if(task.start&&task.end){
       const si=dayIdx[task.start],ei=dayIdx[task.end];
       if(si!==undefined&&ei!==undefined&&ei>=si){
@@ -3624,8 +3641,8 @@ async function init(){
   await loadUserDict(); // ユーザー辞書をFirebaseから読み込み
   const ys=document.getElementById('yearSel');
   [2024,2025,2026,2027,2028].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'';if(y===currentYear)o.selected=true;ys.appendChild(o)});
-  ys.onchange=()=>{currentYear=+ys.value;_headerCache.year=null;saveData();render()};
-  document.getElementById('monthSel').onchange=function(){filt.month=+this.value;_headerCache.year=null;render()};
+  ys.onchange=()=>{currentYear=+ys.value;_headerCache.year=null;_bgCacheKey='';saveData();render()};
+  document.getElementById('monthSel').onchange=function(){filt.month=+this.value;_headerCache.year=null;_bgCacheKey='';render()};
   document.getElementById('filterAsgn').onchange=function(){filt.assignee=this.value;render()};
   document.getElementById('filterParent').onchange=function(){filt.parent=this.value;render()};
   await loadData();reNumberWbs();recalcAllParents();render();
