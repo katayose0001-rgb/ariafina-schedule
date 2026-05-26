@@ -1464,16 +1464,26 @@ function drawDepArrows(){
   svg.innerHTML='';
   if(!showDeps)return;
 
+  const rb=document.getElementById('rightBody');
+  if(!rb)return;
+
   const days=yearDays(currentYear,filt.month);
   const dayIdx={};days.forEach((d,i)=>{dayIdx[fmt(d)]=i});
   const visT=getVisibleTasks();
-  const rowMap={};visT.forEach((t,i)=>{rowMap[t.id]=i});
+  // rightTableの実DOMから各行のY座標を取得（スクロール・高さ変動に正確対応）
+  const rowYMap={};
+  visT.forEach(t=>{
+    const row=document.querySelector(`#rightTable tr[data-tid="${t.id}"]`);
+    if(row) rowYMap[t.id]=row.offsetTop;
+  });
 
-  const rb=document.getElementById('rightBody');
-  if(!rb)return;
   const totalW=days.length*DAY_W;
+  const totalH=visT.length*ROW_H;
+  // SVGサイズをテーブル全体に合わせる
+  svg.setAttribute('width', totalW);
+  svg.setAttribute('height', totalH);
   svg.style.width=totalW+'px';
-  svg.style.height=(visT.length*ROW_H)+'px';
+  svg.style.height=totalH+'px';
 
   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
   const marker=document.createElementNS('http://www.w3.org/2000/svg','marker');
@@ -1487,19 +1497,17 @@ function drawDepArrows(){
     if(!succ.predecessorId)return;
     const pred=getTaskById(succ.predecessorId);
     if(!pred||!pred.end||!succ.start)return;
-    const fromRow=rowMap[pred.id];
-    const toRow=rowMap[succ.id];
-    if(fromRow===undefined||toRow===undefined)return;
+    if(rowYMap[pred.id]===undefined||rowYMap[succ.id]===undefined)return;
 
     const predEi=dayIdx[pred.end];
     const succSi=dayIdx[succ.start];
     if(predEi===undefined||succSi===undefined)return;
 
     const x1=(predEi+1)*DAY_W;
-    const getRowY=(rowIdx)=>rowIdx*ROW_H;
-    const y1=getRowY(fromRow)+ROW_H/2;
     const x2=succSi*DAY_W;
-    const y2=getRowY(toRow)+ROW_H/2;
+    // DOM実座標からY中心を計算
+    const y1=rowYMap[pred.id]+ROW_H/2;
+    const y2=rowYMap[succ.id]+ROW_H/2;
 
     const midX=(x1+x2)/2;
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -1534,7 +1542,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v73</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
