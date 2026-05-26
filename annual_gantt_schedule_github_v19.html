@@ -2149,12 +2149,16 @@ function scrollToTaskStart(taskId){
   const idx=days.findIndex(d=>fmt(d)===t.start);
   if(idx<0){filt.month=0;document.getElementById('monthSel').value='0';_headerCache.year=null;_bgCacheKey='';render();setTimeout(()=>scrollToTaskStart(taskId),80);return;}
   const rb=document.getElementById('rightBody');if(!rb)return;
-  rb.scrollTo({left:Math.max(0,idx*DAY_W-rb.clientWidth/3),behavior:'smooth'});
-  // 縦スクロール
-  const lb=document.getElementById('leftBody');
+  // 横スクロール
+  rb.scrollLeft = Math.max(0, idx*DAY_W - rb.clientWidth/3);
+  // 縦スクロール: rightBodyのみ操作 → syncScrollがleftBodyを追従
   const leftRow=document.querySelector(`#leftTable tr[data-tid="${taskId}"]`);
-  if(leftRow&&lb) lb.scrollTo({top:Math.max(0,leftRow.offsetTop-lb.clientHeight/2),behavior:'smooth'});
-  if(leftRow&&rb) rb.scrollTo({top:Math.max(0,leftRow.offsetTop-rb.clientHeight/2),behavior:'smooth'});
+  if(leftRow){
+    const targetTop = Math.max(0, leftRow.offsetTop - rb.clientHeight/2 + ROW_H/2);
+    rb.scrollTop = targetTop;
+    const lb=document.getElementById('leftBody');
+    if(lb) lb.scrollTop = targetTop;
+  }
 }
 // ── 依存関係リンクモード管理 ──
 let _depFromId=null; // 起点タスクID
@@ -3381,22 +3385,29 @@ function _expandAncestors(taskId){
 function _rptScrollToTask(taskId){
   const t=tasks.find(t=>t.id===taskId);
   if(!t||!t.start)return;
-  // 横スクロール（開始日へ）
+
   const days=yearDays(currentYear, filt.month);
-  const idx=days.findIndex(d=>fmt(d)===t.start);
   const rb=document.getElementById('rightBody');
-  const lb=document.getElementById('leftBody');
-  if(rb&&idx>=0){
-    rb.scrollTo({left:Math.max(0,idx*DAY_W-rb.clientWidth/3),behavior:'smooth'});
+  if(!rb)return;
+
+  // 横スクロール（開始日へ）
+  const idx=days.findIndex(d=>fmt(d)===t.start);
+  if(idx>=0){
+    rb.scrollLeft = Math.max(0, idx*DAY_W - rb.clientWidth/3);
   }
-  // 縦スクロール（leftBodyを直接スクロール）
+
+  // 縦スクロール: rightBodyのscrollTopを変更 → syncScrollがleftBodyを追従
   const leftRow=document.querySelector(`#leftTable tr[data-tid="${taskId}"]`);
-  if(leftRow&&lb){
-    const rowTop=leftRow.offsetTop;
-    lb.scrollTo({top:Math.max(0, rowTop - lb.clientHeight/2), behavior:'smooth'});
-    if(rb) rb.scrollTo({top:Math.max(0, rowTop - rb.clientHeight/2), behavior:'smooth'});
+  if(leftRow){
+    const rowTop = leftRow.offsetTop;
+    const targetTop = Math.max(0, rowTop - rb.clientHeight/2 + ROW_H/2);
+    rb.scrollTop = targetTop;
+    // syncScrollのonscrollを手動トリガー（leftBodyを即時同期）
+    const lb=document.getElementById('leftBody');
+    if(lb) lb.scrollTop = targetTop;
   }
-  // ハイライトフラッシュ（左右両行）
+
+  // ハイライトフラッシュ（少し待ってからDOM確定後に実行）
   setTimeout(()=>{
     [`#leftTable tr[data-tid="${taskId}"]`,
      `#rightTable tr[data-tid="${taskId}"]`].forEach(sel=>{
@@ -3408,7 +3419,7 @@ function _rptScrollToTask(taskId){
         setTimeout(()=>row.classList.remove('task-row-flash'),3800);
       }
     });
-  },400);
+  },100);
 }
 
 function _showRptToast(msg, duration){
