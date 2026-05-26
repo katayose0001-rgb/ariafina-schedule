@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v72</title>
+<title>年度Schedule・ガントチャート v73</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -1056,20 +1056,7 @@ async function loadData(){
   if(!tasks.length)initSample();
 }
 function saveData(){
-  try{
-    // localStorageにSave
-    localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
-    localStorage.setItem('gt5_asgn',JSON.stringify(assignees));
-    localStorage.setItem('gt5_year',String(currentYear));
-    {const c=localStorage.getItem('gt5_col');if(c)try{collapsedIds=new Set(JSON.parse(c));}catch(e){}}
-    if(window._fbSaveData){
-      window._fbSaveData({
-        tasks,
-        assignees,
-        year: currentYear
-      });
-    }
-  }catch(e){}
+  saveDataDebounced();
 }
 function initSample(){
   const y=currentYear,h=hs(y);
@@ -1098,7 +1085,7 @@ function propagateDeps(changedId){
     const pid=queue.shift();
     if(visited.has(pid))continue;
     visited.add(pid);
-    const pred=tasks.find(t=>t.id===pid);if(!pred||!pred.end)continue;
+    const pred=getTaskById(pid);if(!pred||!pred.end)continue;
     tasks.forEach(succ=>{
       if(succ.predecessorId===pid&&succ.id!==pid){
         const predEnd=parseD(pred.end);
@@ -1126,6 +1113,77 @@ function hasCircle(fromId,toId){
     tasks.forEach(t=>{if(t.predecessorId===cur)queue.push(t.id)});
   }
   return false;
+}
+
+// ━━ 背景CSS生成（最適化#1）━━
+// 1行につきbackground-imageで週末・祝日・Q色・今日を表現
+// divを1枚も生成せずCSSのみで実現
+let _bgStyleEl = null;
+function buildRowBgStyle(days, h){
+  if(!_bgStyleEl){
+    _bgStyleEl = document.createElement('style');
+    _bgStyleEl.id = 'gantt-bg-style';
+    document.head.appendChild(_bgStyleEl);
+  }
+  // 各列の色をlinear-gradientのstopsで表現
+  // 365列 × 18px = 6570px を1つのgradientで
+  const stops = [];
+  const qColors = ['rgba(230,241,251,.35)','rgba(234,243,222,.35)','rgba(250,238,218,.35)','rgba(251,234,240,.35)'];
+  const wkndColor = 'rgba(241,239,232,.6)';
+  const holColor  = 'rgba(250,236,231,.6)';
+  const todayColor= 'rgba(255,249,200,.9)';
+  const todayFmt  = fmt(t0);
+
+  days.forEach((d,i)=>{
+    const left = i * DAY_W;
+    const right = left + DAY_W;
+    const w = d.getDay(), hol = isHol(d,h);
+    const isToday = fmt(d)===todayFmt;
+    let col;
+    if(isToday)      col = todayColor;
+    else if(hol)     col = holColor;
+    else if(w===0||w===6) col = wkndColor;
+    else { const q=Math.ceil((d.getMonth()+1)/3)-1; col=qColors[q]; }
+    stops.push(`${col} ${left}px,${col} ${right}px`);
+  });
+
+  const grad = `linear-gradient(to right,${stops.join(',')})`;
+  // 全行に適用するCSSルール
+  _bgStyleEl.textContent = `.gantt-row-bg{background-image:${grad}!important;background-size:${days.length*DAY_W}px 100%;}`;
+}
+
+// ━━ パフォーマンス最適化 ━━
+// #2: tasksをIDでO(1)検索するMap（render前に再構築）
+let _taskMap = new Map();
+function rebuildTaskMap(){
+  _taskMap.clear();
+  tasks.forEach(t=>_taskMap.set(t.id, t));
+}
+function getTaskById(id){ return _taskMap.get(id)||tasks.find(t=>t.id===id)||null; }
+
+// #3: 子を持つタスクIDのSet（render前に再構築）
+let _parentSet = new Set();
+function rebuildParentSet(){
+  _parentSet.clear();
+  tasks.forEach(t=>{ if(t.parentId!=null) _parentSet.add(t.parentId); });
+}
+function hasChildrenFast(id){ return _parentSet.has(id); }
+
+// #4: ヘッダーキャッシュ（年度・月フィルタが変わった時のみ再生成）
+let _headerCache = {year:null, month:null, html:''};
+
+// #6: Firebase書き込みデバウンス（500ms待機後に1回送信）
+let _fbSaveTimer = null;
+function saveDataDebounced(){
+  try{
+    localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
+    localStorage.setItem('gt5_asgn',JSON.stringify(assignees));
+    localStorage.setItem('gt5_year',String(currentYear));
+  }catch(e){}
+  clearTimeout(_fbSaveTimer);
+  _fbSaveTimer = setTimeout(()=>{
+    if(window._fbSaveData) window._fbSaveData({tasks, assignees, year:currentYear});
+  }, 500);
 }
 
 function getNextId(){return Math.max(0,...tasks.map(t=>t.id))+1}
@@ -1172,7 +1230,7 @@ function getVisibleTasks(){
   const isHiddenByCollapse=(t)=>{
     let cur=t;
     while(cur.parentId!=null){
-      const parent=tasks.find(p=>p.id===cur.parentId);
+      const parent=getTaskById(cur.parentId);
       if(!parent)break;
       if((parent.level===1||parent.level===2||parent.level===3)&&collapsedIds.has(parent.id))return true;
       cur=parent;
@@ -1186,7 +1244,7 @@ function getVisibleTasks(){
     if(pfilt){
       // Select親かその子孫のみ表示
       let cur=t,match=false;
-      while(cur){if(cur.id===pfilt){match=true;break;}cur=tasks.find(p=>p.id===cur.parentId)||null;}
+      while(cur){if(cur.id===pfilt){match=true;break;}cur=cur.parentId!=null?getTaskById(cur.parentId):null;}
       if(!match)return false;
     }
     if(afilt&&t.assignee!==afilt)return false;
@@ -1268,12 +1326,19 @@ function buildHeader(days,h){
 
 // ── Main render ──
 function renderOnly(){
+  // ── キャッシュ再構築（#2・#3） ──
+  rebuildTaskMap();
+  rebuildParentSet();
   renderStats();buildFilterSels();
   const h=hs(currentYear),days=yearDays(currentYear,filt.month);
   const dayIdx={};days.forEach((d,i)=>{dayIdx[fmt(d)]=i});
   const totalW=days.length*DAY_W,HDRH=20*4;
   const visT=getVisibleTasks();
   const pfilt=filt.parent?parseInt(filt.parent):null;
+  // ── Today列インデックス（#1用） ──
+  const _todayIdx=dayIdx[fmt(t0)]??-1;
+  // ── 背景CSSグラデーション（#1用）: 行ごとの背景はCSS変数でqブロック化 ──
+  buildRowBgStyle(days,h);
 
   document.getElementById('leftHeader').innerHTML=
     `<table class="left-table" style="width:${getLeftW()}px"><thead><tr style="height:${HDRH}px">${LEFT_COLS.map(c=>{
@@ -1289,14 +1354,14 @@ function renderOnly(){
       return`<th style="width:${w}px;position:relative;padding-left:26px">${t(c.lk)}${handle}${extra}</th>`;
     }).join('')}</tr></thead></table>`;
 
-  let lb=`<table class="left-table" style="width:${getLeftW()}px" id="leftTable"><tbody>`;
+  const lbArr=[`<table class="left-table" style="width:${getLeftW()}px" id="leftTable"><tbody>`];
   visT.forEach(task=>{
     const lv=task.level||1;
     const lvClass=`lvl${Math.min(lv,6)}`;
     const isHL=pfilt&&task.id===pfilt;
     const hasPred=task.predecessorId!=null;
     const pad=(lv-1)*12;
-    const _taskHasChildren=tasks.some(c=>c.parentId===task.id);
+    const _taskHasChildren=hasChildrenFast(task.id);
     const isCollapsed=collapsedIds.has(task.id);
     const toggleHtml=((lv===1||lv===2||lv===3)&&_taskHasChildren)
       ?`<span class="toggle-btn${isCollapsed?' collapsed':''}" onclick="toggleCollapse(${task.id},event)">▼</span>`
@@ -1304,33 +1369,32 @@ function renderOnly(){
     const depIcon=hasPred?`<span title="Has Predecessor" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
     const _enText=task.titleEn||lookupDict(task.title);
     const enSub=_enText?`<div class="en-sub">${escH(_enText)}</div>`:'';
-    lb+=`<tr class="${lvClass}${isHL?' parent-highlight':''}" data-tid="${task.id}" style="height:${ROW_H}px">`;
-    lb+=`<td style="width:52px;text-align:left;padding-left:4px;height:${ROW_H}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:left;cursor:pointer;background:transparent;border:none;width:100%"></td>`;
-    lb+=`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:34px;position:relative;max-height:34px"><div style="display:flex;align-items:center;height:34px;overflow:hidden;max-height:34px">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;position:relative;height:34px;max-height:34px"><div style="display:flex;align-items:center;height:22px"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`;
-    lb+=`<td style="width:86px;height:${ROW_H}px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`;
-    const _hasChild=hasChildren(task.id);
-    lb+=`<td style="width:46px;text-align:center;height:${ROW_H}px"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" ${_hasChild?'readonly title="子タスクから自動計算"':''} style="text-align:center;width:40px;${_hasChild?'background:#f0f4f8;color:#888;cursor:default;':''}"></td>`;
-    lb+=`<td style="width:84px;height:${ROW_H}px"><button class="date-btn" onclick="openCal(event,${task.id},'start')">${task.start||'Select'}</button></td>`;
-    lb+=`<td style="width:84px;height:${ROW_H}px"><button class="date-btn" onclick="openCal(event,${task.id},'end')">${task.end||'Select'}</button></td>`;
-    lb+=`</tr>`;
+    lbArr.push(`<tr class="${lvClass}${isHL?' parent-highlight':''}" data-tid="${task.id}" style="height:${ROW_H}px">`);
+    lbArr.push(`<td style="width:52px;text-align:left;padding-left:4px;height:${ROW_H}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:left;cursor:pointer;background:transparent;border:none;width:100%"></td>`);
+    lbArr.push(`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:34px;position:relative;max-height:34px"><div style="display:flex;align-items:center;height:34px;overflow:hidden;max-height:34px">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;position:relative;height:34px;max-height:34px"><div style="display:flex;align-items:center;height:22px"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`);
+    lbArr.push(`<td style="width:86px;height:${ROW_H}px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`);
+    const _hasChild=hasChildrenFast(task.id);
+    lbArr.push(`<td style="width:46px;text-align:center;height:${ROW_H}px"><input class="cell-input" type="number" min="1" value="${task.days||''}" onchange="uDays(${task.id},this.value)" ${_hasChild?'readonly title="子タスクから自動計算"':''} style="text-align:center;width:40px;${_hasChild?'background:#f0f4f8;color:#888;cursor:default;':''}"></td>`);
+    lbArr.push(`<td style="width:84px;height:${ROW_H}px"><button class="date-btn" onclick="openCal(event,${task.id},'start')">${task.start||'Select'}</button></td>`);
+    lbArr.push(`<td style="width:84px;height:${ROW_H}px"><button class="date-btn" onclick="openCal(event,${task.id},'end')">${task.end||'Select'}</button></td>`);
+    lbArr.push(`</tr>`);
   });
-  document.getElementById('leftBody').innerHTML=lb+`</tbody></table>`;
-  document.getElementById('rightHeader').innerHTML=buildHeader(days,h);
+  document.getElementById('leftBody').innerHTML=lbArr.join('')+`</tbody></table>`;
+  // ヘッダーキャッシュ（年度・フィルタが変わった時のみ再生成）
+  if(_headerCache.year!==currentYear||_headerCache.month!==filt.month){
+    _headerCache.year=currentYear;
+    _headerCache.month=filt.month;
+    _headerCache.html=buildHeader(days,h);
+  }
+  document.getElementById('rightHeader').innerHTML=_headerCache.html;
 
-  let rb=`<table class="right-table" id="rightTable" style="width:${totalW+54}px"><tbody>`;
+  const rbArr=[`<table class="right-table" id="rightTable" style="width:${totalW+54}px"><tbody>`];
   visT.forEach((task,ri)=>{
     const hasPred=task.predecessorId!=null;
-    rb+=`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${ROW_H}px"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;height:${ROW_H}px;position:relative;padding:0">`;
-    rb+=`<div style="position:relative;width:${totalW}px;height:${ROW_H}px;overflow:hidden">`;
-    days.forEach((d,di)=>{
-      const w=d.getDay(),hol=isHol(d,h);
-      let bg='';
-      if(hol)bg='rgba(250,236,231,.5)';else if(w===0||w===6)bg='rgba(241,239,232,.5)';
-      else{const q=Math.ceil((d.getMonth()+1)/3);bg=['rgba(230,241,251,.3)','rgba(234,243,222,.3)','rgba(250,238,218,.3)','rgba(251,234,240,.3)'][q-1]}
-      const isT=fmt(d)===fmt(t0);if(isT)bg='rgba(255,249,200,.8)';
-      const bdr=isT?'border-left:2px solid #EF9F27':'';
-      if(bg||isT)rb+=`<div style="position:absolute;left:${di*DAY_W}px;top:0;width:${DAY_W}px;height:100%;background:${bg};${bdr}"></div>`;
-    });
+    rbArr.push(`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${ROW_H}px"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;height:${ROW_H}px;position:relative;padding:0">`);
+    rbArr.push(`<div class="gantt-row-bg" style="position:relative;width:${totalW}px;height:${ROW_H}px;overflow:hidden;background:var(--gbg-${ri%2===0?'even':'odd'})">`);
+    // Today強調線（1本だけ）
+    if(_todayIdx>=0)rb+=`<div style="position:absolute;left:${_todayIdx*DAY_W}px;top:0;width:${DAY_W}px;height:100%;background:rgba(255,249,200,.8);border-left:2px solid #EF9F27;z-index:1"></div>`;
     if(task.start&&task.end){
       const si=dayIdx[task.start],ei=dayIdx[task.end];
       if(si!==undefined&&ei!==undefined&&ei>=si){
@@ -1339,17 +1403,17 @@ function renderOnly(){
         if(isMsTask){
           const cx=si*DAY_W+(DAY_W/2);
           const top=(ROW_H-20)/2;
-          rb+=`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})">`;
-          rb+=`<div class="milestone-diamond" style="background:${col}"></div>`;
+          rbArr.push(`<div class="milestone-wrap${editId===task.id?' active':''}" data-tid="${task.id}" style="left:${cx-10}px;top:${top}px;height:20px" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})">`);
+          rbArr.push(`<div class="milestone-diamond" style="background:${col}"></div>`);
           const _msLabel=uiLang==='en'?(task.titleEn||lookupDict(task.title)||task.title):task.title;
-          rb+=`<span class="milestone-lbl" style="color:${col}">${escH(_msLabel)}</span>`;
-          rb+=`</div>`;
+          rbArr.push(`<span class="milestone-lbl" style="color:${col}">${escH(_msLabel)}</span>`);
+          rbArr.push(`</div>`);
         }else{
           const L=si*DAY_W,W2=(ei-si+1)*DAY_W;
           const isDone=task.done===true;
           const isOverdue=!isDone&&task.end&&task.end<fmt(t0);
           const doneClass=isDone?' task-done':isOverdue?' task-overdue':'';
-          const isParentBar=hasChildren(task.id);
+          const isParentBar=hasChildrenFast(task.id);
           const barTop=isParentBar?11:4;
           const barHeight=isParentBar?12:26;
           const parentClass=isParentBar?' parent-bar':'';
@@ -1357,17 +1421,17 @@ function renderOnly(){
             ?`<div class="done-badge early" title="早期完了">🏁</div>`
             :isDone?`<div class="done-badge done" title="完了">✔</div>`
             :isOverdue?`<div class="done-badge overdue" title="未完了・期限超過">!</div>`:'';
-          rb+=`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}${parentClass}" data-tid="${task.id}" style="left:${L}px;top:${barTop}px;width:${W2}px;height:${barHeight}px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})">${badgeHtml}`;
-          rb+=`<div class="g-resize-l" onmousedown="initRS(event,${task.id},'left')"></div>`;
+          rbArr.push(`<div class="gantt-bar${editId===task.id?' active':''}${hasPred?' dep-child':''}${doneClass}${parentClass}" data-tid="${task.id}" style="left:${L}px;top:${barTop}px;width:${W2}px;height:${barHeight}px;background:${isDone?col:isOverdue?'#E74C3C':col};${isDone?'opacity:.82':''}" onclick="_depFromId?finishDepLink(${task.id}):openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})">${badgeHtml}`);
+          rbArr.push(`<div class="g-resize-l" onmousedown="initRS(event,${task.id},'left')"></div>`);
           const _barLabel=uiLang==='en'?(task.titleEn||lookupDict(task.title)||task.title):task.title;
-          rb+=`<div class="gantt-bar-lbl">${escH(_barLabel)}</div>`;
-          rb+=`<div class="g-resize-r" onmousedown="initRS(event,${task.id},'right')"></div></div>`;
+          rbArr.push(`<div class="gantt-bar-lbl">${escH(_barLabel)}</div>`);
+          rbArr.push(`<div class="g-resize-r" onmousedown="initRS(event,${task.id},'right')"></div></div>`);
         }
       }
     }
-    rb+=`</div></td><td style="width:54px;height:${ROW_H}px;text-align:center;padding:0 4px"><button class="btn del-btn" onclick="deleteTask(${task.id})">${t('btnDelete')}</button></td></tr>`;
+    rbArr.push(`</div></td><td style="width:54px;height:${ROW_H}px;text-align:center;padding:0 4px"><button class="btn del-btn" onclick="deleteTask(${task.id})">${t('btnDelete')}</button></td></tr>`);
   });
-  document.getElementById('rightBody').innerHTML=rb+`</tbody></table><svg id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:5;overflow:visible"></svg>`;
+  document.getElementById('rightBody').innerHTML=rbArr.join('')+`</tbody></table><svg id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:5;overflow:visible"></svg>`;
   syncScroll();
   drawDepArrows();
 }
@@ -1404,7 +1468,7 @@ function drawDepArrows(){
 
   tasks.forEach(succ=>{
     if(!succ.predecessorId)return;
-    const pred=tasks.find(t=>t.id===succ.predecessorId);
+    const pred=getTaskById(succ.predecessorId);
     if(!pred||!pred.end||!succ.start)return;
     const fromRow=rowMap[pred.id];
     const toRow=rowMap[succ.id];
@@ -1474,7 +1538,7 @@ function jumpToToday(){
 // FIX: Task Name専用の更新関数（UNDOを壊さないようrendar()を呼ばない）
 // ── 1つの親タスクを直下の子から再計算（内部用）──
 function _calcOneParent(parentId){
-  const parent=tasks.find(p=>p.id===parentId);
+  const parent=getTaskById(parentId);
   if(!parent)return;
   const children=tasks.filter(c=>c.parentId===parentId&&c.start&&c.end);
   if(!children.length)return; // 子がなければ計算しない（手動値を保持）
@@ -1489,12 +1553,12 @@ function _calcOneParent(parentId){
 // ── 変更されたタスクから祖先チェーンを全て上に向かって再計算 ──
 function recalcParent(taskId){
   // 変更タスク自身のparentIdから順に最上位まで遡る
-  let cur=tasks.find(t=>t.id===taskId);
+  let cur=getTaskById(taskId);
   while(cur){
     const parentId=cur.parentId;
     if(parentId==null)break; // Lv1の親はなし
     _calcOneParent(parentId);
-    cur=tasks.find(t=>t.id===parentId);
+    cur=getTaskById(parentId);
   }
 }
 
@@ -1506,9 +1570,9 @@ function recalcAllParents(){
   )];
   // レベルの深い順（降順）にソート
   parentIds.sort((a,b)=>{
-    const la=tasks.find(t=>t.id===a)?.level||1;
-    const lb=tasks.find(t=>t.id===b)?.level||1;
-    return lb-la;
+    const la=getTaskById(a)?.level||1;
+    const lb_=getTaskById(b)?.level||1;
+    return lb_-la;
   });
   parentIds.forEach(pid=>_calcOneParent(pid));
 }
@@ -2549,6 +2613,7 @@ function onRU(){
 }
 function renderBarsOnly(){
   const h=hs(currentYear),days=yearDays(currentYear,filt.month),dayIdx={};days.forEach((d,i)=>{dayIdx[fmt(d)]=i});
+  rebuildParentSet();
   getVisibleTasks().forEach(task=>{
     const row=document.querySelector(`#rightTable tr[data-tid="${task.id}"]`);if(!row)return;
     const wrap=row.querySelector('.gantt-cell-td div');if(!wrap)return;
@@ -2594,7 +2659,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v72.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v73.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -3559,8 +3624,8 @@ async function init(){
   await loadUserDict(); // ユーザー辞書をFirebaseから読み込み
   const ys=document.getElementById('yearSel');
   [2024,2025,2026,2027,2028].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'';if(y===currentYear)o.selected=true;ys.appendChild(o)});
-  ys.onchange=()=>{currentYear=+ys.value;saveData();render()};
-  document.getElementById('monthSel').onchange=function(){filt.month=+this.value;render()};
+  ys.onchange=()=>{currentYear=+ys.value;_headerCache.year=null;saveData();render()};
+  document.getElementById('monthSel').onchange=function(){filt.month=+this.value;_headerCache.year=null;render()};
   document.getElementById('filterAsgn').onchange=function(){filt.assignee=this.value;render()};
   document.getElementById('filterParent').onchange=function(){filt.parent=this.value;render()};
   await loadData();reNumberWbs();recalcAllParents();render();
