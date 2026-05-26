@@ -2147,9 +2147,14 @@ function scrollToTaskStart(taskId){
   if(!t||!t.start)return;
   const days=yearDays(currentYear,filt.month);
   const idx=days.findIndex(d=>fmt(d)===t.start);
-  if(idx<0){filt.month=0;document.getElementById('monthSel').value='0';render();setTimeout(()=>scrollToTaskStart(taskId),80);return;}
+  if(idx<0){filt.month=0;document.getElementById('monthSel').value='0';_headerCache.year=null;_bgCacheKey='';render();setTimeout(()=>scrollToTaskStart(taskId),80);return;}
   const rb=document.getElementById('rightBody');if(!rb)return;
   rb.scrollTo({left:Math.max(0,idx*DAY_W-rb.clientWidth/3),behavior:'smooth'});
+  // 縦スクロール
+  const lb=document.getElementById('leftBody');
+  const leftRow=document.querySelector(`#leftTable tr[data-tid="${taskId}"]`);
+  if(leftRow&&lb) lb.scrollTo({top:Math.max(0,leftRow.offsetTop-lb.clientHeight/2),behavior:'smooth'});
+  if(leftRow&&rb) rb.scrollTo({top:Math.max(0,leftRow.offsetTop-rb.clientHeight/2),behavior:'smooth'});
 }
 // ── 依存関係リンクモード管理 ──
 let _depFromId=null; // 起点タスクID
@@ -3339,37 +3344,57 @@ function rptJumpToTask(taskId,isEn){
   if(!t)return;
   // 1) モーダルを閉じる
   closeReportModal();
-  // 2) 月フィルタをリセットして対象タスクが表示されるようにrender
+  // 2) 月フィルタをリセット
   if(filt.month!==0){
     filt.month=0;
     document.getElementById('monthSel').value='0';
+    _headerCache.year=null; _bgCacheKey='';
   }
+  // 3) ジャンプ先タスクの祖先を全て展開（折りたたまれていると行がDOMに存在しない）
+  _expandAncestors(taskId);
   render();
-  // 3) スクロール（横：タスク開始日、縦：タスク行）
-  setTimeout(()=>{
-    _rptScrollToTask(taskId);
-  },120);
-  // 4) トースト表示
+  // 4) スクロール
+  setTimeout(()=>{ _rptScrollToTask(taskId); }, 150);
+  // 5) トースト
   const msg=isEn
     ?`📍 Jumped to: ${t.titleEn||t.title} — Press "Start Editing" to mark complete`
     :`📍 「${t.title}」へジャンプしました — Start Editing で完了登録できます`;
   _showRptToast(msg, 4000);
 }
 
+// ジャンプ先タスクの祖先チェーンを全て展開
+function _expandAncestors(taskId){
+  let cur = tasks.find(t=>t.id===taskId);
+  let changed = false;
+  while(cur && cur.parentId!=null){
+    const parent = tasks.find(p=>p.id===cur.parentId);
+    if(!parent) break;
+    if(collapsedIds.has(parent.id)){
+      collapsedIds.delete(parent.id);
+      changed = true;
+    }
+    cur = parent;
+  }
+  if(changed) localStorage.setItem('gt5_col', JSON.stringify([...collapsedIds]));
+}
+
 function _rptScrollToTask(taskId){
   const t=tasks.find(t=>t.id===taskId);
   if(!t||!t.start)return;
   // 横スクロール（開始日へ）
-  const days=yearDays(currentYear,0);
+  const days=yearDays(currentYear, filt.month);
   const idx=days.findIndex(d=>fmt(d)===t.start);
   const rb=document.getElementById('rightBody');
+  const lb=document.getElementById('leftBody');
   if(rb&&idx>=0){
     rb.scrollTo({left:Math.max(0,idx*DAY_W-rb.clientWidth/3),behavior:'smooth'});
   }
-  // 縦スクロール（行へ）
+  // 縦スクロール（leftBodyを直接スクロール）
   const leftRow=document.querySelector(`#leftTable tr[data-tid="${taskId}"]`);
-  if(leftRow){
-    leftRow.scrollIntoView({behavior:'smooth',block:'center'});
+  if(leftRow&&lb){
+    const rowTop=leftRow.offsetTop;
+    lb.scrollTo({top:Math.max(0, rowTop - lb.clientHeight/2), behavior:'smooth'});
+    if(rb) rb.scrollTo({top:Math.max(0, rowTop - rb.clientHeight/2), behavior:'smooth'});
   }
   // ハイライトフラッシュ（左右両行）
   setTimeout(()=>{
@@ -3378,12 +3403,12 @@ function _rptScrollToTask(taskId){
       const row=document.querySelector(sel);
       if(row){
         row.classList.remove('task-row-flash');
-        void row.offsetWidth; // reflow
+        void row.offsetWidth;
         row.classList.add('task-row-flash');
         setTimeout(()=>row.classList.remove('task-row-flash'),3800);
       }
     });
-  },350);
+  },400);
 }
 
 function _showRptToast(msg, duration){
