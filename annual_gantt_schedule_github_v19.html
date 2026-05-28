@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v75</title>
+<title>年度Schedule・ガントチャート v77</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -16,6 +16,8 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getDatabase, ref, set, get, onValue, onDisconnect, remove }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDi6ZFxJJIKd6pUIdaN0B6yYWLrw-D2Zi8",
@@ -29,10 +31,70 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 const lockRef = ref(db, 'lock');
 const dataRef = ref(db, 'scheduleData');
 const userDictRef = ref(db, 'userDict');
 const sessionId = Math.random().toString(36).slice(2);
+
+// ── 許可するメールアドレス一覧 ──
+// ここに許可するGoogleアカウントのメールアドレスを追加してください
+const ALLOWED_EMAILS = [
+  'katayose@fujioh.co.jp',
+  'katayose0001-rgb@github.com',
+  // 追加したい場合はここに 'example@gmail.com', の形式で追加
+];
+
+// ── Google認証 ──
+const _provider = new GoogleAuthProvider();
+
+window._fbSignIn = async function(){
+  try{
+    await signInWithPopup(auth, _provider);
+  }catch(e){
+    console.warn('Sign in error:', e);
+    alert('ログインに失敗しました。もう一度お試しください。');
+  }
+};
+
+window._fbSignOut = async function(){
+  await signOut(auth);
+};
+
+// ── 認証状態の監視 ──
+onAuthStateChanged(auth, (user) => {
+  if(user){
+    // ログイン済み → メール確認
+    const email = user.email || '';
+    const allowed = ALLOWED_EMAILS.length === 0 || ALLOWED_EMAILS.includes(email);
+    if(!allowed){
+      // 許可されていないアカウント
+      signOut(auth);
+      document.getElementById('auth-screen').style.display='flex';
+      document.getElementById('auth-error').textContent =
+        `⚠ ${email} はアクセス権がありません。管理者に連絡してください。`;
+      document.getElementById('app').style.display='none';
+      return;
+    }
+    // 認証OK
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('auth-user-name').textContent = user.displayName || email;
+    document.getElementById('auth-user-email').textContent = email;
+    if(user.photoURL){
+      document.getElementById('auth-user-photo').src = user.photoURL;
+      document.getElementById('auth-user-photo').style.display='block';
+    }
+    window._editingName = user.displayName || email;
+    // アプリ初期化（認証確認後に実行）
+    if(window._fbAuthReady) window._fbAuthReady(user);
+  } else {
+    // 未ログイン → 認証画面を表示
+    document.getElementById('auth-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+    document.getElementById('auth-error').textContent='';
+  }
+});
 
 // ── ロック管理をwindowに公開 ──
 window._fbLockRef = lockRef;
@@ -469,10 +531,66 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .task-history-diff span.old{color:#E74C3C;text-decoration:line-through;margin-right:4px}
 .task-history-diff span.new{color:#0E7A5C;font-weight:600}
 .task-history-empty{font-size:10px;color:var(--color-text-tertiary);font-style:italic;padding:6px 0}
+
+/* ── Google認証画面 ── */
+#auth-screen{
+  position:fixed;inset:0;background:linear-gradient(135deg,#0E4F8A 0%,#1D9E75 100%);
+  z-index:99999;display:flex;align-items:center;justify-content:center;
+  font-family:'Segoe UI',system-ui,sans-serif;
+}
+#auth-screen.hidden{display:none}
+.auth-card{
+  background:#fff;border-radius:20px;padding:48px 44px;
+  box-shadow:0 24px 80px rgba(0,0,0,.25);width:min(400px,92vw);text-align:center;
+}
+.auth-logo{width:72px;height:72px;margin:0 auto 20px;
+  background:linear-gradient(135deg,#185FA5,#1D9E75);
+  border-radius:18px;display:flex;align-items:center;justify-content:center;
+  font-size:32px;font-weight:900;color:#fff;letter-spacing:-1px}
+.auth-title{font-size:22px;font-weight:800;color:#1a1a2e;margin-bottom:4px}
+.auth-subtitle{font-size:13px;color:#888;margin-bottom:32px}
+.auth-btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;padding:14px 20px;border-radius:10px;border:1.5px solid #ddd;
+  background:#fff;font-size:14px;font-weight:600;color:#333;cursor:pointer;
+  transition:box-shadow .15s,border-color .15s;
+}
+.auth-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,.12);border-color:#bbb}
+.auth-btn img{width:20px;height:20px}
+.auth-error{margin-top:16px;font-size:12px;color:#E74C3C;min-height:18px;font-weight:500}
+#auth-user-bar{
+  display:flex;align-items:center;gap:8px;padding:4px 10px;
+  background:rgba(255,255,255,.12);border-radius:8px;cursor:pointer;
+  font-size:11px;color:#fff;border:1px solid rgba(255,255,255,.2);
+  transition:background .15s;
+}
+#auth-user-bar:hover{background:rgba(255,255,255,.22)}
+#auth-user-photo{width:22px;height:22px;border-radius:50%;object-fit:cover;display:none}
+#auth-user-name{font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.auth-signout-hint{font-size:9px;opacity:.7}
 </style>
 </head>
 <body>
-<div id="app">
+
+<!-- ── Google認証画面（未ログイン時に表示） ── -->
+<div id="auth-screen" style="display:flex">
+  <div class="auth-card">
+    <div class="auth-logo">A</div>
+    <div class="auth-title">ARIAFINA Schedule</div>
+    <div class="auth-subtitle">アクセスには認証が必要です</div>
+    <button class="auth-btn" onclick="window._fbSignIn()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Googleアカウントでログイン
+    </button>
+    <div class="auth-error" id="auth-error"></div>
+    <div style="margin-top:24px;font-size:10px;color:#bbb;line-height:1.6">
+      許可されたGoogleアカウントのみアクセスできます<br>
+      アクセス申請は管理者（片寄）までご連絡ください
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none">>
   <div class="toolbar">
 
     <!-- ── Row 1: 編集権限 ＋ フィルター ── -->
@@ -521,6 +639,13 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
       <button class="btn" id="langToggleBtn" onclick="toggleUiLang()"
         style="font-size:11px;padding:0 8px;background:#F0F4FF;border-color:#7B9BD4;color:#185FA5;font-weight:600"
         title="Switch UI language / UI言語切替">🌐 EN</button>
+
+      <!-- ログインユーザー情報 -->
+      <div id="auth-user-bar" onclick="if(confirm('サインアウトしますか？'))window._fbSignOut()" title="クリックでサインアウト">
+        <img id="auth-user-photo" src="" alt="">
+        <span id="auth-user-name">-</span>
+        <span class="auth-signout-hint">▸ logout</span>
+      </div>
     </div>
 
     <!-- ── Row 2: タスク操作 ＋ データ ── -->
@@ -1626,7 +1751,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v75</div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v77</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
@@ -2788,7 +2913,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v75.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v77.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -3809,14 +3934,27 @@ async function init(){
 }
 // Firebase接続を待ってからinit実行
 function waitForFbAndInit(){
+  // 認証済みの場合のみ init を実行
+  function _doInit(){
+    const authScreen = document.getElementById('auth-screen');
+    if(authScreen && authScreen.style.display !== 'none'){
+      // まだ認証中 → 認証完了後(_fbAuthReady)に実行される
+      return;
+    }
+    if(!window._appInitialized) init();
+  }
   if(window._fbLoadData){
-    init();
+    _doInit();
   }else{
-    window.addEventListener('fbReady',()=>init(),{once:true});
-    // 3秒待ってもFirebase接続できなければlocalStorageで起動
-    setTimeout(()=>{if(!window._fbLoadData)init();},3000);
+    window.addEventListener('fbReady',()=>_doInit(),{once:true});
+    setTimeout(()=>{ if(!window._fbLoadData) _doInit(); },3000);
   }
 }
+// 認証完了後にアプリ初期化
+window._fbAuthReady = function(user){
+  if(window._fbLoadData){ init(); }
+  else{ window.addEventListener('fbReady',()=>init(),{once:true}); }
+};
 waitForFbAndInit();
 
 // ── Firebase 編集ロック ──
