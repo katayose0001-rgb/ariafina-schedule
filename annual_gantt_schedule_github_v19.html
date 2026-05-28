@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v78</title>
+<title>年度Schedule・ガントチャート v79</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -522,6 +522,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
     <div class="auth-logo">A</div>
     <div class="auth-title">ARIAFINA Annual Schedule</div>
     <div class="auth-subtitle">パスワードを入力してください</div>
+    <div style="font-size:10px;color:#bbb;margin-bottom:12px;margin-top:-18px;letter-spacing:.5px">v79</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <input id="auth-pw-input" type="password" placeholder="Password"
         style="flex:1;padding:12px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none"
@@ -617,6 +618,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
         <button class="btn primary" id="btnAddTask" onclick="openSide('addTask')">＋ タスク追加</button>
         <button class="btn" id="btnAddSub" onclick="openSide('addSub')">＋ サブタスク</button>
         <button class="btn" id="btnManageAsgn" onclick="openSide('assignees')">担当者管理</button>
+        <button class="btn" id="btnWBS" onclick="window.open('https://chatgpt.com/g/g-6a17c0659a5c8191b5d783a52e817483-sukesiyuruwbszuo-cheng-gpt','_blank')" style="color:#7B3F00;border-color:#A0522D;font-weight:600;background:#FFF3E0" title="ChatGPT スケジュールWBS作成GPTを開く">🗂 WBS作成</button>
         <button class="btn" id="btnBulkInput" onclick="openBulkModal()"
           style="color:#0E4F8A;border-color:#185FA5;font-weight:600;background:#EAF3FB"
           title="表をコピペして一括タスク追加">📋 一括入力</button>
@@ -1871,7 +1873,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v78</div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v79</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
@@ -3033,7 +3035,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v78.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v79.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
