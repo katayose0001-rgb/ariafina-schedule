@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v74</title>
+<title>年度Schedule・ガントチャート v75</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -458,6 +458,17 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .bulk-preview-tbl .lv3 td{border-left:3px solid #BA7517}
 .bulk-err{background:#FEF2F2;border:1px solid #fca5a5;border-radius:6px;padding:10px 12px;font-size:11px;color:#991B1B;margin-top:8px}
 .bulk-ok{background:#F0FBF7;border:1px solid #6ee7b7;border-radius:6px;padding:10px 12px;font-size:11px;color:#065F46;margin-top:8px;font-weight:600}
+
+/* ── タスク変更履歴 ── */
+.task-history-wrap{margin-top:4px}
+.task-history-item{display:flex;flex-direction:column;gap:2px;padding:7px 10px;border-radius:6px;background:var(--color-background-secondary);border:1px solid var(--color-border-tertiary);font-size:10px;line-height:1.5}
+.task-history-item+.task-history-item{margin-top:4px}
+.task-history-date{color:var(--color-text-tertiary);font-size:9px;font-weight:500;white-space:nowrap}
+.task-history-user{color:#185FA5;font-weight:600;font-size:10px}
+.task-history-diff{color:var(--color-text-secondary)}
+.task-history-diff span.old{color:#E74C3C;text-decoration:line-through;margin-right:4px}
+.task-history-diff span.new{color:#0E7A5C;font-weight:600}
+.task-history-empty{font-size:10px;color:var(--color-text-tertiary);font-style:italic;padding:6px 0}
 </style>
 </head>
 <body>
@@ -1180,6 +1191,76 @@ let _headerCache = {year:null, month:null, html:''};
 
 // #6: Firebase書き込みデバウンス（500ms待機後に1回送信）
 let _fbSaveTimer = null;
+// ━━ タスク変更履歴（最大3件） ━━
+const HISTORY_FIELDS = {
+  title:       {label:'タスク名'},
+  titleEn:     {label:'English Title'},
+  assignee:    {label:'担当者'},
+  start:       {label:'開始日'},
+  end:         {label:'終了日'},
+  days:        {label:'日数'},
+  description: {label:'内容'},
+  enSummary:   {label:'EN Summary'},
+  notes:       {label:'備考'},
+  done:        {label:'完了',   fmt:v=>v?'完了':'未完了'},
+  color:       {label:'カラー'},
+  level:       {label:'レベル', fmt:v=>`Lv${v}`},
+};
+
+// タスクのスナップショットを取る（履歴比較用フィールドのみ）
+function _taskSnapshot(t){
+  const snap={};
+  Object.keys(HISTORY_FIELDS).forEach(k=>{ snap[k]=t[k]; });
+  return snap;
+}
+
+// 2つのスナップショットの差分を文字列配列で返す
+function _diffSnapshot(before, after){
+  const diffs=[];
+  Object.keys(HISTORY_FIELDS).forEach(k=>{
+    const bv = before[k], av = after[k];
+    if(bv===av) return;
+    const fmtFn = HISTORY_FIELDS[k].fmt || (v=>(v===undefined||v===null||v==='')?'(空)':String(v));
+    diffs.push({ label: HISTORY_FIELDS[k].label, old: fmtFn(bv), new: fmtFn(av) });
+  });
+  return diffs;
+}
+
+// 変更を履歴に記録（saveEditTask・saveTask時に呼ぶ）
+function recordTaskHistory(taskId, beforeSnap, afterSnap, editorName){
+  const task = getTaskById(taskId);
+  if(!task) return;
+  const diffs = _diffSnapshot(beforeSnap, afterSnap);
+  if(!diffs.length) return; // 変更なし
+
+  if(!task.history) task.history=[];
+  const entry = {
+    at:   fmt(t0) + ' ' + new Date().toTimeString().slice(0,5),
+    by:   editorName || _editingName || '(unknown)',
+    diffs
+  };
+  task.history.unshift(entry);       // 最新を先頭に
+  if(task.history.length > 3) task.history.length = 3; // 最大3件
+}
+
+// 変更履歴HTMLを生成（editTaskパネル末尾に表示）
+function buildHistoryHtml(task){
+  const h = task.history||[];
+  if(!h.length) return `<div class="task-history-empty">変更履歴なし</div>`;
+  return h.map((e,i)=>`
+    <div class="task-history-item">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="task-history-user">${escH(e.by)}</span>
+        <span class="task-history-date">${escH(e.at)}</span>
+      </div>
+      ${e.diffs.map(d=>`
+        <div class="task-history-diff">
+          <strong>${escH(d.label)}：</strong>
+          <span class="old">${escH(d.old)}</span>→<span class="new">${escH(d.new)}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
 function saveDataDebounced(){
   try{
     localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
@@ -1542,7 +1623,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v74</div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v75</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
@@ -1755,10 +1836,7 @@ function openSide(mode,id){
       <div class="sf"><label>Task Name</label><input id="s_title" value="${escH(t.title)}" style="font-weight:700;font-size:13px"></div>
       <div class="sf">
         <label style="color:var(--color-text-secondary)">English Title (optional)</label>
-        <div style="display:flex;gap:4px;align-items:center">
-          <input id="s_titleEn" value="${escH(t.titleEn||'')}" placeholder="English title (optional)" style="flex:1;font-size:11px;color:var(--color-text-secondary)">
-          <button type="button" id="autoTranslateBtn" onclick="clickAutoTranslate()" style="font-size:10px;padding:2px 6px;border:0.5px solid #378ADD;border-radius:3px;background:#EAF3FB;color:#185FA5;cursor:pointer;white-space:nowrap;flex-shrink:0;font-weight:600">Auto Translate</button>
-        </div>
+        <input id="s_titleEn" value="${escH(t.titleEn||'')}" placeholder="English title (optional)" style="font-size:11px;color:var(--color-text-secondary)">
       </div>
       <div class="sf"><label>WBS (Auto)</label><input id="s_wbs" value="${escH(t.wbs)}" readonly style="background:var(--color-background-secondary);color:var(--color-text-secondary)"></div>
       <div class="sf">
@@ -1835,6 +1913,12 @@ function openSide(mode,id){
         </select>
         <div class="sf-dep-note">Predecessorの終了翌営業日 → このタスクのStart Dateが自動で連動します</div>
         ${depWarning}
+      </div>
+      <div class="sf" style="padding-top:4px">
+        <label style="font-size:11px;font-weight:700;color:var(--color-text-secondary);display:flex;align-items:center;gap:6px">
+          🕒 変更履歴 <span style="font-weight:400;font-size:10px;color:var(--color-text-tertiary)">（最新3件）</span>
+        </label>
+        <div class="task-history-wrap">${buildHistoryHtml(t)}</div>
       </div>`;
     footer.innerHTML=`
       <button class="btn danger" onclick="deleteTask(${id})" title="このタスクをDelete">Delete</button>
@@ -2486,6 +2570,7 @@ function saveEditTask(id){
   if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   const t=tasks.find(t=>t.id===id);if(!t)return;
   pushUndo(`タスク編集「${t.title}」`);
+  const _beforeSnap = _taskSnapshot(t); // 変更前スナップショット
   const h=hs(currentYear);
   const isMsChk=document.getElementById('s_ms')?.checked||false;
   t.title=document.getElementById('s_title').value;
@@ -2498,6 +2583,8 @@ function saveEditTask(id){
   t.enSummary   = document.getElementById('s_ensum')?.value||'';
   t.notes       = document.getElementById('s_notes')?.value||'';
   t.assignee=document.getElementById('s_asgn').value;
+  // 変更履歴を記録
+  recordTaskHistory(id, _beforeSnap, _taskSnapshot(t), _editingName||'');
   t.start=document.getElementById('s_start').value;
   if(isMsChk){
     t.end=t.start;t.days=1;
@@ -2693,7 +2780,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v74.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v75.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -3787,6 +3874,7 @@ window._updateLockUI = function(data) {
 function startEditing() {
   if(!window._fbLockRef) return;
   const name = document.getElementById('lockNameInput').value.trim() || '名無し';
+  window._editingName = name; // 変更履歴用に保持
   localStorage.setItem('gt5_editor_name', name);
   window._fbSet(window._fbLockRef, {
     name,
