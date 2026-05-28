@@ -489,6 +489,29 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
 .auth-subtitle{font-size:13px;color:#888;margin-bottom:24px}
 .auth-error{margin-top:12px;font-size:12px;color:#E74C3C;min-height:18px;font-weight:500}
 #auth-pw-input:focus{border-color:#185FA5;box-shadow:0 0 0 3px rgba(24,95,165,.15)}
+
+/* ── ログイン画面TIPS ── */
+.auth-tips{
+  margin-top:20px;padding:14px 16px;
+  background:linear-gradient(135deg,rgba(24,95,165,.08),rgba(29,158,117,.08));
+  border:1px solid rgba(24,95,165,.18);border-radius:12px;text-align:left;
+}
+.auth-tips-label{
+  font-size:9px;font-weight:700;letter-spacing:1px;
+  color:#1D9E75;text-transform:uppercase;margin-bottom:6px;
+  display:flex;align-items:center;gap:4px;
+}
+.auth-tips-stat{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:8px;padding-bottom:8px;
+  border-bottom:1px solid rgba(24,95,165,.12);
+}
+.auth-tips-stat-item{text-align:center;flex:1}
+.auth-tips-stat-num{font-size:22px;font-weight:800;color:#185FA5;line-height:1}
+.auth-tips-stat-lbl{font-size:9px;color:#888;margin-top:2px}
+.auth-tips-msg{font-size:11px;color:#555;line-height:1.6;font-style:italic}
+.auth-tips-news{font-size:10px;color:#888;margin-top:6px;padding-top:6px;
+  border-top:1px solid rgba(0,0,0,.06);line-height:1.5}
 </style>
 </head>
 <body>
@@ -510,6 +533,26 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
       </button>
     </div>
     <div class="auth-error" id="auth-error"></div>
+    <!-- TIPS: タスク統計 + 時事ネタ -->
+    <div class="auth-tips" id="auth-tips" style="display:none">
+      <div class="auth-tips-label">📊 Today's Status</div>
+      <div class="auth-tips-stat">
+        <div class="auth-tips-stat-item">
+          <div class="auth-tips-stat-num" id="tips-total">-</div>
+          <div class="auth-tips-stat-lbl">総タスク</div>
+        </div>
+        <div class="auth-tips-stat-item">
+          <div class="auth-tips-stat-num" style="color:#E74C3C" id="tips-undone">-</div>
+          <div class="auth-tips-stat-lbl">未完了</div>
+        </div>
+        <div class="auth-tips-stat-item">
+          <div class="auth-tips-stat-num" style="color:#1D9E75" id="tips-done">-</div>
+          <div class="auth-tips-stat-lbl">完了</div>
+        </div>
+      </div>
+      <div class="auth-tips-msg" id="tips-msg"></div>
+      <div class="auth-tips-news" id="tips-news"></div>
+    </div>
   </div>
 </div>
 
@@ -1256,7 +1299,11 @@ let _histTaskId = null; // 編集中タスクID
 
 function _snapTask(t){
   const s={};
-  Object.keys(HIST_FIELDS).forEach(k=>{ s[k]=t[k]; });
+  Object.keys(HIST_FIELDS).forEach(k=>{
+    // undefined/null は '' に正規化してスナップ（取得タイミングの違いによる誤差をなくす）
+    const v=t[k];
+    s[k]=(v===undefined||v===null)?'':v;
+  });
   return s;
 }
 
@@ -1273,7 +1320,16 @@ function _recordHistory(taskId, before, after){
   const diffs=[];
   Object.keys(HIST_FIELDS).forEach(k=>{
     const bv=before[k], av=after[k];
-    if(String(bv===undefined||bv===null?'':bv)===String(av===undefined||av===null?'':av)) return;
+    // undefined / null / '' / false(done) をそれぞれ正規化して比較
+    const norm = v => {
+      if(v===undefined||v===null) return '';
+      if(typeof v==='boolean') return String(v);
+      return String(v);
+    };
+    const nb=norm(bv), na=norm(av);
+    if(nb===na) return; // 変更なし
+    // 両方とも「空」扱い（''）なら記録しない
+    if(nb===''&&na==='') return;
     diffs.push({label:HIST_FIELDS[k], old:_fmtHistVal(k,bv), nw:_fmtHistVal(k,av)});
   });
   if(!diffs.length) return;
@@ -1319,6 +1375,97 @@ function saveDataDebounced(){
 }
 
 
+
+// ━━ ログイン画面TIPS ━━
+function _buildAuthTips(){
+  const tipsEl = document.getElementById('auth-tips');
+  if(!tipsEl) return;
+
+  // タスク統計（localStorageから読み込み）
+  let total=0, done=0, undone=0;
+  try{
+    const raw = localStorage.getItem('gt5_tasks');
+    if(raw){
+      const ts = JSON.parse(raw);
+      total = ts.length;
+      done  = ts.filter(t=>t.done===true).length;
+      undone = total - done;
+      document.getElementById('tips-total').textContent = total;
+      document.getElementById('tips-undone').textContent = undone;
+      document.getElementById('tips-done').textContent  = done;
+    }
+  }catch(e){}
+
+  // タスク状況に応じたメッセージ
+  const msgs = [];
+  if(undone === 0 && total > 0){
+    msgs.push('🎉 全タスク完了！素晴らしい進捗です。');
+  } else if(undone > 0 && total > 0){
+    const pct = Math.round(done/total*100);
+    if(pct >= 80) msgs.push(`達成率${pct}%！ゴールが見えてきました 🏁`);
+    else if(pct >= 50) msgs.push(`折り返し地点を超えました。残り${undone}件、引き続き頑張りましょう！`);
+    else msgs.push(`残り${undone}件。一つひとつ丁寧に進めていきましょう 💪`);
+  }
+  if(msgs.length) document.getElementById('tips-msg').textContent = msgs[0];
+
+  // 時事ネタ・季節ネタ（月ごとに切替）
+  const now = new Date();
+  const m = now.getMonth()+1; // 1-12
+  const d = now.getDate();
+  const seasonal = [
+    // 1月
+    [1, '🎍 新年スタート！今年の目標をガントに落とし込もう。'],
+    [1, '❄️ 寒い時期こそ、室内でスケジュール整理が捗ります。'],
+    // 2月
+    [2, '🎌 2月は年度末ラストスパート。優先タスクを再確認しよう。'],
+    [2, '🍫 バレンタインも大事だけど、締め切りも大事です。'],
+    // 3月
+    [3, '🌸 年度末！来期の計画を早めに仕込んでおこう。'],
+    [3, '🎓 卒業シーズン。新しいステージへの準備はできていますか？'],
+    // 4月
+    [4, '🌷 新年度スタート！新メンバーにもスケジュールを共有しよう。'],
+    [4, '🌼 春の陽気に負けず、タスクを前倒ししていこう！'],
+    // 5月
+    [5, '🌿 ゴールデンウィーク明けは仕切り直しのチャンス。'],
+    [5, '🍃 5月病に負けない！小さなタスクから片付けよう。'],
+    // 6月
+    [6, '☔ 梅雨入り。引きこもって資料整理の季節です。'],
+    [6, '📊 半期レビューの季節。進捗を振り返ってみよう。'],
+    // 7月
+    [7, '☀️ 夏本番前に、Q3のタスクを整理しておこう。'],
+    [7, '🏖️ 夏休み前の追い込みが後の余裕を生みます。'],
+    // 8月
+    [8, '🌻 ARIAFINAラボ オープンまであとわずか！ラストスパート！'],
+    [8, '🎆 夏の締め切りを乗り越えた先に、涼しい秋が待っています。'],
+    // 9月
+    [9, '🍂 秋の到来。10月オープンに向けた最終仕上げの時期です！'],
+    [9, '🏃 9月は追い込みの季節。タスクを一気に片付けよう。'],
+    // 10月
+    [10, '🎊 グランドオープンの季節！ARIAFINAラボの新しいステージへ。'],
+    [10, '🍁 秋深まる中、年内残タスクを確認しよう。'],
+    // 11月
+    [11, '🍂 年末に向けて、残タスクの棚卸しを始めよう。'],
+    [11, '🦃 感謝の気持ちを持ちながら、チームで年末を駆け抜けよう！'],
+    // 12月
+    [12, '🎄 年末！来年のガントチャートを今から準備しよう。'],
+    [12, '⛄ 今年の積み残しタスクをゼロにして新年を迎えよう！'],
+  ];
+
+  // 当月のメッセージをランダムに選択
+  const monthMsgs = seasonal.filter(s=>s[0]===m);
+  if(monthMsgs.length){
+    const pick = monthMsgs[d % monthMsgs.length];
+    document.getElementById('tips-news').textContent = pick[1];
+  }
+
+  // 表示
+  if(total > 0) tipsEl.style.display = 'block';
+}
+
+// DOMContentLoaded後にTIPS生成
+document.addEventListener('DOMContentLoaded', ()=>{
+  setTimeout(_buildAuthTips, 200);
+});
 // ━━ パスワード認証 ━━
 const _AUTH_KEY = 'gt5_auth';
 const _PW_HASH  = '92f4d8b2e1a5c3f7d9e0b4a6c8f2d1e3'; // Ariafina2002! のmd5相当識別子
