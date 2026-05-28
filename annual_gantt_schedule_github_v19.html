@@ -513,7 +513,7 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
   </div>
 </div>
 
-<div id="app" style="display:none">>
+<div id="app" style="visibility:hidden;height:0;overflow:hidden">>
   <div class="toolbar">
 
     <!-- ── Row 1: 編集権限 ＋ フィルター ── -->
@@ -1337,7 +1337,10 @@ function checkPassword(){
     // 認証成功 → セッションに記録してアプリ表示
     sessionStorage.setItem(_AUTH_KEY, '1');
     document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
+    const _ap = document.getElementById('app');
+    _ap.style.visibility = 'visible';
+    _ap.style.height = '';
+    _ap.style.overflow = '';
     // アプリ初期化（未初期化の場合）
     if(!window._appInitialized){
       if(window._fbLoadData){ init(); }
@@ -1357,14 +1360,14 @@ function checkPassword(){
     const as = document.getElementById('auth-screen');
     const ap = document.getElementById('app');
     if(as) as.style.display = 'none';
-    if(ap) ap.style.display = 'block';
+    if(ap){ ap.style.visibility='visible'; ap.style.height=''; ap.style.overflow=''; }
   } else {
     // 未認証 → 認証画面を表示（DOMContentLoaded後）
     document.addEventListener('DOMContentLoaded', ()=>{
       const as = document.getElementById('auth-screen');
       const ap = document.getElementById('app');
       if(as) as.style.display = 'flex';
-      if(ap) ap.style.display = 'none';
+      if(ap){ ap.style.visibility='hidden'; ap.style.height='0'; ap.style.overflow='hidden'; }
       // パスワード入力にフォーカス
       setTimeout(()=>{ document.getElementById('auth-pw-input')?.focus(); }, 100);
     });
