@@ -1191,76 +1191,79 @@ let _headerCache = {year:null, month:null, html:''};
 
 // #6: Firebase書き込みデバウンス（500ms待機後に1回送信）
 let _fbSaveTimer = null;
-// ━━ タスク変更履歴（最大3件） ━━
-const HISTORY_FIELDS = {
-  title:       {label:'タスク名'},
-  titleEn:     {label:'English Title'},
-  assignee:    {label:'担当者'},
-  start:       {label:'開始日'},
-  end:         {label:'終了日'},
-  days:        {label:'日数'},
-  description: {label:'内容'},
-  enSummary:   {label:'EN Summary'},
-  notes:       {label:'備考'},
-  done:        {label:'完了',   fmt:v=>v?'完了':'未完了'},
-  color:       {label:'カラー'},
-  level:       {label:'レベル', fmt:v=>`Lv${v}`},
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// タスク変更履歴（最大3件）
+// 記録タイミング：closeSide時（パネルを離れた瞬間）
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const HIST_FIELDS = {
+  title:       'タスク名',
+  titleEn:     'EN Title',
+  assignee:    '担当者',
+  start:       '開始日',
+  end:         '終了日',
+  days:        '日数',
+  description: '内容',
+  enSummary:   'EN Summary',
+  notes:       '備考',
+  done:        '完了',
+  level:       'レベル',
 };
 
-// タスクのスナップショットを取る（履歴比較用フィールドのみ）
-function _taskSnapshot(t){
-  const snap={};
-  Object.keys(HISTORY_FIELDS).forEach(k=>{ snap[k]=t[k]; });
-  return snap;
+let _histSnap   = null; // openSide時のスナップショット
+let _histTaskId = null; // 編集中タスクID
+
+function _snapTask(t){
+  const s={};
+  Object.keys(HIST_FIELDS).forEach(k=>{ s[k]=t[k]; });
+  return s;
 }
 
-// 2つのスナップショットの差分を文字列配列で返す
-function _diffSnapshot(before, after){
+function _fmtHistVal(k,v){
+  if(v===undefined||v===null||v==='') return '(空)';
+  if(k==='done') return v?'完了':'未完了';
+  if(k==='level') return 'Lv'+v;
+  return String(v);
+}
+
+function _recordHistory(taskId, before, after){
+  const t=getTaskById(taskId);
+  if(!t) return;
   const diffs=[];
-  Object.keys(HISTORY_FIELDS).forEach(k=>{
-    const bv = before[k], av = after[k];
-    if(bv===av) return;
-    const fmtFn = HISTORY_FIELDS[k].fmt || (v=>(v===undefined||v===null||v==='')?'(空)':String(v));
-    diffs.push({ label: HISTORY_FIELDS[k].label, old: fmtFn(bv), new: fmtFn(av) });
+  Object.keys(HIST_FIELDS).forEach(k=>{
+    const bv=before[k], av=after[k];
+    if(String(bv===undefined||bv===null?'':bv)===String(av===undefined||av===null?'':av)) return;
+    diffs.push({label:HIST_FIELDS[k], old:_fmtHistVal(k,bv), nw:_fmtHistVal(k,av)});
   });
-  return diffs;
-}
-
-// 変更を履歴に記録（saveEditTask・saveTask時に呼ぶ）
-function recordTaskHistory(taskId, beforeSnap, afterSnap, editorName){
-  const task = getTaskById(taskId);
-  if(!task) return;
-  const diffs = _diffSnapshot(beforeSnap, afterSnap);
-  if(!diffs.length) return; // 変更なし
-
-  if(!task.history) task.history=[];
-  const entry = {
-    at:   fmt(t0) + ' ' + new Date().toTimeString().slice(0,5),
-    by:   editorName || _editingName || '(unknown)',
+  if(!diffs.length) return;
+  if(!t.history) t.history=[];
+  const now=new Date();
+  const dateStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  t.history.unshift({
+    at:dateStr,
+    by:window._editingName||document.getElementById('lockNameInput')?.value.trim()||'(unknown)',
     diffs
-  };
-  task.history.unshift(entry);       // 最新を先頭に
-  if(task.history.length > 3) task.history.length = 3; // 最大3件
+  });
+  if(t.history.length>3) t.history.length=3;
 }
 
-// 変更履歴HTMLを生成（editTaskパネル末尾に表示）
 function buildHistoryHtml(task){
-  const h = task.history||[];
-  if(!h.length) return `<div class="task-history-empty">変更履歴なし</div>`;
-  return h.map((e,i)=>`
-    <div class="task-history-item">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span class="task-history-user">${escH(e.by)}</span>
-        <span class="task-history-date">${escH(e.at)}</span>
+  const h=task.history||[];
+  if(!h.length) return `<p style="font-size:10px;color:var(--color-text-tertiary);font-style:italic;margin:0;padding:4px 0">変更履歴なし</p>`;
+  return h.map(e=>`
+    <div style="padding:7px 10px;border-radius:6px;background:var(--color-background-secondary);border:1px solid var(--color-border-tertiary);font-size:10px;line-height:1.6;margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="color:#185FA5;font-weight:700">${escH(e.by)}</span>
+        <span style="color:var(--color-text-tertiary);font-size:9px">${escH(e.at)}</span>
       </div>
       ${e.diffs.map(d=>`
-        <div class="task-history-diff">
-          <strong>${escH(d.label)}：</strong>
-          <span class="old">${escH(d.old)}</span>→<span class="new">${escH(d.new)}</span>
+        <div style="display:flex;gap:4px;align-items:baseline;flex-wrap:wrap;color:var(--color-text-secondary)">
+          <span style="color:var(--color-text-tertiary);font-size:9px;min-width:52px">${escH(d.label)}</span>
+          <span style="color:#C0392B;text-decoration:line-through">${escH(d.old)}</span>
+          <span style="color:#999">→</span>
+          <span style="color:#0E7A5C;font-weight:600">${escH(d.nw)}</span>
         </div>`).join('')}
     </div>`).join('');
 }
-
 function saveDataDebounced(){
   try{
     localStorage.setItem('gt5_tasks',JSON.stringify(tasks));
@@ -1820,6 +1823,7 @@ function openSide(mode,id){
 
   if(mode==='editTask'&&id){
     const t=tasks.find(t=>t.id===id);if(!t)return;
+    _histTaskId=id; _histSnap=_snapTask(t); // 変更履歴: 開いた時点を記録
     setTimeout(()=>scrollToTaskStart(id),50);
     const predTask=t.predecessorId?tasks.find(p=>p.id===t.predecessorId):null;
     const validPreds=tasks.filter(p=>p.id!==id&&!hasCircle(p.id,id));
@@ -2570,7 +2574,6 @@ function saveEditTask(id){
   if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   const t=tasks.find(t=>t.id===id);if(!t)return;
   pushUndo(`タスク編集「${t.title}」`);
-  const _beforeSnap = _taskSnapshot(t); // 変更前スナップショット
   const h=hs(currentYear);
   const isMsChk=document.getElementById('s_ms')?.checked||false;
   t.title=document.getElementById('s_title').value;
@@ -2583,8 +2586,6 @@ function saveEditTask(id){
   t.enSummary   = document.getElementById('s_ensum')?.value||'';
   t.notes       = document.getElementById('s_notes')?.value||'';
   t.assignee=document.getElementById('s_asgn').value;
-  // 変更履歴を記録
-  recordTaskHistory(id, _beforeSnap, _taskSnapshot(t), _editingName||'');
   t.start=document.getElementById('s_start').value;
   if(isMsChk){
     t.end=t.start;t.days=1;
@@ -2615,7 +2616,14 @@ function saveEditTask(id){
   reNumberWbs();propagateDeps(id);recalcParent(id);
   saveData();render();
 }
-function closeSide(){editId=null;sideMode=null;document.getElementById('sidePanel').classList.remove('open');render()}
+function closeSide(){
+  if(_histTaskId && _histSnap){
+    const _ht=getTaskById(_histTaskId);
+    if(_ht) _recordHistory(_histTaskId, _histSnap, _snapTask(_ht));
+    _histTaskId=null; _histSnap=null;
+  }
+  editId=null;sideMode=null;document.getElementById('sidePanel').classList.remove('open');render();
+}
 
 // ── 全タスクDelete ──
 function deleteAllTasks(){
