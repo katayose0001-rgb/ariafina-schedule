@@ -4045,6 +4045,21 @@ function onBulkPaste(){
   execBtn.style.display = 'inline-block';
 }
 
+// 担当者名解決（大文字小文字・スペース無視で照合、未登録は自動追加）
+function _resolveAssignee(name){
+  if(!name || !name.trim()) return assignees[0]||'';
+  const trimmed = name.trim();
+  // 完全一致
+  if(assignees.includes(trimmed)) return trimmed;
+  // 大文字小文字無視で検索
+  const lower = trimmed.toLowerCase();
+  const found = assignees.find(a=>a.toLowerCase()===lower);
+  if(found) return found;
+  // 未登録の場合: 担当者リストに自動追加してそのまま使用
+  assignees.push(trimmed);
+  return trimmed;
+}
+
 // ── 実行 ──
 function execBulkImport(){
   if(!_isEditing){ alert('Start Editingが必要です。'); return; }
@@ -4099,9 +4114,7 @@ function execBulkImport(){
       description: r.desc,
       enSummary: r.enSum,
       notes: r.notes,
-      assignee: (r.assignee && assignees.includes(r.assignee))
-        ? r.assignee
-        : (r.assignee || assignees[0] || ''),
+      assignee: _resolveAssignee(r.assignee),
       days: r.days,
       start: fmt(startD),
       end: fmt(endD),
