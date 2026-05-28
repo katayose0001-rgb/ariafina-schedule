@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v73</title>
+<title>年度Schedule・ガントチャート v74</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -1542,7 +1542,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v73</div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v74</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
@@ -2693,7 +2693,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v73.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v74.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -3918,23 +3918,25 @@ function parseBulkText(raw){
     // タブ区切りまたはパイプ区切り（Markdownテーブル）両対応
     let cols;
     if(row.includes('|')){
-      // Markdownテーブル形式
       cols = row.split('|').map(c=>c.trim()).filter((_,idx,arr)=>idx>0&&idx<arr.length-1);
     } else {
       cols = row.split('\t').map(c=>c.trim());
     }
     if(!cols.length || cols[0]==='' ) continue;
-    // ヘッダー行スキップ: WBSセルが "WBS" や "---" の場合
+    // ヘッダー行スキップ
     if(/^(WBS|wbs|---|[-: ]+)$/i.test(cols[0])) continue;
 
-    const wbs    = cols[0]||'';
-    const title  = cols[1]||'';
-    const titleEn= cols[2]||'';
-    const desc   = cols[3]||'';
-    const enSum  = cols[4]||'';
-    const startRaw = cols[5]||'';
-    const endRaw   = cols[6]||'';
-    const notes  = cols[7]||'';
+    // 列順（パネルと同じ並び）:
+    // [0]WBS / [1]タスク名 / [2]担当者 / [3]EN TASK TITLE / [4]内容 / [5]EN SUMMARY / [6]開始日 / [7]終了日 / [8]備考
+    const wbs      = cols[0]||'';
+    const title    = cols[1]||'';
+    const assignee = cols[2]||'';
+    const titleEn  = cols[3]||'';
+    const desc     = cols[4]||'';
+    const enSum    = cols[5]||'';
+    const startRaw = cols[6]||'';
+    const endRaw   = cols[7]||'';
+    const notes    = cols[8]||'';
 
     if(!wbs || !title) continue;
 
@@ -3947,7 +3949,7 @@ function parseBulkText(raw){
     const dotCount = (wbs.match(/\./g)||[]).length;
     const level = dotCount + 1;
 
-    result.push({ wbs, title, titleEn, desc, enSum, startStr, endStr, notes, level, dotCount });
+    result.push({ wbs, title, assignee, titleEn, desc, enSum, startStr, endStr, notes, level, dotCount });
   }
   return result;
 }
@@ -4029,6 +4031,7 @@ function onBulkPaste(){
     return `<tr class="lv${Math.min(r.level,3)}" style="border-left:3px solid ${lc}">
       <td>${escH(r.wbs)}</td>
       <td style="font-weight:${r.level<=2?600:400};padding-left:${(r.dotCount)*10+5}px">${escH(r.title)}</td>
+      <td style="color:#185FA5;font-size:10px">${escH(r.assignee||'')}</td>
       <td style="color:#888">${escH(r.titleEn)}</td>
       <td>${escH(r.startFmt)}</td>
       <td>${escH(r.endFmt)}</td>
@@ -4096,7 +4099,9 @@ function execBulkImport(){
       description: r.desc,
       enSummary: r.enSum,
       notes: r.notes,
-      assignee: assignees[0] || '',
+      assignee: (r.assignee && assignees.includes(r.assignee))
+        ? r.assignee
+        : (r.assignee || assignees[0] || ''),
       days: r.days,
       start: fmt(startD),
       end: fmt(endD),
@@ -4244,7 +4249,7 @@ function execBulkImport(){
         <h4>📌 STEP 1 &nbsp; データをペースト</h4>
         <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px;line-height:1.6">
           Excel・スプレッドシートから以下の列順でコピー＆ペーストしてください。<br>
-          <strong>列順：WBS ／ タスク名 ／ EN TASK TITLE ／ 内容 ／ EN SUMMARY ／ 開始日 ／ 終了日 ／ 備考</strong><br>
+          <strong>列順：WBS ／ タスク名 ／ 担当者 ／ EN TASK TITLE ／ 内容 ／ EN SUMMARY ／ 開始日 ／ 終了日 ／ 備考</strong><br>
           ・1行目がヘッダー行の場合は自動スキップします ・日付形式：YYYY/MM/DD または YYYY-MM-DD
         </div>
         <textarea class="bulk-paste-area" id="bulkPasteArea"
@@ -4300,7 +4305,7 @@ function execBulkImport(){
         <div style="overflow-x:auto;max-height:220px;overflow-y:auto">
           <table class="bulk-preview-tbl" id="bulkPreviewTbl">
             <thead><tr>
-              <th>WBS</th><th>タスク名</th><th>EN Title</th><th>開始日</th><th>終了日</th><th>Days</th><th>備考</th>
+              <th>WBS</th><th>タスク名</th><th>担当者</th><th>EN Title</th><th>開始日</th><th>終了日</th><th>Days</th><th>備考</th>
             </tr></thead>
             <tbody id="bulkPreviewBody"></tbody>
           </table>
