@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v79</title>
+<title>年度Schedule・ガントチャート v80</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -1527,18 +1527,38 @@ function getNextId(){return Math.max(0,...tasks.map(t=>t.id))+1}
 
 // ── WBS自動採番（多段再帰）──
 function reNumberWbs(){
-  // FirebaseはIDを文字列化する場合があるので数値に正規化
+  // IDを数値に正規化
   tasks.forEach(t=>{
     t.id=+t.id;
     if(t.parentId!=null)t.parentId=+t.parentId;
     if(t.predecessorId!=null)t.predecessorId=+t.predecessorId;
   });
+
+  // tasks配列をparentIdツリー構造に合わせて正しい順序に並べ直す
+  // （moveTask後のparentId変更でtasks配列の順序とツリーがずれる場合に対応）
+  function sortTasksByTree(){
+    const result = [];
+    function collect(parentId){
+      // 現在のtasks配列の順序を尊重しながら指定parentIdの子を収集
+      tasks.filter(t => (t.parentId ?? null) === parentId)
+           .forEach(t => { result.push(t); collect(t.id); });
+    }
+    collect(null);
+    // tasks配列にない孤立タスク（parentIdが存在しない等）を末尾に追加
+    const resultIds = new Set(result.map(t=>t.id));
+    tasks.filter(t=>!resultIds.has(t.id)).forEach(t=>result.push(t));
+    tasks = result;
+  }
+  sortTasksByTree();
+
+  // WBS番号を付与
   function assignWbs(parentId, prefix){
-    const children=tasks.filter(t=>t.parentId===parentId);
-    children.forEach((t,i)=>{
-      t.wbs=prefix===''?String(i+1):`${prefix}.${i+1}`;
-      assignWbs(t.id, t.wbs);
-    });
+    tasks.filter(t=>(t.parentId??null)===parentId)
+         .forEach((t,i)=>{
+           t.wbs = prefix==='' ? String(i+1) : `${prefix}.${i+1}`;
+           t.level = prefix==='' ? 1 : prefix.split('.').length + 1;
+           assignWbs(t.id, t.wbs);
+         });
   }
   assignWbs(null,'');
 }
@@ -1873,7 +1893,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v79</div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v80</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
@@ -2759,63 +2779,110 @@ function addChildTask(parentId){
   setTimeout(calcSideEnd,10);
 }
 window.addChildTask=addChildTask;
-function moveTask(id, dir){
-  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
-  const t=tasks.find(t=>t.id===id);if(!t)return;
-  const parentId=t.parentId??null;
-
-  // 兄弟タスク（同じ親の直接の子）を配列の出現順で取得
-  const siblingOrder=tasks.filter(s=>(parentId===null?s.parentId===null:s.parentId===parentId));
-  const myPos=siblingOrder.findIndex(s=>s.id===id);
-
-  // ブロック = rootIdから始まり、配列上で連続している子孫まで
-  // ※ isDescendantOfではなく「配列上の連続性」で判定することで消失を防ぐ
-  function getBlock(rootId){
-    const idx=tasks.findIndex(t=>t.id===rootId);if(idx<0)return null;
-    let end=idx;
-    for(let i=idx+1;i<tasks.length;i++){
-      // 配列上で隣接しているタスクがrootIdの子孫なら含める
-      // siblingOrderに出てくるタスク（同階層の兄弟）が来たら終了
-      const candidate=tasks[i];
-      if(isDescendantOf(candidate.id,rootId))end=i;
-      else break; // 子孫でなければブロック終了
-    }
-    return{start:idx,end,items:tasks.slice(idx,end+1)};
-  }
-
-  if(dir==='up'){
-    if(myPos<=0)return;
-    const prevSib=siblingOrder[myPos-1];
-    const myBlock=getBlock(id);
-    const prevBlock=getBlock(prevSib.id);
-    if(!myBlock||!prevBlock)return;
-    // 配列を再構築：prevBlock直前まで + myBlock + prevBlock + myBlock以降
-    const before=tasks.slice(0,prevBlock.start);
-    const between=tasks.slice(prevBlock.end+1,myBlock.start); // ブロック間の要素（通常は空）
-    const after=tasks.slice(myBlock.end+1);
-    tasks=[...before,...myBlock.items,...between,...prevBlock.items,...after];
-  }else{
-    if(myPos>=siblingOrder.length-1)return;
-    const nextSib=siblingOrder[myPos+1];
-    const myBlock=getBlock(id);
-    const nextBlock=getBlock(nextSib.id);
-    if(!myBlock||!nextBlock)return;
-    const before=tasks.slice(0,myBlock.start);
-    const between=tasks.slice(myBlock.end+1,nextBlock.start);
-    const after=tasks.slice(nextBlock.end+1);
-    tasks=[...before,...nextBlock.items,...between,...myBlock.items,...after];
-  }
-  reNumberWbs();saveData();
-  openSide('editTask',id);
-}
-// idがancestorIdの子孫かどうか
-function isDescendantOf(id,ancestorId){
-  let cur=tasks.find(t=>t.id===id);
-  while(cur&&cur.parentId!=null){
-    if(cur.parentId===ancestorId)return true;
-    cur=tasks.find(t=>t.id===cur.parentId);
+// ━━ isDescendantOf: parentIdチェーンを辿る ━━
+function isDescendantOf(id, ancestorId){
+  let cur = getTaskById(id);
+  const visited = new Set();
+  while(cur && cur.parentId != null){
+    if(visited.has(cur.id)) break; // 循環防止
+    visited.add(cur.id);
+    if(cur.parentId === ancestorId) return true;
+    cur = getTaskById(cur.parentId);
   }
   return false;
+}
+
+// ━━ タスクとその全子孫をparentIdベースで取得 ━━
+function getDescendantIds(rootId){
+  const result = new Set([rootId]);
+  // parentIdベースで子孫を再帰収集
+  let changed = true;
+  while(changed){
+    changed = false;
+    tasks.forEach(t=>{
+      if(t.parentId != null && result.has(t.parentId) && !result.has(t.id)){
+        result.add(t.id);
+        changed = true;
+      }
+    });
+  }
+  return result;
+}
+
+// ━━ moveTask: parentIdベースでブロックを正確に取得して移動 ━━
+function moveTask(id, dir){
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
+  const t = tasks.find(t=>t.id===id); if(!t) return;
+  const parentId = t.parentId ?? null;
+
+  // 同じ親を持つ兄弟タスクをtasks配列の出現順で取得
+  const siblings = tasks.filter(s =>
+    parentId === null ? s.parentId === null : s.parentId === parentId
+  );
+  const myPos = siblings.findIndex(s => s.id === id);
+
+  // rootIdとその全子孫で構成されるブロックをtasks配列から取得
+  function getBlock(rootId){
+    const descIds = getDescendantIds(rootId);
+    // tasks配列のうちdescIdsに含まれるものを抽出（順序を保持）
+    const blockItems = tasks.filter(t => descIds.has(t.id));
+    if(!blockItems.length) return null;
+    const startIdx = tasks.findIndex(t => t.id === rootId);
+    return { startIdx, items: blockItems, ids: descIds };
+  }
+
+  // ブロック移動：tasks配列をparentIdベースで再構築
+  function applyMove(myBlock, otherBlock){
+    // ブロックに含まれないタスクを保持
+    const myIds = myBlock.ids;
+    const otherIds = otherBlock.ids;
+    const rest = tasks.filter(t => !myIds.has(t.id) && !otherIds.has(t.id));
+
+    // otherBlockの先頭位置を基準に挿入位置を決める
+    const otherStartIdx = tasks.findIndex(t => t.id === [...otherIds][0]);
+    const myStartIdx    = tasks.findIndex(t => t.id === id);
+
+    if(dir === 'up'){
+      // myBlockをotherBlockの前に移動
+      const insertPos = tasks.findIndex(t => !myIds.has(t.id) && !otherIds.has(t.id) && tasks.indexOf(t) < otherStartIdx);
+      // 全体を再構成: other前の要素 → myBlock → otherBlock → 残り
+      const beforeOther = tasks.filter((t,i) => i < otherStartIdx && !myIds.has(t.id) && !otherIds.has(t.id));
+      const afterBoth   = tasks.filter(t => {
+        const i = tasks.indexOf(t);
+        const endOfOther = tasks.indexOf(tasks.filter(t=>otherIds.has(t.id)).slice(-1)[0]);
+        return i > endOfOther && !myIds.has(t.id) && !otherIds.has(t.id);
+      });
+      tasks = [...beforeOther, ...myBlock.items, ...otherBlock.items, ...afterBoth];
+    } else {
+      // myBlockをotherBlockの後に移動
+      const afterOther = tasks.filter((t,i) => {
+        const endOfOther = tasks.indexOf(tasks.filter(t=>otherIds.has(t.id)).slice(-1)[0]);
+        return i > endOfOther && !myIds.has(t.id) && !otherIds.has(t.id);
+      });
+      const beforeMy = tasks.filter((t,i) => i < myStartIdx && !myIds.has(t.id) && !otherIds.has(t.id));
+      tasks = [...beforeMy, ...otherBlock.items, ...myBlock.items, ...afterOther];
+    }
+  }
+
+  if(dir === 'up'){
+    if(myPos <= 0) return;
+    const prevSib = siblings[myPos - 1];
+    const myBlock   = getBlock(id);
+    const prevBlock = getBlock(prevSib.id);
+    if(!myBlock || !prevBlock) return;
+    applyMove(myBlock, prevBlock);
+  } else {
+    if(myPos >= siblings.length - 1) return;
+    const nextSib = siblings[myPos + 1];
+    const myBlock   = getBlock(id);
+    const nextBlock = getBlock(nextSib.id);
+    if(!myBlock || !nextBlock) return;
+    applyMove(myBlock, nextBlock);
+  }
+
+  reNumberWbs();
+  saveData();
+  openSide('editTask', id);
 }
 function saveEditTask(id){
   if(!_isEditing){alert('Please press "Start Editing" first.');return;}
@@ -2852,10 +2919,30 @@ function saveEditTask(id){
   t.color=document.getElementById('s_color').value;
   const newLevel=+document.getElementById('s_level').value;
   t.level=newLevel;
+  const oldParentId = t.parentId;
   if(newLevel===1){t.parentId=null;}
   else{
     const psel=document.getElementById('s_parent_edit');
     if(psel&&psel.value)t.parentId=parseInt(psel.value);
+  }
+  // 親タスクが変わった場合、tasks配列内の位置を新しい親の直後に移動
+  if(t.parentId !== oldParentId){
+    const newPid = t.parentId;
+    const descIds = getDescendantIds(id);
+    const block = tasks.filter(x=>descIds.has(x.id));
+    const rest  = tasks.filter(x=>!descIds.has(x.id));
+    if(newPid === null){
+      // Lv1に昇格 → 末尾のLv1の後ろに配置
+      const lastRoot = [...rest].reverse().find(x=>x.parentId===null);
+      const insertAt = lastRoot ? rest.indexOf(lastRoot)+1 : rest.length;
+      rest.splice(insertAt,0,...block);
+    } else {
+      // 新しい親の直後に挿入
+      const insertAt = rest.findIndex(x=>x.id===newPid)+1;
+      if(insertAt>0) rest.splice(insertAt,0,...block);
+      else rest.push(...block);
+    }
+    tasks = rest;
   }
   const predSel=document.getElementById('s_pred');
   const predId=predSel?.value?parseInt(predSel.value):null;
@@ -3035,7 +3122,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v79.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v80.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
