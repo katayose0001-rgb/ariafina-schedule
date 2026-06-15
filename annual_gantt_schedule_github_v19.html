@@ -3739,8 +3739,103 @@ function generateReport(lang){
   const h=hs(currentYear);
   const cardColors=['#185FA5','#1D9E75','#BA7517','#533AB7','#A32D2D','#0E7A5C','#639922','#8E44AD'];
 
+  // ── Lv2親タスク名取得ヘルパー ──
+  // WBS例: "1.3.2" → Lv2親は "1.3" のタスク名を返す
+  function getLv2ParentName(task){
+    const wbs=task.wbs||'';
+    const parts=wbs.split('.');
+    // Lv2以上のタスク：Lv2のWBSを特定
+    if(parts.length>=3){
+      // Lv3以上→最初の2セグメントがLv2
+      const lv2Wbs=parts.slice(0,2).join('.');
+      const lv2=tasks.find(t=>t.wbs===lv2Wbs);
+      return lv2?(isEn?(lv2.titleEn||lv2.title):lv2.title):lv2Wbs;
+    }
+    if(parts.length===2){
+      // Lv2自身→Lv1を返す
+      const lv1=tasks.find(t=>t.wbs===parts[0]);
+      return lv1?(isEn?(lv1.titleEn||lv1.title):lv1.title):parts[0];
+    }
+    return ''; // Lv1は親なし
+  }
+
   // ── Section A: 未完了タスク（チェックボックス付き）──
   const overdueT=d.allT.filter(t=>!t.done&&t.end<d.today).sort((a,b)=>a.end.localeCompare(b.end));
+
+  // ── 進捗要約バナーを生成（overdueT定義後に実行）──
+  (function buildSummaryBar(){
+    const sumEl=document.getElementById('rptSummaryBar');
+    if(!sumEl)return;
+    const total=d.allT.length;
+    const doneN=d.done_.length;
+    const inpN=d.inProg.length;
+    const odN=overdueT.length;
+    const upN=d.upcoming2w.length;
+    const pct=total>0?Math.round(doneN/total*100):0;
+
+    // 注意点を自動生成
+    const warnings=[];
+    if(odN>0){
+      const topOdAsgn=Object.entries(
+        overdueT.reduce((acc,t)=>{const a=t.assignee||(isEn?'Unassigned':'未定');acc[a]=(acc[a]||0)+1;return acc},{})
+      ).sort((a,b)=>b[1]-a[1]);
+      warnings.push(isEn
+        ?`⚠️ <strong>${odN} overdue task(s)</strong> — most concentrated on <strong>${escH(topOdAsgn[0]?.[0]||'')}</strong>`
+        :`⚠️ <strong>未完了が${odN}件</strong>あります。特に<strong>「${escH(topOdAsgn[0]?.[0]||'')}」</strong>の担当タスクに集中しています。`
+      );
+    }
+    if(upN>0){
+      const next3d=d.upcoming2w.filter(t=>Math.ceil((parseD(t.start)-t0)/(1000*60*60*24))<=3);
+      if(next3d.length>0) warnings.push(isEn
+        ?`📌 <strong>${next3d.length} task(s)</strong> starting within <strong>3 days</strong> — confirm readiness with assignees`
+        :`📌 <strong>3日以内に${next3d.length}件</strong>が着手予定です。担当者への事前確認が必要です。`
+      );
+    }
+    const noAssnCount=d.allT.filter(t=>!t.done&&!t.assignee).length;
+    if(noAssnCount>0) warnings.push(isEn
+      ?`👤 <strong>${noAssnCount} task(s)</strong> have no assignee assigned`
+      :`👤 担当者未設定のタスクが<strong>${noAssnCount}件</strong>あります。`
+    );
+    const longUnfinished=d.allT.filter(t=>!t.done&&(t.days||0)>=10&&t.end>=d.today);
+    if(longUnfinished.length>0) warnings.push(isEn
+      ?`⏳ <strong>${longUnfinished.length} long task(s)</strong> (10+ days) in progress — consider adding intermediate checkpoints`
+      :`⏳ <strong>10日以上の長期タスクが${longUnfinished.length}件</strong>進行中です。中間チェックポイントの設定を検討してください。`
+    );
+
+    // 状況サマリー文
+    let summaryMsg='';
+    if(odN===0&&pct>=80){
+      summaryMsg=isEn?`🎉 Excellent progress! ${pct}% complete with no overdue tasks.`:`🎉 順調です！完了率${pct}%で未完了タスクはありません。`;
+    } else if(odN===0){
+      summaryMsg=isEn?`✅ On track. ${pct}% complete (${doneN}/${total} tasks), ${inpN} in progress.`:`✅ 進捗は順調です。完了率${pct}%（${doneN}/${total}件）、進行中${inpN}件。`;
+    } else {
+      summaryMsg=isEn?`📊 Overall ${pct}% complete. <strong>${odN} task(s) require immediate attention.</strong>`:`📊 全体の完了率は${pct}%です。<strong>要対応の未完了タスクが${odN}件</strong>あります。`;
+    }
+
+    sumEl.style.display='';
+    sumEl.innerHTML=`
+      <div style="background:linear-gradient(135deg,#f8fafd,#eef4fb);border:1px solid #c8ddf0;border-radius:10px;overflow:hidden">
+        <div style="display:flex;align-items:stretch;gap:0">
+          <div style="background:linear-gradient(135deg,#185FA5,#378ADD);padding:16px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:90px;flex-shrink:0">
+            <div style="font-size:26px;font-weight:900;color:#fff;line-height:1">${pct}%</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.8);margin-top:3px;white-space:nowrap">${isEn?'Complete':'完了率'}</div>
+            <div style="width:54px;height:4px;background:rgba(255,255,255,.25);border-radius:2px;margin-top:8px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:#fff;border-radius:2px"></div>
+            </div>
+          </div>
+          <div style="flex:1;padding:14px 16px;min-width:0">
+            <div style="font-size:12px;color:#1a1a1a;font-weight:500;margin-bottom:8px;line-height:1.5">${summaryMsg}</div>
+            ${warnings.length>0?`<div style="display:flex;flex-direction:column;gap:4px">${warnings.map(w=>`<div style="font-size:11px;color:#555;line-height:1.5;padding:4px 8px;background:rgba(255,255,255,.7);border-radius:5px;border-left:3px solid #EF9F27">${w}</div>`).join('')}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;padding:14px 16px;flex-shrink:0;justify-content:center;border-left:1px solid #d0e4f5">
+            <div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:8px;height:8px;border-radius:50%;background:#1D9E75;flex-shrink:0"></span><span style="font-size:10px;color:#555">${isEn?'Done':'完了'}</span><span style="font-size:13px;font-weight:700;color:#1D9E75;margin-left:auto">${doneN}</span></div>
+            <div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:8px;height:8px;border-radius:50%;background:#378ADD;flex-shrink:0"></span><span style="font-size:10px;color:#555">${isEn?'In Prog':'進行中'}</span><span style="font-size:13px;font-weight:700;color:#378ADD;margin-left:auto">${inpN}</span></div>
+            <div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:8px;height:8px;border-radius:50%;background:#E74C3C;flex-shrink:0"></span><span style="font-size:10px;color:#555">${isEn?'Overdue':'未完了'}</span><span style="font-size:13px;font-weight:700;color:#E74C3C;margin-left:auto">${odN}</span></div>
+            <div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:8px;height:8px;border-radius:50%;background:#EF9F27;flex-shrink:0"></span><span style="font-size:10px;color:#555">${isEn?'Upcoming':'着手予定'}</span><span style="font-size:13px;font-weight:700;color:#EF9F27;margin-left:auto">${upN}</span></div>
+          </div>
+        </div>
+      </div>`;
+  })();
   let secA='';
   if(!overdueT.length){
     secA=`<div class="rpt-alert-card" style="border-left-color:#1D9E75;background:#F0FBF7">${L.noOverdue}</div>`;
@@ -3752,6 +3847,7 @@ function generateReport(lang){
       const overDays=Math.ceil((t0-parseD(t.end))/(1000*60*60*24));
       const asgn=t.assignee||(isEn?'Unassigned':'担当者未定');
       const tName=isEn?(t.titleEn||t.title):t.title;
+      const parentName=getLv2ParentName(t);
       secA+=`<li id="rpt-od-${t.id}"
         onclick="rptJumpToTask(${t.id},${isEn})"
         style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;padding:9px 12px;background:#fef9f9;border:1px solid #f5c6c6;border-radius:8px;border-left:4px solid #E74C3C;cursor:pointer;transition:box-shadow .15s"
@@ -3759,6 +3855,7 @@ function generateReport(lang){
         onmouseout="this.style.boxShadow='';this.style.background='#fef9f9'">
         <div style="flex-shrink:0;background:#E74C3C;color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;margin-top:1px;white-space:nowrap">${L.daysOver(overDays)}</div>
         <div style="flex:1;min-width:0">
+          ${parentName?`<div style="font-size:9px;color:#999;font-weight:500;margin-bottom:1px;letter-spacing:.2px">📁 ${escH(parentName)}</div>`:''}
           <div style="font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:2px">${escH(tName)}</div>
           <div style="font-size:11px;color:#555">${L.assignee}：<strong style="color:#A32D2D">${escH(asgn)}</strong> ／ ${L.due}：${t.end} ／ WBS：${t.wbs}</div>
         </div>
@@ -3784,6 +3881,7 @@ function generateReport(lang){
       const urgLabel=diffDays<=3?L.in3d:diffDays<=7?L.thisWeek:L.in2w;
       const asgn=t.assignee||(isEn?'Unassigned':'担当者未定');
       const tName=isEn?(t.titleEn||t.title):t.title;
+      const parentName=getLv2ParentName(t);
       secB+=`<li
         onclick="rptJumpToTask(${t.id},${isEn})"
         style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;padding:9px 12px;background:#fffbf0;border:1px solid #fde3a0;border-radius:8px;border-left:4px solid ${urgColor};cursor:pointer;transition:box-shadow .15s"
@@ -3791,6 +3889,7 @@ function generateReport(lang){
         onmouseout="this.style.boxShadow='';this.style.background='#fffbf0'">
         <div style="flex-shrink:0;background:${urgColor};color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 7px;margin-top:1px;white-space:nowrap">${urgLabel}</div>
         <div style="flex:1;min-width:0">
+          ${parentName?`<div style="font-size:9px;color:#999;font-weight:500;margin-bottom:1px;letter-spacing:.2px">📁 ${escH(parentName)}</div>`:''}
           <div style="font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:2px">${escH(tName)}</div>
           <div style="font-size:11px;color:#555">${L.assignee}：<strong style="color:#185FA5">${escH(asgn)}</strong> ／ ${L.start}：${t.start}（${L.daysLater(diffDays)}）〜${t.end} ／ ${t.days}d</div>
         </div>
@@ -3829,9 +3928,13 @@ function generateReport(lang){
     lastWeekDone.slice(0,10).forEach(t=>{
       const tName=isEn?(t.titleEn||t.title):t.title;
       const asgn=t.assignee||(isEn?'Unassigned':'未定');
+      const parentName=getLv2ParentName(t);
       secC+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#F0FBF7;border-radius:6px;border-left:3px solid #1D9E75">
         <span style="font-size:13px;flex-shrink:0">✅</span>
-        <span style="font-size:11px;font-weight:600;color:#0E7A5C;flex:1">${escH(tName)}</span>
+        <div style="flex:1;min-width:0">
+          ${parentName?`<div style="font-size:9px;color:#999;margin-bottom:1px">📁 ${escH(parentName)}</div>`:''}
+          <div style="font-size:11px;font-weight:600;color:#0E7A5C">${escH(tName)}</div>
+        </div>
         <span style="font-size:10px;color:#888;white-space:nowrap">${escH(asgn)}</span>
         <span style="font-size:10px;color:#1D9E75;white-space:nowrap;font-weight:600">${t.doneAt||''}</span>
       </div>`;
@@ -3850,10 +3953,13 @@ function generateReport(lang){
     newlyAddedT.slice(0,10).forEach(t=>{
       const tName=isEn?(t.titleEn||t.title):t.title;
       const asgn=t.assignee||(isEn?'Unassigned':'未定');
-      const addedDate=t.addedAt?t.addedAt.slice(0,10):'';
+      const parentName=getLv2ParentName(t);
       secC+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#EAF3FB;border-radius:6px;border-left:3px solid #378ADD">
         <span style="background:#E74C3C;color:#fff;font-size:8px;font-weight:800;padding:2px 5px;border-radius:3px;flex-shrink:0;letter-spacing:.5px">NEW</span>
-        <span style="font-size:11px;font-weight:600;color:#185FA5;flex:1">${escH(tName)}</span>
+        <div style="flex:1;min-width:0">
+          ${parentName?`<div style="font-size:9px;color:#999;margin-bottom:1px">📁 ${escH(parentName)}</div>`:''}
+          <div style="font-size:11px;font-weight:600;color:#185FA5">${escH(tName)}</div>
+        </div>
         <span style="font-size:10px;color:#888;white-space:nowrap">${escH(asgn)}</span>
         <span style="font-size:10px;color:#378ADD;white-space:nowrap">WBS ${escH(t.wbs)}</span>
       </div>`;
@@ -3951,10 +4057,12 @@ function generateReport(lang){
     const upRows=myUpcoming.length?myUpcoming.sort((a,b)=>a.start.localeCompare(b.start)).slice(0,3).map(t=>{
       const diff=Math.ceil((parseD(t.start)-t0)/(1000*60*60*24));
       const tName=isEn?(t.titleEn||t.title):t.title;
+      const pn=getLv2ParentName(t);
       return `<div style="font-size:11px;padding:3px 0;border-bottom:1px dashed #f0f0f0;display:flex;gap:6px;align-items:center">
         <span style="background:#FFF4E5;color:#BA7517;font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap">${L.daysLater(diff)}</span>
-        <span style="color:#333">${escH(tName)}</span>
-        <span style="color:#aaa;font-size:10px;margin-left:auto;white-space:nowrap">${t.start}</span>
+        <div style="flex:1;min-width:0">${pn?`<div style="font-size:9px;color:#bbb">${escH(pn)}</div>`:''}
+        <div style="color:#333">${escH(tName)}</div></div>
+        <span style="color:#aaa;font-size:10px;flex-shrink:0;white-space:nowrap">${t.start}</span>
       </div>`;
     }).join(''):`<div style="font-size:11px;color:#aaa">${L.noUpcomingShort}</div>`;
     const statusRow=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
@@ -3964,18 +4072,22 @@ function generateReport(lang){
     </div>`;
     const inProgRows=myInProg.length?myInProg.slice(0,4).map(t=>{
       const tName=isEn?(t.titleEn||t.title):t.title;
+      const pn=getLv2ParentName(t);
       return `<div style="font-size:11px;padding:3px 0;border-bottom:1px dashed #f0f0f0;display:flex;gap:6px;align-items:center">
-        <span style="background:#EAF3FB;color:#185FA5;font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap">${L.inProgLabel}</span>
-        <span style="color:#333">${escH(tName)}</span>
-        <span style="color:#aaa;font-size:10px;margin-left:auto;white-space:nowrap">〜${t.end}</span>
+        <span style="background:#EAF3FB;color:#185FA5;font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap;flex-shrink:0">${L.inProgLabel}</span>
+        <div style="flex:1;min-width:0">${pn?`<div style="font-size:9px;color:#bbb">${escH(pn)}</div>`:''}
+        <div style="color:#333">${escH(tName)}</div></div>
+        <span style="color:#aaa;font-size:10px;flex-shrink:0;white-space:nowrap">〜${t.end}</span>
       </div>`;
     }).join(''):'';
     const overdueRows=myOverdue.length?myOverdue.slice(0,3).map(t=>{
       const tName=isEn?(t.titleEn||t.title):t.title;
+      const pn=getLv2ParentName(t);
       return `<div style="font-size:11px;padding:3px 0;border-bottom:1px dashed #fee;display:flex;gap:6px;align-items:center">
-        <span style="background:#FEF9F9;color:#E74C3C;font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap">${L.overdueLabel}</span>
-        <span style="color:#333">${escH(tName)}</span>
-        <span style="color:#E74C3C;font-size:10px;margin-left:auto;white-space:nowrap">${L.due} ${t.end}</span>
+        <span style="background:#FEF9F9;color:#E74C3C;font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap;flex-shrink:0">${L.overdueLabel}</span>
+        <div style="flex:1;min-width:0">${pn?`<div style="font-size:9px;color:#bbb">${escH(pn)}</div>`:''}
+        <div style="color:#333">${escH(tName)}</div></div>
+        <span style="color:#E74C3C;font-size:10px;flex-shrink:0;white-space:nowrap">${L.due} ${t.end}</span>
       </div>`;
     }).join(''):'';
     secD+=`<div style="border:1px solid #e0e8f5;border-radius:10px;overflow:hidden;margin-bottom:12px">
@@ -4930,6 +5042,9 @@ function execBulkImport(){
         </button>
         <span style="font-size:11px;color:#888" id="rptHint">スケジュールデータを自動分析します（APIキー不要）</span>
       </div>
+
+      <!-- 進捗要約バナー -->
+      <div id="rptSummaryBar" style="display:none;margin-bottom:16px"></div>
 
       <!-- Section A: 未完了タスク クローズアップ -->
       <div class="rpt-section">
