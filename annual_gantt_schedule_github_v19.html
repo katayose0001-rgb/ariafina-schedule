@@ -3801,38 +3801,138 @@ function generateReport(lang){
   }
   const elB=document.getElementById('rptUpcomingSection');if(elB)elB.innerHTML=secB;
 
-  // ── Section C: 先週振り返り ──
+  // ── Section C: 先週振り返り（完了済み・新規追加・アドバイス強化）──
   const ago7=getRptDate(-7);
   const lastWeekT=d.allT.filter(t=>t.start>=ago7&&t.start<d.today||t.end>=ago7&&t.end<d.today);
-  const lastWeekDone=lastWeekT.filter(t=>t.done===true||(t.end<d.today&&t.done!==false));
+  const lastWeekDone=d.allT.filter(t=>t.done===true&&t.doneAt&&t.doneAt>=ago7&&t.doneAt<d.today);
+  // 新規追加タスク（addedAt が過去7日以内）
+  const _ago7ms=Date.now()-7*86400000;
+  const newlyAddedT=d.allT.filter(t=>t.addedAt&&(new Date(t.addedAt).getTime()>=_ago7ms));
   const overdueProg=d.inProg.filter(t=>{
     if(!t.start||!t.end)return false;
     const elapsed=countWD(parseD(t.start),t0,h);
-    const total=countWD(parseD(t.start),parseD(t.end),h);
-    return total>0&&(elapsed/total)>1.1;
+    const total_wd=countWD(parseD(t.start),parseD(t.end),h);
+    return total_wd>0&&(elapsed/total_wd)>1.1;
   });
-  const longT=lastWeekT.filter(t=>t.days>=10);
-  const noAssT=lastWeekT.filter(t=>!t.assignee);
-  const typeStyle={red:'border-left-color:#E74C3C;background:#FEF9F9',warn:'border-left-color:#EF9F27;background:#FFFBF0',green:'border-left-color:#1D9E75;background:#F0FBF7'};
-  let advItems=[];
-  if(lastWeekT.length>0){
-    advItems.push({type:'green',text:L.actSummary(lastWeekT.length,lastWeekDone.length)});
-  }else{
-    advItems.push({type:'warn',text:L.noActivity});
+  // 長期タスク（10日以上・進行中または未着手）
+  const longT=d.allT.filter(t=>!t.done&&(t.days||0)>=10&&t.end>=d.today);
+  const noAssT=d.allT.filter(t=>!t.assignee&&!t.done);
+  const typeStyle={red:'border-left-color:#E74C3C;background:#FEF9F9',warn:'border-left-color:#EF9F27;background:#FFFBF0',green:'border-left-color:#1D9E75;background:#F0FBF7',blue:'border-left-color:#185FA5;background:#EAF3FB'};
+
+  let secC='';
+
+  // ── ① 完了済みタスク（過去7日）──
+  const doneHeader=isEn?'✅ Completed This Week':'✅ 今週の完了タスク';
+  if(lastWeekDone.length>0){
+    secC+=`<div style="font-size:12px;font-weight:700;color:#0E7A5C;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #1D9E7530">${doneHeader} <span style="font-size:11px;font-weight:400;color:#888">（${lastWeekDone.length}${isEn?' tasks':'件'}）</span></div>`;
+    secC+='<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px">';
+    lastWeekDone.slice(0,10).forEach(t=>{
+      const tName=isEn?(t.titleEn||t.title):t.title;
+      const asgn=t.assignee||(isEn?'Unassigned':'未定');
+      secC+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#F0FBF7;border-radius:6px;border-left:3px solid #1D9E75">
+        <span style="font-size:13px;flex-shrink:0">✅</span>
+        <span style="font-size:11px;font-weight:600;color:#0E7A5C;flex:1">${escH(tName)}</span>
+        <span style="font-size:10px;color:#888;white-space:nowrap">${escH(asgn)}</span>
+        <span style="font-size:10px;color:#1D9E75;white-space:nowrap;font-weight:600">${t.doneAt||''}</span>
+      </div>`;
+    });
+    if(lastWeekDone.length>10) secC+=`<div style="font-size:10px;color:#aaa;padding:4px 6px">…他${lastWeekDone.length-10}件</div>`;
+    secC+='</div>';
+  } else {
+    secC+=`<div class="rpt-alert-card" style="${typeStyle.warn}">${isEn?'📭 No completed tasks recorded this week.':'📭 今週完了したタスクの記録がありません。完了登録を忘れずに行いましょう。'}</div>`;
   }
-  if(overdueProg.length>0){
-    advItems.push({type:'red',text:L.overdueAdv(overdueProg.length,overdueProg.slice(0,2).map(t=>escH(isEn?(t.titleEn||t.title):t.title)).join(isEn?', ':'、'))});
+
+  // ── ② 新規追加タスク（過去7日）──
+  const newHeader=isEn?'🆕 Newly Added Tasks (7 days)':'🆕 新規追加タスク（過去7日）';
+  if(newlyAddedT.length>0){
+    secC+=`<div style="font-size:12px;font-weight:700;color:#185FA5;margin:14px 0 8px;padding-bottom:4px;border-bottom:2px solid #185FA530">${newHeader} <span style="font-size:11px;font-weight:400;color:#888">（${newlyAddedT.length}${isEn?' tasks':'件'}）</span></div>`;
+    secC+='<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px">';
+    newlyAddedT.slice(0,10).forEach(t=>{
+      const tName=isEn?(t.titleEn||t.title):t.title;
+      const asgn=t.assignee||(isEn?'Unassigned':'未定');
+      const addedDate=t.addedAt?t.addedAt.slice(0,10):'';
+      secC+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#EAF3FB;border-radius:6px;border-left:3px solid #378ADD">
+        <span style="background:#E74C3C;color:#fff;font-size:8px;font-weight:800;padding:2px 5px;border-radius:3px;flex-shrink:0;letter-spacing:.5px">NEW</span>
+        <span style="font-size:11px;font-weight:600;color:#185FA5;flex:1">${escH(tName)}</span>
+        <span style="font-size:10px;color:#888;white-space:nowrap">${escH(asgn)}</span>
+        <span style="font-size:10px;color:#378ADD;white-space:nowrap">WBS ${escH(t.wbs)}</span>
+      </div>`;
+    });
+    if(newlyAddedT.length>10) secC+=`<div style="font-size:10px;color:#aaa;padding:4px 6px">…他${newlyAddedT.length-10}件</div>`;
+    secC+='</div>';
   }
+
+  // ── ③ WBSスケジューリングアドバイス ──
+  secC+=`<div style="font-size:12px;font-weight:700;color:#533AB7;margin:14px 0 8px;padding-bottom:4px;border-bottom:2px solid #533AB730">📋 ${isEn?'WBS Scheduling Tips':'WBSスケジューリングのコツ'}</div>`;
+
+  let advCards=[];
+
+  // 長期タスク詳細（業務名・担当者を明記）
   if(longT.length>0){
-    advItems.push({type:'warn',text:L.longTask(longT.length,longT.slice(0,2).map(t=>escH(isEn?(t.titleEn||t.title):t.title)).join(isEn?', ':'、'))});
+    const longDetails=longT.slice(0,5).map(t=>{
+      const tName=isEn?(t.titleEn||t.title):t.title;
+      const asgn=t.assignee||(isEn?'Unassigned':'担当者未定');
+      return `<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:rgba(255,255,255,.6);border-radius:4px;margin-top:4px">
+        <span style="font-size:9px;background:#EF9F27;color:#fff;padding:1px 5px;border-radius:3px;white-space:nowrap;flex-shrink:0">${t.days}${isEn?'d':'日'}</span>
+        <span style="font-size:11px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(tName)}</span>
+        <span style="font-size:10px;color:#BA7517;white-space:nowrap;flex-shrink:0">👤 ${escH(asgn)}</span>
+        <span style="font-size:10px;color:#aaa;white-space:nowrap;flex-shrink:0">WBS ${escH(t.wbs)}</span>
+      </div>`;
+    }).join('');
+    advCards.push({type:'warn',
+      text:(isEn
+        ?`📌 <strong>${longT.length} long task(s) (10+ days)</strong> detected. Consider splitting them into smaller milestones to improve tracking.`
+        :`📌 <strong>10日以上の長期タスクが${longT.length}件</strong>あります。中間マイルストーンを設定して進捗を細かく管理しましょう。`)+longDetails
+    });
   }
+
+  // 未完了の傾向分析
+  if(overdueT.length>0){
+    // 担当者ごとの未完了数を集計
+    const odByAsgn={};
+    overdueT.forEach(t=>{
+      const a=t.assignee||(isEn?'Unassigned':'未定');
+      odByAsgn[a]=(odByAsgn[a]||0)+1;
+    });
+    const odAsgnSorted=Object.entries(odByAsgn).sort((a,b)=>b[1]-a[1]);
+    // 超過日数の傾向
+    const overDaysArr=overdueT.map(t=>Math.ceil((t0-parseD(t.end))/(1000*60*60*24)));
+    const avgOverDays=Math.round(overDaysArr.reduce((s,v)=>s+v,0)/overDaysArr.length);
+    const maxOverDays=Math.max(...overDaysArr);
+    // 傾向テキスト
+    const topAsgn=odAsgnSorted[0];
+    const tendencyText=isEn
+      ?`The most overdue tasks are assigned to <strong>${escH(topAsgn[0])}</strong> (${topAsgn[1]} tasks). Average delay: <strong>${avgOverDays} days</strong>, max: <strong>${maxOverDays} days</strong>. Consider breaking large tasks into smaller units and setting check-in milestones.`
+      :`未完了タスクは<strong>「${escH(topAsgn[0])}」</strong>に集中しています（${topAsgn[1]}件）。平均遅延は<strong>${avgOverDays}日</strong>、最大<strong>${maxOverDays}日</strong>の超過です。タスクを細分化し、週次チェックポイントを設けることで遅延を防ぎましょう。`;
+    const odAsgnDetail=odAsgnSorted.slice(0,4).map(([a,n])=>`<span style="background:#FEF9F9;border:1px solid #fca5a5;border-radius:6px;padding:2px 8px;font-size:10px;white-space:nowrap">👤 ${escH(a)} <strong style="color:#E74C3C">${n}${isEn?' tasks':'件'}</strong></span>`).join(' ');
+    advCards.push({type:'red',
+      text:`⚠️ ${tendencyText}<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${odAsgnDetail}</div>`
+    });
+
+    // WBSのコツ：未完了傾向から
+    const tipText=isEn
+      ?`💡 <strong>WBS Tip:</strong> Tasks with 5+ days duration tend to slip. Try to keep leaf-level tasks to <strong>3 days or less</strong>, and use Lv4–5 subtasks for detailed tracking.`
+      :`💡 <strong>WBSのコツ：</strong>5日以上のタスクは遅延しやすい傾向があります。末端タスクは<strong>3日以内</strong>を目安にし、Lv4〜5のサブタスクで細かく管理することで、問題の早期発見につながります。`;
+    advCards.push({type:'blue', text:tipText});
+  }
+
+  // 担当者未設定
   if(noAssT.length>0){
-    advItems.push({type:'warn',text:L.noAssignee(noAssT.length)});
+    advCards.push({type:'warn',
+      text:(isEn?`👤 <strong>${noAssT.length}</strong> task(s) have no assignee.`:`👤 担当者未設定のタスクが<strong>${noAssT.length}件</strong>あります。`)+
+      (isEn?' Unowned tasks are more likely to be delayed.':' 担当者のいないタスクは遅延リスクが高まります。早急に担当を割り当ててください。')
+    });
   }
-  if(d.inProg.length>0&&overdueT.length===0){
-    advItems.push({type:'green',text:L.onTrack});
+
+  // 順調メッセージ
+  if(overdueT.length===0&&longT.length===0){
+    advCards.push({type:'green',
+      text:isEn?'💡 All tasks are on track. Current WBS structure is effective — keep it up!':'💡 すべてのタスクが順調です。現在のWBS構造は効果的に機能しています。この調子で進めましょう！'
+    });
   }
-  let secC=advItems.map(a=>`<div class="rpt-alert-card" style="${typeStyle[a.type]}">${a.text}</div>`).join('');
+
+  secC+=advCards.map(a=>`<div class="rpt-alert-card" style="${typeStyle[a.type]};margin-bottom:8px">${a.text}</div>`).join('');
+
   const elC=document.getElementById('rptReviewSection');if(elC)elC.innerHTML=secC;
 
   // ── Section D: 担当者別 ──
@@ -4146,8 +4246,8 @@ function buildFullReportHtml(d,isEn){
   return `<div style="font-family:'Hiragino Sans','Yu Gothic UI',sans-serif;max-width:860px;margin:0 auto;color:#1a1a1a;font-size:12px">
     <h2 style="font-size:18px;font-weight:700;color:#185FA5;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #EAF3FB">📊 ${title}</h2>
     ${h(isEn?'⚠️ Overdue Tasks — Assignee Closeup':'⚠️ 未完了タスク — 担当者クローズアップ')}${elA?.innerHTML||''}
-    ${h(isEn?'📌 Upcoming Tasks — Starting Soon':'📌 着手前タスク — 近日スタート予定')}${elB?.innerHTML||''}
     ${h(isEn?'💡 Last Week Review & Advice':'💡 先週の振り返りと進め方アドバイス')}${elC?.innerHTML||''}
+    ${h(isEn?'📌 Upcoming Tasks — Starting Soon':'📌 着手前タスク — 近日スタート予定')}${elB?.innerHTML||''}
     ${h(isEn?'👤 By Assignee — Progress & Closeup':'👤 担当者別 — 近日タスク・進捗・クローズアップ')}${elD?.innerHTML||''}
     ${h(isEn?'📋 Tasks Started Last Month (Lv2 Groups)':'📋 過去1ヶ月の着手タスク — Lv2グループ別')}${elE?.innerHTML||''}
   </div>`;
@@ -4839,19 +4939,19 @@ function execBulkImport(){
         </div>
       </div>
 
+      <!-- Section C: 先週振り返り・アドバイス（未完了の次）-->
+      <div class="rpt-section">
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#1D9E75,#0E7A5C)">💡 先週の振り返りと進め方アドバイス</div>
+        <div class="rpt-section-body">
+          <div id="rptReviewSection"><div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div></div>
+        </div>
+      </div>
+
       <!-- Section B: 着手前タスク クローズアップ -->
       <div class="rpt-section">
         <div class="rpt-section-head" style="background:linear-gradient(135deg,#BA7517,#EF9F27)">📌 着手前タスク — 近日スタート予定</div>
         <div class="rpt-section-body">
           <div id="rptUpcomingSection"><div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div></div>
-        </div>
-      </div>
-
-      <!-- Section C: 先週振り返り・アドバイス -->
-      <div class="rpt-section">
-        <div class="rpt-section-head" style="background:linear-gradient(135deg,#1D9E75,#0E7A5C)">💡 先週の振り返りと進め方アドバイス</div>
-        <div class="rpt-section-body">
-          <div id="rptReviewSection"><div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div></div>
         </div>
       </div>
 
