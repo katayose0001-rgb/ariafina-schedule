@@ -261,11 +261,37 @@ select{height:26px;font-size:11px;padding:0 6px;border:0.5px solid var(--color-b
   70%{transform:scale(1.1)}
   100%{transform:scale(1);opacity:1}
 }
+/* ── 完了チェックバッジ（New列）── */
+.done-check-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;
+  background:linear-gradient(135deg,#1D9E75,#27AE60);
+  color:#fff;font-size:12px;font-weight:900;line-height:1;
+  box-shadow:0 1px 4px rgba(29,158,117,.45);
+  flex-shrink:0;
+}
 /* ── 複数選択ハイライト ── */
-tr.multi-selected td{background:rgba(55,138,221,.15)!important;outline:1px solid rgba(55,138,221,.3);}
+tr.multi-selected td{
+  background:rgba(55,138,221,.22)!important;
+  box-shadow:inset 0 0 0 1.5px rgba(55,138,221,.55);
+  position:relative;
+}
+tr.multi-selected td:first-child{
+  border-left:3px solid #378ADD!important;
+  box-shadow:inset 0 0 0 1.5px rgba(55,138,221,.55);
+}
 tr.multi-selected.lvl1 td,tr.multi-selected.lvl2 td,
 tr.multi-selected.lvl3 td,tr.multi-selected.lvl4 td,
-tr.multi-selected.lvl5 td,tr.multi-selected.lvl6 td{background:rgba(55,138,221,.18)!important;}
+tr.multi-selected.lvl5 td,tr.multi-selected.lvl6 td{
+  background:rgba(55,138,221,.22)!important;
+}
+/* 選択行のWBS列に選択インジケーター */
+tr.multi-selected td:first-child::before{
+  content:'✔';
+  position:absolute;right:2px;top:50%;transform:translateY(-50%);
+  font-size:8px;color:#378ADD;font-weight:900;opacity:.8;
+  pointer-events:none;
+}
 /* ── コンテキストメニュー複数選択モード ── */
 .ctx-item.multi-action{color:#185FA5;font-weight:600}
 .ctx-multi-count{
@@ -1781,12 +1807,16 @@ function renderOnly(){
     const depIcon=hasPred?`<span title="Has Predecessor" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
     const _enText=task.titleEn||lookupDict(task.title);
     const enSub=_enText?`<div class="en-sub">${escH(_enText)}</div>`:'';
-    // NEWバッジ
+    // NEWバッジ / 完了チェック（完了優先）
     const isNew=!!(task.addedAt&&(_nowMs-new Date(task.addedAt).getTime())<86400000);
-    const newBadgeHtml=isNew?`<span class="new-badge">NEW</span>`:'';
+    const isDoneTask=task.done===true;
+    const newColHtml=isDoneTask
+      ?`<span class="done-check-badge" title="完了">✓</span>`
+      :isNew?`<span class="new-badge">NEW</span>`
+      :'';
     lbArr.push(`<tr class="${lvClass}${isHL?' parent-highlight':''}${isSel?' multi-selected':''}" data-tid="${task.id}" style="height:${ROW_H}px">`);
     lbArr.push(`<td style="width:52px;text-align:left;padding-left:4px;height:${ROW_H}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:left;cursor:pointer;background:transparent;border:none;width:100%"></td>`);
-    lbArr.push(`<td style="width:38px;text-align:center;height:${ROW_H}px;padding:0 2px">${newBadgeHtml}</td>`);
+    lbArr.push(`<td style="width:38px;text-align:center;height:${ROW_H}px;padding:0 2px">${newColHtml}</td>`);
     lbArr.push(`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:34px;position:relative;max-height:34px"><div style="display:flex;align-items:center;height:34px;overflow:hidden;max-height:34px">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;position:relative;height:34px;max-height:34px"><div style="display:flex;align-items:center;height:22px"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`);
     lbArr.push(`<td style="width:86px;height:${ROW_H}px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`);
     const _hasChild=hasChildrenFast(task.id);
