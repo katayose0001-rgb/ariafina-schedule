@@ -1784,7 +1784,7 @@ function renderOnly(){
     // NEWバッジ
     const isNew=!!(task.addedAt&&(_nowMs-new Date(task.addedAt).getTime())<86400000);
     const newBadgeHtml=isNew?`<span class="new-badge">NEW</span>`:'';
-    lbArr.push(`<tr class="${lvClass}${isHL?' parent-highlight':''}${isSel?' multi-selected':''}" data-tid="${task.id}" style="height:${ROW_H}px" onclick="onRowClick(event,${task.id})">`);
+    lbArr.push(`<tr class="${lvClass}${isHL?' parent-highlight':''}${isSel?' multi-selected':''}" data-tid="${task.id}" style="height:${ROW_H}px">`);
     lbArr.push(`<td style="width:52px;text-align:left;padding-left:4px;height:${ROW_H}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:left;cursor:pointer;background:transparent;border:none;width:100%"></td>`);
     lbArr.push(`<td style="width:38px;text-align:center;height:${ROW_H}px;padding:0 2px">${newBadgeHtml}</td>`);
     lbArr.push(`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:34px;position:relative;max-height:34px"><div style="display:flex;align-items:center;height:34px;overflow:hidden;max-height:34px">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;position:relative;height:34px;max-height:34px"><div style="display:flex;align-items:center;height:22px"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`);
@@ -1808,7 +1808,7 @@ function renderOnly(){
   visT.forEach((task,ri)=>{
     const hasPred=task.predecessorId!=null;
     const isSel=selectedIds.has(task.id);
-    rbArr.push(`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${ROW_H}px"${isSel?' class="multi-selected"':''} onclick="onRowClick(event,${task.id})" oncontextmenu="showCtxMenu(event,${task.id})"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;height:${ROW_H}px;position:relative;padding:0">`);
+    rbArr.push(`<tr data-tid="${task.id}" data-ri="${ri}" style="height:${ROW_H}px"${isSel?' class="multi-selected"':''} oncontextmenu="showCtxMenu(event,${task.id})"><td class="gantt-cell-td" style="width:${totalW}px;min-width:${totalW}px;height:${ROW_H}px;position:relative;padding:0">`);
     rbArr.push(`<div class="gantt-row-bg" style="position:relative;width:${totalW}px;height:${ROW_H}px;overflow:hidden">`);
     // 週末・祝日・今日のみdiv生成（365→最大約70divに削減）
     _specialDivs.forEach(s=>{rbArr.push(s);});
@@ -2710,29 +2710,38 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-// ── 行クリック（Ctrl複数選択）──
-function onRowClick(e, taskId){
-  // input/select/button/span.toggle-btnのクリックは選択変更しない
-  const tag=e.target.tagName;
-  if(tag==='INPUT'||tag==='SELECT'||tag==='BUTTON') return;
-  if(e.target.classList.contains('toggle-btn')) return;
-  if(e.ctrlKey||e.metaKey){
-    e.preventDefault();
-    if(selectedIds.has(taskId)) selectedIds.delete(taskId);
-    else selectedIds.add(taskId);
-    // 選択状態だけ即時反映（軽量）
-    const rows=document.querySelectorAll(`#leftTable tr[data-tid="${taskId}"], #rightTable tr[data-tid="${taskId}"]`);
-    rows.forEach(r=>{
-      if(selectedIds.has(taskId)) r.classList.add('multi-selected');
-      else r.classList.remove('multi-selected');
-    });
-  } else {
-    // 通常クリックは選択解除
-    if(selectedIds.size>0){
-      selectedIds.clear();
-      document.querySelectorAll('.multi-selected').forEach(r=>r.classList.remove('multi-selected'));
+// ── 複数選択：documentレベルmousedownで検出（inputクリックでもCtrl検知）──
+document.addEventListener('mousedown',function(e){
+  // Ctrl/Cmd が押されていない場合は何もしない
+  if(!e.ctrlKey&&!e.metaKey){
+    // 通常クリックで選択を解除（コンテキストメニュー・モーダル外）
+    if(selectedIds.size>0&&!e.button===2){
+      // 右クリックは除外（showCtxMenuが処理）
     }
+    return;
   }
+  // 右クリックは除外
+  if(e.button===2) return;
+  // leftTable または rightTable のtr内か確認
+  const tr=e.target.closest('#leftTable tr[data-tid], #rightTable tr[data-tid]');
+  if(!tr) return;
+  const taskId=parseInt(tr.dataset.tid);
+  if(!taskId) return;
+  e.preventDefault();
+  // トグル
+  if(selectedIds.has(taskId)) selectedIds.delete(taskId);
+  else selectedIds.add(taskId);
+  // 両テーブルの対応行を即時更新
+  const allRows=document.querySelectorAll(`#leftTable tr[data-tid="${taskId}"], #rightTable tr[data-tid="${taskId}"]`);
+  allRows.forEach(r=>{
+    if(selectedIds.has(taskId)) r.classList.add('multi-selected');
+    else r.classList.remove('multi-selected');
+  });
+},true); // capture=true で確実に先に受け取る
+
+// ── 行クリック（複数選択用：互換性のために残すが実処理なし）──
+function onRowClick(e, taskId){
+  // 実処理はdocument mousedownリスナーに移管
 }
 window.onRowClick=onRowClick;
 
