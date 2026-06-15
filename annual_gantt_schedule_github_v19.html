@@ -5120,35 +5120,34 @@ function execBulkImport(){
 // ── 一括入力モーダルここまで ──
 
 // ════════════════════════════════════════════════════
-// 📦 成果物WBS生成モーダル
+// 📦 成果物WBS生成モーダル（ChatGPT連携方式）
 // ════════════════════════════════════════════════════
-let _dlvParsed = []; // AI生成したタスクの一時保存
+const GPT_WBS_URL = 'https://chatgpt.com/g/g-6a17c0659a5c8191b5d783a52e817483-sukesiyuruwbszuo-cheng-gpt';
+let _dlvParsed = [];
 
 function openDeliverableModal(){
   if(!_isEditing){ alert('Start Editingが必要です。'); return; }
   const el = document.getElementById('dlvOverlay');
   if(!el) return;
   el.style.display = 'flex';
-  // 担当者セレクトを更新
+  // 担当者セレクト更新
   const sel = document.getElementById('dlvAssignee');
-  if(sel){
-    sel.innerHTML = assignees.map(a=>`<option>${escH(a)}</option>`).join('');
-  }
-  // 親タスク候補を更新
+  if(sel) sel.innerHTML = assignees.map(a=>`<option>${escH(a)}</option>`).join('');
+  // 親タスク候補更新
   const psel = document.getElementById('dlvParent');
-  if(psel){
-    psel.innerHTML = `<option value="">── ルートレベル（Lv1）</option>`+
-      tasks.filter(t=>(t.level||1)<=4).map(t=>
-        `<option value="${t.id}">${'　'.repeat((t.level||1)-1)}${t.wbs} ${escH(t.title)}</option>`
-      ).join('');
-  }
+  if(psel) psel.innerHTML = `<option value="">── ルートレベル（Lv1）</option>`+
+    tasks.filter(t=>(t.level||1)<=4).map(t=>
+      `<option value="${t.id}">${'　'.repeat((t.level||1)-1)}${t.wbs} ${escH(t.title)}</option>`
+    ).join('');
   // リセット
   _dlvParsed = [];
   document.getElementById('dlvPreviewSection').style.display = 'none';
-  document.getElementById('dlvSpinner').classList.remove('show');
-  document.getElementById('dlvGenBtn').disabled = false;
   document.getElementById('dlvAddBtn').style.display = 'none';
-  document.getElementById('dlvStatusMsg').textContent = '';
+  document.getElementById('dlvParseStatus').textContent = '';
+  document.getElementById('dlvCopyMsg').textContent = '';
+  document.getElementById('dlvJsonPaste').value = '';
+  document.getElementById('dlvPromptPreview').style.display = 'none';
+  document.getElementById('dlvPromptToggleBtn').textContent = '▶ 送信するプロンプトを確認する';
 }
 
 function closeDeliverableModal(){
@@ -5156,110 +5155,149 @@ function closeDeliverableModal(){
   if(el) el.style.display = 'none';
 }
 
-async function generateDeliverableWBS(){
+// プロンプトを生成して返す
+function _buildDlvPrompt(){
   const deliverable = document.getElementById('dlvName').value.trim();
   const deadline    = document.getElementById('dlvDeadline').value.trim();
   const assignee    = document.getElementById('dlvAssignee').value;
   const context     = document.getElementById('dlvContext').value.trim();
   const parentId    = document.getElementById('dlvParent').value;
-  const lv          = parentId ? (tasks.find(t=>t.id===parseInt(parentId))?.level||1)+1 : 1;
+  const parentTask  = parentId ? tasks.find(t=>t.id===parseInt(parentId)) : null;
+  const lv          = parentTask ? (parentTask.level||1)+1 : 1;
+  const parentInfo  = parentTask
+    ? `親タスク「${parentTask.wbs} ${parentTask.title}」（Lv${parentTask.level}）の下に配置。生成タスクはLv${lv}から開始。`
+    : `ルートレベル（Lv1）として配置。`;
 
-  if(!deliverable){ alert('成果物名を入力してください。'); return; }
-  if(!deadline){    alert('期限日を入力してください。'); return; }
+  return `以下の成果物を完成させるためのWBSタスクセットをJSONで生成してください。
 
-  document.getElementById('dlvGenBtn').disabled = true;
-  document.getElementById('dlvSpinner').classList.add('show');
-  document.getElementById('dlvPreviewSection').style.display = 'none';
-  document.getElementById('dlvAddBtn').style.display = 'none';
-  document.getElementById('dlvStatusMsg').textContent = '';
+【成果物名】${deliverable}
+【期限】${deadline}
+【担当者】${assignee}
+【今日の日付】${fmt(t0)}
+【配置情報】${parentInfo}
+${context?`【補足】${context}`:''}
 
-  // 親タスク名を取得
-  const parentTask = parentId ? tasks.find(t=>t.id===parseInt(parentId)) : null;
-  const parentInfo = parentTask ? `親タスク「${parentTask.wbs} ${parentTask.title}」（Lv${parentTask.level}）の下に配置。生成するタスクはLv${lv}から始めること。` : `ルートレベル（Lv1）として配置。`;
-
-  const today = fmt(t0);
-  const systemPrompt = `あなたはWBSスケジュール設計の専門家です。成果物起点でWBSタスクを設計します。
-ルール：
-- 必ずJSONのみで返答すること（前後のテキスト・コードブロック禁止）
-- 出力形式: {"tasks":[{"wbs":"1","title":"タスク名","titleEn":"Task Name","days":数値,"level":数値,"notes":"成果物・メモ"},...]}
-- wbsは相対番号（1, 1.1, 1.2, 1.1.1...）で記述すること
-- levelは${lv}から開始
-- 成果物を作るために必要な工程を3〜6タスクで分解
-- 子タスクが必要な場合は最大2階層まで
+【出力ルール】
+- JSONのみ返答（前後のテキスト・コードブロック不要）
+- 形式: {"tasks":[{"wbs":"1","title":"タスク名","titleEn":"Task Name","days":数値,"level":${lv},"notes":"具体的な成果物・確認事項"},...]}
+- wbsは相対番号（1, 1.1, 1.2, 1.1.1...）で記述
+- levelは${lv}から開始、子タスクは${lv+1}
+- 成果物を作るために必要な工程を3〜6タスクで分解（子タスクは最大2階層まで）
 - daysは現実的な稼働日数（1〜15日）
-- notesには具体的な成果物・確認項目を記載
-- titleEnは英語タイトル`;
+- notesには具体的な成果物・確認項目を記載`;
+}
 
-  const userPrompt = `成果物名：「${deliverable}」
-期限：${deadline}
-担当者：${assignee}
-今日：${today}
-${parentInfo}
-${context?`補足情報：${context}`:''}
+// プロンプトをコピー＆ChatGPT GPTを開く
+async function copyDlvPromptAndOpenGPT(){
+  const deliverable = document.getElementById('dlvName').value.trim();
+  const deadline    = document.getElementById('dlvDeadline').value.trim();
+  if(!deliverable){ alert('成果物名を入力してください。'); return; }
+  if(!deadline){    alert('期限を入力してください。'); return; }
 
-この成果物を完成させるためのWBSタスクセットをJSON形式で生成してください。`;
+  const prompt = _buildDlvPrompt();
 
+  // プロンプトをクリップボードにコピー
   try{
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        system: systemPrompt,
-        messages:[{role:'user',content:userPrompt}]
-      })
-    });
-    const data = await resp.json();
-    const raw = data.content?.map(c=>c.text||'').join('').trim();
-    // JSON抽出（コードブロック対応）
-    const jsonStr = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-    const parsed = JSON.parse(jsonStr);
-    if(!parsed.tasks?.length) throw new Error('タスクが生成されませんでした');
-
-    // 生成タスクをプレビュー用に整形
-    _dlvParsed = parsed.tasks.map((t,i)=>({
-      ...t,
-      id: 9000+i, // 仮ID（挿入時に再採番）
-      assignee,
-      parentId: parentId?parseInt(parentId):null,
-      // wbsは相対→後で実際のWBSに付き直す
-      _relWbs: t.wbs,
-      color: ['#533AB7','#7B5DC4','#9B7ED4','#B8A0E0','#D0C0F0'][Math.min((t.level||lv)-lv,4)]
-    }));
-
-    // 開始日・終了日を期限から逆算して仮設定
-    _calcDlvDates(deadline);
-
-    // プレビュー表示
-    _renderDlvPreview(deliverable, deadline, assignee);
-
-    document.getElementById('dlvPreviewSection').style.display = '';
-    document.getElementById('dlvAddBtn').style.display = '';
-    document.getElementById('dlvStatusMsg').textContent = `✅ ${_dlvParsed.length}件のタスクを生成しました`;
+    await navigator.clipboard.writeText(prompt);
+    const msg = document.getElementById('dlvCopyMsg');
+    msg.textContent = '✅ コピーしました！ChatGPTに貼り付けてください';
+    setTimeout(()=>{ msg.textContent=''; },5000);
   }catch(e){
-    console.error('WBS生成エラー:',e);
-    document.getElementById('dlvStatusMsg').textContent = `⚠️ 生成エラー：${e.message}`;
-  }finally{
-    document.getElementById('dlvSpinner').classList.remove('show');
-    document.getElementById('dlvGenBtn').disabled = false;
+    // フォールバック：テキストエリアに表示
+    document.getElementById('dlvPromptPreview').textContent = prompt;
+    document.getElementById('dlvPromptPreview').style.display = 'block';
+    document.getElementById('dlvPromptToggleBtn').textContent = '▼ プロンプトを隠す';
+  }
+
+  // ChatGPT GPTを新タブで開く
+  window.open(GPT_WBS_URL, '_blank');
+}
+
+// プロンプトプレビューの折りたたみトグル
+function toggleDlvPrompt(){
+  const preview = document.getElementById('dlvPromptPreview');
+  const btn     = document.getElementById('dlvPromptToggleBtn');
+  if(preview.style.display === 'none'){
+    const deliverable = document.getElementById('dlvName').value.trim();
+    const deadline    = document.getElementById('dlvDeadline').value.trim();
+    if(deliverable && deadline){
+      preview.textContent = _buildDlvPrompt();
+    } else {
+      preview.textContent = '（成果物名と期限を入力するとプロンプトが表示されます）';
+    }
+    preview.style.display = 'block';
+    btn.textContent = '▼ プロンプトを隠す';
+  } else {
+    preview.style.display = 'none';
+    btn.textContent = '▶ 送信するプロンプトを確認する';
   }
 }
+window.toggleDlvPrompt = toggleDlvPrompt;
+
+// JSONペーストを検知してパース＆プレビュー
+function onDlvJsonPaste(){
+  const raw = document.getElementById('dlvJsonPaste').value.trim();
+  const statusEl = document.getElementById('dlvParseStatus');
+  document.getElementById('dlvPreviewSection').style.display = 'none';
+  document.getElementById('dlvAddBtn').style.display = 'none';
+  _dlvParsed = [];
+
+  if(!raw){ statusEl.textContent=''; return; }
+
+  // JSONを抽出（ChatGPTが前後にテキストを付けても対応）
+  let jsonStr = raw;
+  const jsonMatch = raw.match(/\{[\s\S]*"tasks"[\s\S]*\}/);
+  if(jsonMatch) jsonStr = jsonMatch[0];
+  // コードブロック除去
+  jsonStr = jsonStr.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+
+  try{
+    const parsed = JSON.parse(jsonStr);
+    if(!parsed.tasks?.length) throw new Error('tasksが見つかりません');
+
+    const assignee  = document.getElementById('dlvAssignee').value;
+    const parentId  = document.getElementById('dlvParent').value;
+    const parentTask= parentId ? tasks.find(t=>t.id===parseInt(parentId)) : null;
+    const baseLv    = parentTask ? (parentTask.level||1)+1 : 1;
+
+    _dlvParsed = parsed.tasks.map((t,i)=>({
+      ...t,
+      id: 9000+i,
+      assignee,
+      parentId: parentId ? parseInt(parentId) : null,
+      _relWbs: t.wbs,
+      level: t.level || baseLv,
+      color: ['#533AB7','#7B5DC4','#9B7ED4','#B8A0E0','#D0C0F0'][Math.min((t.level||baseLv)-baseLv,4)]
+    }));
+
+    // 期限から逆算して日付設定
+    const deadline = document.getElementById('dlvDeadline').value.trim();
+    if(deadline) _calcDlvDates(deadline);
+
+    // プレビュー表示
+    const deliverable = document.getElementById('dlvName').value.trim();
+    _renderDlvPreview(deliverable, deadline, assignee);
+
+    statusEl.innerHTML = `<span style="color:#1D9E75;font-weight:600">✅ ${_dlvParsed.length}件のタスクを読み込みました</span>`;
+    document.getElementById('dlvPreviewSection').style.display = '';
+    document.getElementById('dlvAddBtn').style.display = '';
+
+  }catch(e){
+    statusEl.innerHTML = `<span style="color:#E74C3C">⚠️ JSON解析エラー：${e.message}。ChatGPTの返答をそのまま貼り付けてください。</span>`;
+  }
+}
+window.onDlvJsonPaste = onDlvJsonPaste;
 
 function _calcDlvDates(deadline){
   const h = hs(currentYear);
   const endDate = parseD(deadline) || t0;
-  // 期限から逆算（合計日数分さかのぼる）
-  let totalDays = _dlvParsed.reduce((s,t)=>s+(t.days||3),0);
-  // 開始日を計算（逆算）
+  let totalDays = _dlvParsed.reduce((s,t)=>s+(+t.days||3),0);
   let cur = new Date(endDate);
   for(let i=0;i<totalDays;i++){ cur.setDate(cur.getDate()-1); while(!isWork(cur,h))cur.setDate(cur.getDate()-1); }
-  const startDate = new Date(cur);
-  // 各タスクに順番に日付を割り振る
-  let d = new Date(startDate);
+  let d = new Date(cur);
   _dlvParsed.forEach(t=>{
     t.start = fmt(d);
-    t.end   = fmt(addWD(d, t.days||3, h));
+    t.end   = fmt(addWD(d, +t.days||3, h));
     d = new Date(parseD(t.end));
     d.setDate(d.getDate()+1);
     while(!isWork(d,h)) d.setDate(d.getDate()+1);
@@ -5268,42 +5306,39 @@ function _calcDlvDates(deadline){
 
 function _renderDlvPreview(deliverable, deadline, assignee){
   const lvColors=['#533AB7','#7B5DC4','#9B7ED4','#B8A0E0','#D0C0F0'];
-  let rows = _dlvParsed.map(t=>{
+  const rows = _dlvParsed.map(t=>{
     const lv = t.level||1;
-    const indent = '　'.repeat(Math.max(0,lv-1));
     const col = lvColors[Math.min(lv-1,4)];
-    return `<tr class="lv${Math.min(lv,3)}" style="border-left:3px solid ${col}">
-      <td style="color:#888;font-family:monospace">${escH(t._relWbs||t.wbs||'')}</td>
-      <td style="padding-left:${(lv-1)*12+6}px;font-weight:${lv<=2?700:400}">${indent}${escH(t.title)}</td>
+    return `<tr style="border-left:3px solid ${col}">
+      <td style="color:#888;font-family:monospace;font-size:10px">${escH(t._relWbs||t.wbs||'')}</td>
+      <td style="padding-left:${(lv-1)*12+6}px;font-weight:${lv<=2?700:400}">${escH(t.title)}</td>
       <td style="color:#7B5DC4;font-size:10px">${escH(t.titleEn||'')}</td>
-      <td style="text-align:center">${t.days||3}${uiLang==='en'?'d':'日'}</td>
+      <td style="text-align:center">${t.days||3}日</td>
       <td style="color:#888;font-size:10px">${t.start||''}</td>
       <td style="color:#888;font-size:10px">${t.end||''}</td>
-      <td style="color:#555;font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(t.notes||'')}</td>
+      <td style="color:#555;font-size:10px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escH(t.notes||'')}">${escH(t.notes||'')}</td>
     </tr>`;
   }).join('');
-
   document.getElementById('dlvPreviewTbl').querySelector('tbody').innerHTML = rows;
   document.getElementById('dlvPreviewTitle').textContent =
-    `📦 「${deliverable}」のWBSタスク（${_dlvParsed.length}件 / 期限：${deadline}）`;
+    `「${deliverable}」 ${_dlvParsed.length}件 / 期限：${deadline}`;
 }
 
 function execDeliverableImport(){
   if(!_isEditing||!_dlvParsed.length) return;
-  const parentId = document.getElementById('dlvParent').value;
-  const pId = parentId?parseInt(parentId):null;
-  const assignee = document.getElementById('dlvAssignee').value;
-  const h = hs(currentYear);
+  const parentId  = document.getElementById('dlvParent').value;
+  const pId       = parentId ? parseInt(parentId) : null;
+  const assignee  = document.getElementById('dlvAssignee').value;
+  const h         = hs(currentYear);
+  const name      = document.getElementById('dlvName').value.trim();
 
-  pushUndo(`成果物WBS追加「${document.getElementById('dlvName').value}」`);
+  pushUndo(`成果物WBS追加「${name}」`);
 
   const baseId = getNextId();
-  // 相対WBSからparentId関係を再構築
-  const wbsToTmpId={};
+  const wbsToTmpId = {};
   const newTasks = _dlvParsed.map((t,i)=>{
     const newId = baseId+i;
     wbsToTmpId[t._relWbs||String(i+1)] = newId;
-    // 親を相対WBSから解決
     const relParts = (t._relWbs||'').split('.');
     let resolvedParentId = pId;
     if(relParts.length>1){
@@ -5311,10 +5346,9 @@ function execDeliverableImport(){
       resolvedParentId = wbsToTmpId[parentRelWbs] ?? pId;
     }
     return {
-      id: newId,
-      wbs:'', title:t.title, titleEn:t.titleEn||'',
+      id:newId, wbs:'', title:t.title, titleEn:t.titleEn||'',
       description:'', enSummary:'', notes:t.notes||'',
-      assignee, days:t.days||3,
+      assignee, days:+t.days||3,
       start:t.start||fmt(t0), end:t.end||fmt(t0),
       level:t.level||1, color:t.color||'#533AB7',
       parentId:resolvedParentId, predecessorId:null,
@@ -5322,7 +5356,6 @@ function execDeliverableImport(){
     };
   });
 
-  // 挿入位置：親の末尾 or 全末尾
   let insertIdx = tasks.length;
   if(pId!=null){
     let last = tasks.findIndex(t=>t.id===pId);
@@ -5333,16 +5366,17 @@ function execDeliverableImport(){
   }
 
   tasks.splice(insertIdx,0,...newTasks);
-  reNumberWbs();
-  recalcAllParents();
+  reNumberWbs(); recalcAllParents();
   saveData(); render();
   closeDeliverableModal();
   showSyncNotice(`📦 ${newTasks.length}件の成果物タスクを追加しました`);
 }
-window.openDeliverableModal=openDeliverableModal;
-window.closeDeliverableModal=closeDeliverableModal;
-window.generateDeliverableWBS=generateDeliverableWBS;
-window.execDeliverableImport=execDeliverableImport;
+
+window.openDeliverableModal    = openDeliverableModal;
+window.closeDeliverableModal   = closeDeliverableModal;
+window.copyDlvPromptAndOpenGPT = copyDlvPromptAndOpenGPT;
+window.onDlvJsonPaste          = onDlvJsonPaste;
+window.execDeliverableImport   = execDeliverableImport;
 </script>
 <!-- ── Report Modal ── -->
 <div class="rpt-overlay" id="rptOverlay" style="display:none" onclick="if(event.target===this)closeReportModal()">
@@ -5455,7 +5489,7 @@ window.execDeliverableImport=execDeliverableImport;
     <div class="dlv-head">
       <div>
         <h3>📦 成果物からWBSを生成</h3>
-        <div class="sub">成果物を入力するとAIがタスクセットを自動設計します</div>
+        <div class="sub">ChatGPTがタスクセットを設計 → そのままガントに追加</div>
       </div>
       <button class="dlv-close" onclick="closeDeliverableModal()">✕</button>
     </div>
@@ -5489,33 +5523,54 @@ window.execDeliverableImport=execDeliverableImport;
         </div>
       </div>
 
-      <!-- 生成ボタン -->
-      <div style="text-align:center">
-        <button class="btn primary" id="dlvGenBtn" onclick="generateDeliverableWBS()"
-          style="background:linear-gradient(135deg,#533AB7,#7B5DC4);border-color:#533AB7;padding:0 24px;height:34px;font-size:12px;font-weight:700;letter-spacing:.3px">
-          ✨ AIでWBSタスクを生成
-        </button>
-        <span id="dlvStatusMsg" style="font-size:11px;color:#888;margin-left:12px"></span>
+      <!-- STEP 2: ChatGPTへ -->
+      <div class="dlv-section">
+        <h4>🤖 STEP 2 &nbsp; ChatGPTでWBSを生成</h4>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:10px;line-height:1.7">
+          ① プロンプトをコピー　② ChatGPT GPTが開く　③ 貼り付けて送信　④ 返答のJSONをSTEP3にペースト
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn primary" id="dlvCopyBtn" onclick="copyDlvPromptAndOpenGPT()"
+            style="background:linear-gradient(135deg,#10a37f,#0d8f6f);border-color:#0d8f6f;font-weight:700;padding:0 18px;height:32px">
+            📋 プロンプトをコピー＆ChatGPTを開く
+          </button>
+          <span id="dlvCopyMsg" style="font-size:11px;color:#1D9E75;font-weight:600"></span>
+        </div>
+        <!-- 生成プロンプトのプレビュー（折りたたみ） -->
+        <div style="margin-top:10px">
+          <button onclick="toggleDlvPrompt()" style="font-size:10px;color:#888;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline" id="dlvPromptToggleBtn">
+            ▶ 送信するプロンプトを確認する
+          </button>
+          <div id="dlvPromptPreview" style="display:none;margin-top:6px;background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:10px;padding:10px 12px;border-radius:6px;white-space:pre-wrap;max-height:160px;overflow-y:auto;line-height:1.5"></div>
+        </div>
       </div>
 
-      <!-- スピナー -->
-      <div class="dlv-spinner" id="dlvSpinner">
-        <div class="dlv-spin"></div>
-        <div style="font-size:12px">成果物を分析してWBSを設計中...</div>
+      <!-- STEP 3: JSONペースト -->
+      <div class="dlv-section">
+        <h4>📥 STEP 3 &nbsp; ChatGPTの返答をペースト</h4>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">
+          ChatGPTが返したJSONをそのまま貼り付けてください。
+        </div>
+        <textarea id="dlvJsonPaste" rows="5"
+          style="width:100%;font-family:monospace;font-size:11px;padding:8px 10px;border:1.5px solid var(--color-border-secondary);border-radius:6px;background:var(--color-background-primary);color:var(--color-text-primary);resize:vertical;line-height:1.5"
+          placeholder='{"tasks":[{"wbs":"1","title":"...","titleEn":"...","days":5,"level":1,"notes":"成果物"},...]}
+または、ChatGPTの返答テキスト全体をそのままペーストしてもOKです。'
+          oninput="onDlvJsonPaste()"></textarea>
+        <div id="dlvParseStatus" style="margin-top:6px;font-size:11px"></div>
       </div>
 
-      <!-- STEP 2: プレビュー -->
+      <!-- STEP 4: プレビュー -->
       <div class="dlv-section" id="dlvPreviewSection" style="display:none">
-        <h4>👁 STEP 2 &nbsp; 生成されたWBSを確認 <span id="dlvPreviewTitle" style="font-weight:400;font-size:11px;color:#888"></span></h4>
+        <h4>👁 STEP 4 &nbsp; 生成されたWBSを確認 <span id="dlvPreviewTitle" style="font-weight:400;font-size:11px;color:#888"></span></h4>
         <div class="dlv-preview-wrap">
           <table class="dlv-tbl" id="dlvPreviewTbl">
             <thead><tr>
-              <th style="width:56px">WBS</th>
+              <th style="width:52px">WBS</th>
               <th>タスク名</th>
-              <th style="width:130px">EN Title</th>
-              <th style="width:46px;text-align:center">日数</th>
-              <th style="width:84px">開始</th>
-              <th style="width:84px">終了</th>
+              <th style="width:120px">EN Title</th>
+              <th style="width:44px;text-align:center">日数</th>
+              <th style="width:80px">開始</th>
+              <th style="width:80px">終了</th>
               <th>成果物・メモ</th>
             </tr></thead>
             <tbody></tbody>
