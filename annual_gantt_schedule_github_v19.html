@@ -454,6 +454,40 @@ tr.multi-selected td:first-child::before{
 .rpt-generating{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:14px;color:#888}
 .rpt-generating .spinner{width:36px;height:36px;border:3px solid #e0e8f5;border-top-color:#378ADD;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ── 成果物WBS生成モーダル ── */
+.dlv-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;align-items:center;justify-content:center}
+.dlv-modal{background:var(--color-background-primary);border-radius:16px;box-shadow:0 16px 64px rgba(0,0,0,.3);width:min(780px,96vw);max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.dlv-head{padding:18px 24px 14px;background:linear-gradient(135deg,#533AB7,#7B5DC4);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.dlv-head h3{font-size:16px;font-weight:700;margin:0}
+.dlv-head .sub{font-size:11px;opacity:.8;margin-top:2px}
+.dlv-close{width:28px;height:28px;border:none;background:rgba(255,255,255,.2);cursor:pointer;font-size:16px;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.dlv-close:hover{background:rgba(255,255,255,.35)}
+.dlv-body{padding:20px 24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px}
+.dlv-foot{padding:14px 24px;border-top:0.5px solid var(--color-border-tertiary);display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-shrink:0}
+.dlv-section{background:var(--color-background-secondary);border-radius:10px;padding:14px 16px;border:1px solid var(--color-border-tertiary)}
+.dlv-section h4{font-size:12px;font-weight:700;color:#533AB7;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.dlv-field{margin-bottom:10px}
+.dlv-field label{display:block;font-size:11px;font-weight:600;color:var(--color-text-secondary);margin-bottom:4px}
+.dlv-field input,.dlv-field select,.dlv-field textarea{width:100%;padding:8px 10px;border:1px solid var(--color-border-secondary);border-radius:6px;font-size:12px;background:var(--color-background-primary);color:var(--color-text-primary);font-family:inherit}
+.dlv-field textarea{resize:vertical;line-height:1.5}
+.dlv-field input:focus,.dlv-field select:focus,.dlv-field textarea:focus{outline:none;border-color:#7B5DC4;box-shadow:0 0 0 2px rgba(123,93,196,.15)}
+.dlv-row{display:flex;gap:10px}
+.dlv-row .dlv-field{flex:1}
+/* AI生成中スピナー */
+.dlv-spinner{display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:32px;color:#888}
+.dlv-spinner.show{display:flex}
+.dlv-spin{width:40px;height:40px;border:3px solid #e0d8f8;border-top-color:#7B5DC4;border-radius:50%;animation:spin .8s linear infinite}
+/* プレビューテーブル */
+.dlv-preview-wrap{overflow-x:auto;max-height:280px;overflow-y:auto;border-radius:6px;border:1px solid var(--color-border-tertiary)}
+.dlv-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.dlv-tbl th{background:#533AB7;color:#fff;padding:6px 8px;text-align:left;font-weight:600;white-space:nowrap;position:sticky;top:0}
+.dlv-tbl td{padding:5px 8px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:top}
+.dlv-tbl tr:hover td{background:rgba(123,93,196,.06)}
+.dlv-tbl .lv1 td{font-weight:700;background:rgba(83,58,183,.06)}
+.dlv-tbl .lv2 td{font-weight:600;background:rgba(83,58,183,.03)}
+.dlv-lv-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap}
+/* 成果物なしタスク（レポート用） */
+.dlv-empty-badge{display:inline-flex;align-items:center;gap:3px;background:#FFF0F6;color:#993556;border:1px solid #f5c2d4;font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;white-space:nowrap}
 /* ── CSV Import Modal ── */
 .imp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center}
 .imp-modal{background:#fff;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.25);width:min(600px,94vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
@@ -673,6 +707,9 @@ tr.multi-selected td:first-child::before{
         <button class="btn" id="btnAddSub" onclick="openSide('addSub')">＋ サブタスク</button>
         <button class="btn" id="btnManageAsgn" onclick="openSide('assignees')">担当者管理</button>
         <button class="btn" id="btnWBS" onclick="window.open('https://chatgpt.com/g/g-6a17c0659a5c8191b5d783a52e817483-sukesiyuruwbszuo-cheng-gpt','_blank')" style="color:#7B3F00;border-color:#A0522D;font-weight:600;background:#FFF3E0" title="ChatGPT スケジュールWBS作成GPTを開く">🗂 WBS作成</button>
+        <button class="btn" id="btnDeliverable" onclick="openDeliverableModal()"
+          style="color:#533AB7;border-color:#7B5DC4;font-weight:600;background:#F0EAF8"
+          title="成果物を入力してWBSタスクをAI生成">📦 成果物から作成</button>
         <button class="btn" id="btnBulkInput" onclick="openBulkModal()"
           style="color:#0E4F8A;border-color:#185FA5;font-weight:600;background:#EAF3FB"
           title="表をコピペして一括タスク追加">📋 一括入力</button>
@@ -3725,7 +3762,7 @@ function generateReport(lang){
   };
 
   if(!d.allT.length){
-    ['rptOverdueSection','rptUpcomingSection','rptReviewSection','rptAssigneeSection','rptTaskSection']
+    ['rptOverdueSection','rptUpcomingSection','rptReviewSection','rptAssigneeSection','rptTaskSection','rptEmptySection']
       .forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=`<div style="color:#aaa;font-size:12px;padding:8px">${isEn?'No task data.':'タスクデータがありません'}</div>`;});
     return;
   }
@@ -4168,6 +4205,85 @@ function generateReport(lang){
   }
   const elE=document.getElementById('rptTaskSection');if(elE)elE.innerHTML=secE;
 
+  // ── Section F: 成果物未定義タスク（子なし・未完了・着手済み） ──
+  // 条件: 子タスクなし AND 未完了 AND 開始日が今日以前 AND（notes空 OR description空）
+  const emptyT = tasks.filter(t=>{
+    if(t.done) return false;                          // 完了済みは除外
+    if(!t.start || t.start > d.today) return false;  // 未着手は除外
+    if(hasChildrenFast(t.id)) return false;           // 子タスクありは除外
+    // 開始日から2日以上経過
+    const daysElapsed = Math.floor((t0 - parseD(t.start)) / (1000*60*60*24));
+    if(daysElapsed < 2) return false;
+    return true; // 条件に合致
+  }).sort((a,b)=>a.start.localeCompare(b.start));
+
+  let secF='';
+  if(!emptyT.length){
+    secF=`<div class="rpt-alert-card" style="border-left-color:#1D9E75;background:#F0FBF7">
+      ✅ ${isEn?'All leaf tasks have subtasks or are recently started.':'すべての末端タスクにサブタスクがあるか、着手したばかりです。'}
+    </div>`;
+  } else {
+    secF+=`<div style="font-size:11px;color:#993556;font-weight:600;margin-bottom:8px">
+      📦 ${isEn
+        ?`${emptyT.length} task(s) have been active for 2+ days with no subtasks. Consider using "Create from Deliverable" to define concrete outputs.`
+        :`${emptyT.length}件のタスクが着手から2日以上経過しているにも関わらず、子タスク（成果物）がありません。「📦 成果物から作成」ボタンで具体的な成果物を定義することを推奨します。`}
+    </div>`;
+    secF+=`<div style="font-size:10px;color:#888;margin-bottom:10px">
+      💡 ${isEn?'Click a task to jump to the Gantt chart.':'タスクをクリックするとガントチャートへジャンプします。'}
+    </div>`;
+
+    // Lv別にグルーピング
+    const byLv={};
+    emptyT.forEach(t=>{
+      const lv=t.level||1;
+      if(!byLv[lv])byLv[lv]=[];
+      byLv[lv].push(t);
+    });
+
+    Object.entries(byLv).sort(([a],[b])=>+a-+b).forEach(([lv,lvTasks])=>{
+      const lvColors=['#378ADD','#1D9E75','#BA7517','#A32D2D','#533AB7','#7F8C8D'];
+      const lvColor=lvColors[Math.min(+lv-1,5)];
+      secF+=`<div style="margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:${lvColor};letter-spacing:.5px;margin-bottom:5px;padding:3px 8px;background:${lvColor}18;border-radius:4px;display:inline-block">
+          Lv${lv} — ${lvTasks.length}${isEn?' tasks':'件'}
+        </div>`;
+      lvTasks.forEach(t=>{
+        const tName=isEn?(t.titleEn||t.title):t.title;
+        const asgn=t.assignee||(isEn?'Unassigned':'担当者未定');
+        const daysElapsed=Math.floor((t0-parseD(t.start))/(1000*60*60*24));
+        const pName=getLv2ParentName(t);
+        const hasDesc=!!(t.description||t.notes);
+        const urgColor=daysElapsed>=14?'#E74C3C':daysElapsed>=7?'#EF9F27':'#993556';
+        secF+=`<div onclick="rptJumpToTask(${t.id},${isEn})"
+          style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;padding:8px 12px;
+            background:#FFF5F8;border:1px solid #f5c2d4;border-radius:8px;border-left:4px solid ${urgColor};
+            cursor:pointer;transition:box-shadow .15s"
+          onmouseover="this.style.boxShadow='0 2px 10px rgba(153,53,86,.2)';this.style.background='#ffeef4'"
+          onmouseout="this.style.boxShadow='';this.style.background='#FFF5F8'">
+          <div style="flex-shrink:0;background:${urgColor};color:#fff;font-size:10px;font-weight:700;
+            border-radius:4px;padding:2px 7px;margin-top:1px;white-space:nowrap">
+            ${daysElapsed}${isEn?'d':'日'}経過
+          </div>
+          <div style="flex:1;min-width:0">
+            ${pName?`<div style="font-size:9px;color:#bbb;margin-bottom:1px">📁 ${escH(pName)}</div>`:''}
+            <div style="font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:2px">${escH(tName)}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <span style="font-size:10px;color:#555">👤 ${escH(asgn)}</span>
+              <span style="font-size:10px;color:#888">📅 ${t.start}〜${t.end}</span>
+              <span style="font-size:10px;color:#888">WBS ${t.wbs}</span>
+              ${hasDesc
+                ?`<span style="background:#EAF3FB;color:#185FA5;font-size:9px;padding:1px 5px;border-radius:3px">📝 内容あり</span>`
+                :`<span class="dlv-empty-badge">📦 成果物未定義</span>`}
+            </div>
+          </div>
+          <span style="font-size:10px;color:#993556;opacity:.6;margin-top:2px;flex-shrink:0">📍 Jump</span>
+        </div>`;
+      });
+      secF+='</div>';
+    });
+  }
+  const elF=document.getElementById('rptEmptySection');if(elF)elF.innerHTML=secF;
+
   // ── 言語ラベルをセクションヘッダーに反映 ──
   const secLabels={
     rptOverdueSection:   isEn?'⚠️ Overdue Tasks — Assignee Closeup':'⚠️ 未完了タスク — 担当者クローズアップ',
@@ -4175,6 +4291,7 @@ function generateReport(lang){
     rptReviewSection:    isEn?'💡 Last Week Review & Advice':'💡 先週の振り返りと進め方アドバイス',
     rptAssigneeSection:  isEn?'👤 By Assignee — Progress & Closeup':'👤 担当者別 — 近日タスク・進捗・クローズアップ',
     rptTaskSection:      isEn?'📋 Tasks Started Last Month (Lv2 Groups)':'📋 過去1ヶ月の着手タスク — Lv2グループ別',
+    rptEmptySection:     isEn?'📦 Undefined Deliverable Tasks':'📦 成果物未定義タスク — 子タスクなし・着手済み',
   };
   Object.entries(secLabels).forEach(([sectionId, label])=>{
     const sec=document.getElementById(sectionId);
@@ -5001,6 +5118,231 @@ function execBulkImport(){
   showSyncNotice(`✅ ${newTasks.length}件のタスクを追加しました`);
 }
 // ── 一括入力モーダルここまで ──
+
+// ════════════════════════════════════════════════════
+// 📦 成果物WBS生成モーダル
+// ════════════════════════════════════════════════════
+let _dlvParsed = []; // AI生成したタスクの一時保存
+
+function openDeliverableModal(){
+  if(!_isEditing){ alert('Start Editingが必要です。'); return; }
+  const el = document.getElementById('dlvOverlay');
+  if(!el) return;
+  el.style.display = 'flex';
+  // 担当者セレクトを更新
+  const sel = document.getElementById('dlvAssignee');
+  if(sel){
+    sel.innerHTML = assignees.map(a=>`<option>${escH(a)}</option>`).join('');
+  }
+  // 親タスク候補を更新
+  const psel = document.getElementById('dlvParent');
+  if(psel){
+    psel.innerHTML = `<option value="">── ルートレベル（Lv1）</option>`+
+      tasks.filter(t=>(t.level||1)<=4).map(t=>
+        `<option value="${t.id}">${'　'.repeat((t.level||1)-1)}${t.wbs} ${escH(t.title)}</option>`
+      ).join('');
+  }
+  // リセット
+  _dlvParsed = [];
+  document.getElementById('dlvPreviewSection').style.display = 'none';
+  document.getElementById('dlvSpinner').classList.remove('show');
+  document.getElementById('dlvGenBtn').disabled = false;
+  document.getElementById('dlvAddBtn').style.display = 'none';
+  document.getElementById('dlvStatusMsg').textContent = '';
+}
+
+function closeDeliverableModal(){
+  const el = document.getElementById('dlvOverlay');
+  if(el) el.style.display = 'none';
+}
+
+async function generateDeliverableWBS(){
+  const deliverable = document.getElementById('dlvName').value.trim();
+  const deadline    = document.getElementById('dlvDeadline').value.trim();
+  const assignee    = document.getElementById('dlvAssignee').value;
+  const context     = document.getElementById('dlvContext').value.trim();
+  const parentId    = document.getElementById('dlvParent').value;
+  const lv          = parentId ? (tasks.find(t=>t.id===parseInt(parentId))?.level||1)+1 : 1;
+
+  if(!deliverable){ alert('成果物名を入力してください。'); return; }
+  if(!deadline){    alert('期限日を入力してください。'); return; }
+
+  document.getElementById('dlvGenBtn').disabled = true;
+  document.getElementById('dlvSpinner').classList.add('show');
+  document.getElementById('dlvPreviewSection').style.display = 'none';
+  document.getElementById('dlvAddBtn').style.display = 'none';
+  document.getElementById('dlvStatusMsg').textContent = '';
+
+  // 親タスク名を取得
+  const parentTask = parentId ? tasks.find(t=>t.id===parseInt(parentId)) : null;
+  const parentInfo = parentTask ? `親タスク「${parentTask.wbs} ${parentTask.title}」（Lv${parentTask.level}）の下に配置。生成するタスクはLv${lv}から始めること。` : `ルートレベル（Lv1）として配置。`;
+
+  const today = fmt(t0);
+  const systemPrompt = `あなたはWBSスケジュール設計の専門家です。成果物起点でWBSタスクを設計します。
+ルール：
+- 必ずJSONのみで返答すること（前後のテキスト・コードブロック禁止）
+- 出力形式: {"tasks":[{"wbs":"1","title":"タスク名","titleEn":"Task Name","days":数値,"level":数値,"notes":"成果物・メモ"},...]}
+- wbsは相対番号（1, 1.1, 1.2, 1.1.1...）で記述すること
+- levelは${lv}から開始
+- 成果物を作るために必要な工程を3〜6タスクで分解
+- 子タスクが必要な場合は最大2階層まで
+- daysは現実的な稼働日数（1〜15日）
+- notesには具体的な成果物・確認項目を記載
+- titleEnは英語タイトル`;
+
+  const userPrompt = `成果物名：「${deliverable}」
+期限：${deadline}
+担当者：${assignee}
+今日：${today}
+${parentInfo}
+${context?`補足情報：${context}`:''}
+
+この成果物を完成させるためのWBSタスクセットをJSON形式で生成してください。`;
+
+  try{
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        system: systemPrompt,
+        messages:[{role:'user',content:userPrompt}]
+      })
+    });
+    const data = await resp.json();
+    const raw = data.content?.map(c=>c.text||'').join('').trim();
+    // JSON抽出（コードブロック対応）
+    const jsonStr = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+    const parsed = JSON.parse(jsonStr);
+    if(!parsed.tasks?.length) throw new Error('タスクが生成されませんでした');
+
+    // 生成タスクをプレビュー用に整形
+    _dlvParsed = parsed.tasks.map((t,i)=>({
+      ...t,
+      id: 9000+i, // 仮ID（挿入時に再採番）
+      assignee,
+      parentId: parentId?parseInt(parentId):null,
+      // wbsは相対→後で実際のWBSに付き直す
+      _relWbs: t.wbs,
+      color: ['#533AB7','#7B5DC4','#9B7ED4','#B8A0E0','#D0C0F0'][Math.min((t.level||lv)-lv,4)]
+    }));
+
+    // 開始日・終了日を期限から逆算して仮設定
+    _calcDlvDates(deadline);
+
+    // プレビュー表示
+    _renderDlvPreview(deliverable, deadline, assignee);
+
+    document.getElementById('dlvPreviewSection').style.display = '';
+    document.getElementById('dlvAddBtn').style.display = '';
+    document.getElementById('dlvStatusMsg').textContent = `✅ ${_dlvParsed.length}件のタスクを生成しました`;
+  }catch(e){
+    console.error('WBS生成エラー:',e);
+    document.getElementById('dlvStatusMsg').textContent = `⚠️ 生成エラー：${e.message}`;
+  }finally{
+    document.getElementById('dlvSpinner').classList.remove('show');
+    document.getElementById('dlvGenBtn').disabled = false;
+  }
+}
+
+function _calcDlvDates(deadline){
+  const h = hs(currentYear);
+  const endDate = parseD(deadline) || t0;
+  // 期限から逆算（合計日数分さかのぼる）
+  let totalDays = _dlvParsed.reduce((s,t)=>s+(t.days||3),0);
+  // 開始日を計算（逆算）
+  let cur = new Date(endDate);
+  for(let i=0;i<totalDays;i++){ cur.setDate(cur.getDate()-1); while(!isWork(cur,h))cur.setDate(cur.getDate()-1); }
+  const startDate = new Date(cur);
+  // 各タスクに順番に日付を割り振る
+  let d = new Date(startDate);
+  _dlvParsed.forEach(t=>{
+    t.start = fmt(d);
+    t.end   = fmt(addWD(d, t.days||3, h));
+    d = new Date(parseD(t.end));
+    d.setDate(d.getDate()+1);
+    while(!isWork(d,h)) d.setDate(d.getDate()+1);
+  });
+}
+
+function _renderDlvPreview(deliverable, deadline, assignee){
+  const lvColors=['#533AB7','#7B5DC4','#9B7ED4','#B8A0E0','#D0C0F0'];
+  let rows = _dlvParsed.map(t=>{
+    const lv = t.level||1;
+    const indent = '　'.repeat(Math.max(0,lv-1));
+    const col = lvColors[Math.min(lv-1,4)];
+    return `<tr class="lv${Math.min(lv,3)}" style="border-left:3px solid ${col}">
+      <td style="color:#888;font-family:monospace">${escH(t._relWbs||t.wbs||'')}</td>
+      <td style="padding-left:${(lv-1)*12+6}px;font-weight:${lv<=2?700:400}">${indent}${escH(t.title)}</td>
+      <td style="color:#7B5DC4;font-size:10px">${escH(t.titleEn||'')}</td>
+      <td style="text-align:center">${t.days||3}${uiLang==='en'?'d':'日'}</td>
+      <td style="color:#888;font-size:10px">${t.start||''}</td>
+      <td style="color:#888;font-size:10px">${t.end||''}</td>
+      <td style="color:#555;font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(t.notes||'')}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('dlvPreviewTbl').querySelector('tbody').innerHTML = rows;
+  document.getElementById('dlvPreviewTitle').textContent =
+    `📦 「${deliverable}」のWBSタスク（${_dlvParsed.length}件 / 期限：${deadline}）`;
+}
+
+function execDeliverableImport(){
+  if(!_isEditing||!_dlvParsed.length) return;
+  const parentId = document.getElementById('dlvParent').value;
+  const pId = parentId?parseInt(parentId):null;
+  const assignee = document.getElementById('dlvAssignee').value;
+  const h = hs(currentYear);
+
+  pushUndo(`成果物WBS追加「${document.getElementById('dlvName').value}」`);
+
+  const baseId = getNextId();
+  // 相対WBSからparentId関係を再構築
+  const wbsToTmpId={};
+  const newTasks = _dlvParsed.map((t,i)=>{
+    const newId = baseId+i;
+    wbsToTmpId[t._relWbs||String(i+1)] = newId;
+    // 親を相対WBSから解決
+    const relParts = (t._relWbs||'').split('.');
+    let resolvedParentId = pId;
+    if(relParts.length>1){
+      const parentRelWbs = relParts.slice(0,-1).join('.');
+      resolvedParentId = wbsToTmpId[parentRelWbs] ?? pId;
+    }
+    return {
+      id: newId,
+      wbs:'', title:t.title, titleEn:t.titleEn||'',
+      description:'', enSummary:'', notes:t.notes||'',
+      assignee, days:t.days||3,
+      start:t.start||fmt(t0), end:t.end||fmt(t0),
+      level:t.level||1, color:t.color||'#533AB7',
+      parentId:resolvedParentId, predecessorId:null,
+      addedAt:new Date().toISOString()
+    };
+  });
+
+  // 挿入位置：親の末尾 or 全末尾
+  let insertIdx = tasks.length;
+  if(pId!=null){
+    let last = tasks.findIndex(t=>t.id===pId);
+    for(let i=last+1;i<tasks.length;i++){
+      if(isDescendantOf(tasks[i].id,pId)) last=i; else break;
+    }
+    insertIdx = last+1;
+  }
+
+  tasks.splice(insertIdx,0,...newTasks);
+  reNumberWbs();
+  recalcAllParents();
+  saveData(); render();
+  closeDeliverableModal();
+  showSyncNotice(`📦 ${newTasks.length}件の成果物タスクを追加しました`);
+}
+window.openDeliverableModal=openDeliverableModal;
+window.closeDeliverableModal=closeDeliverableModal;
+window.generateDeliverableWBS=generateDeliverableWBS;
+window.execDeliverableImport=execDeliverableImport;
 </script>
 <!-- ── Report Modal ── -->
 <div class="rpt-overlay" id="rptOverlay" style="display:none" onclick="if(event.target===this)closeReportModal()">
@@ -5086,6 +5428,14 @@ function execBulkImport(){
         </div>
       </div>
 
+      <!-- Section F: 成果物未定義タスク -->
+      <div class="rpt-section">
+        <div class="rpt-section-head" style="background:linear-gradient(135deg,#993556,#C0395A)">📦 成果物未定義タスク — 子タスクなし・着手済み</div>
+        <div class="rpt-section-body">
+          <div id="rptEmptySection"><div style="color:#aaa;font-size:12px;padding:8px">レポート生成後に表示</div></div>
+        </div>
+      </div>
+
     </div>
     <div class="rpt-foot">
       <span class="rpt-status" id="rptStatus"></span>
@@ -5098,6 +5448,98 @@ function execBulkImport(){
 <div id="rptJumpToast"></div>
 <!-- ── 依存関係リンクトースト ── -->
 <div id="depLinkToast" style="display:none"></div>
+
+<!-- ── 📦 成果物WBS生成モーダル ── -->
+<div class="dlv-overlay" id="dlvOverlay" style="display:none" onclick="if(event.target===this)closeDeliverableModal()">
+  <div class="dlv-modal">
+    <div class="dlv-head">
+      <div>
+        <h3>📦 成果物からWBSを生成</h3>
+        <div class="sub">成果物を入力するとAIがタスクセットを自動設計します</div>
+      </div>
+      <button class="dlv-close" onclick="closeDeliverableModal()">✕</button>
+    </div>
+
+    <div class="dlv-body">
+
+      <!-- STEP 1: 成果物情報 -->
+      <div class="dlv-section">
+        <h4>📌 STEP 1 &nbsp; 成果物の情報を入力</h4>
+        <div class="dlv-field">
+          <label>成果物名 <span style="color:#E74C3C">*</span></label>
+          <input id="dlvName" placeholder="例：ショールーム基本設計書、発注書Excel、承認済みサンプル" style="font-size:13px;font-weight:600">
+        </div>
+        <div class="dlv-row">
+          <div class="dlv-field">
+            <label>期限 <span style="color:#E74C3C">*</span></label>
+            <input id="dlvDeadline" type="text" placeholder="例：2026-09-30">
+          </div>
+          <div class="dlv-field">
+            <label>担当者</label>
+            <select id="dlvAssignee"></select>
+          </div>
+        </div>
+        <div class="dlv-field">
+          <label>補足情報（任意）</label>
+          <textarea id="dlvContext" rows="2" placeholder="例：イタリアElicaとの合意が必要、A4形式でPDF出力、社内承認フロー3段階..."></textarea>
+        </div>
+        <div class="dlv-field">
+          <label>配置する親タスク（任意）</label>
+          <select id="dlvParent"></select>
+        </div>
+      </div>
+
+      <!-- 生成ボタン -->
+      <div style="text-align:center">
+        <button class="btn primary" id="dlvGenBtn" onclick="generateDeliverableWBS()"
+          style="background:linear-gradient(135deg,#533AB7,#7B5DC4);border-color:#533AB7;padding:0 24px;height:34px;font-size:12px;font-weight:700;letter-spacing:.3px">
+          ✨ AIでWBSタスクを生成
+        </button>
+        <span id="dlvStatusMsg" style="font-size:11px;color:#888;margin-left:12px"></span>
+      </div>
+
+      <!-- スピナー -->
+      <div class="dlv-spinner" id="dlvSpinner">
+        <div class="dlv-spin"></div>
+        <div style="font-size:12px">成果物を分析してWBSを設計中...</div>
+      </div>
+
+      <!-- STEP 2: プレビュー -->
+      <div class="dlv-section" id="dlvPreviewSection" style="display:none">
+        <h4>👁 STEP 2 &nbsp; 生成されたWBSを確認 <span id="dlvPreviewTitle" style="font-weight:400;font-size:11px;color:#888"></span></h4>
+        <div class="dlv-preview-wrap">
+          <table class="dlv-tbl" id="dlvPreviewTbl">
+            <thead><tr>
+              <th style="width:56px">WBS</th>
+              <th>タスク名</th>
+              <th style="width:130px">EN Title</th>
+              <th style="width:46px;text-align:center">日数</th>
+              <th style="width:84px">開始</th>
+              <th style="width:84px">終了</th>
+              <th>成果物・メモ</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:#aaa">
+          💡 期限から逆算して開始日・終了日を自動設定しています。追加後にガント上で調整できます。
+        </div>
+      </div>
+
+    </div>
+
+    <div class="dlv-foot">
+      <span style="font-size:11px;color:var(--color-text-secondary);flex:1">
+        ※ 追加後はガント上で日付・担当者を自由に編集できます
+      </span>
+      <button class="btn" onclick="closeDeliverableModal()">キャンセル</button>
+      <button class="btn primary" id="dlvAddBtn" onclick="execDeliverableImport()"
+        style="display:none;background:#533AB7;border-color:#533AB7">
+        📥 ガントに追加
+      </button>
+    </div>
+  </div>
+</div>
 
 
 <!-- ── 一括入力モーダル ── -->
