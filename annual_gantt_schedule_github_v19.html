@@ -5389,10 +5389,12 @@ function openDlvCal(e){
   document.querySelectorAll('.cal-popup').forEach(p=>p.remove());
   const inp=document.getElementById('dlvDeadline');
   const initD=parseD(inp.value)||t0;
-  const anchor=e.currentTarget;
+  // anchorは常にinput欄自体に固定（buttonクリック時もinput基準で位置合わせ）
+  const anchor=inp;
   let vY=initD.getFullYear(),vM=initD.getMonth();
   const popup=document.createElement('div');
   popup.className='cal-popup';
+  popup.style.zIndex='10002'; // dlv-overlay(10000)より上
   document.body.appendChild(popup);
 
   function pos(){
@@ -5432,7 +5434,12 @@ function openDlvCal(e){
     });
   }
   draw();pos();
-  const close=ev=>{if(!popup.contains(ev.target)&&ev.target!==anchor){popup.remove();document.removeEventListener('mousedown',close,true)}};
+  const close=ev=>{
+    if(!popup.contains(ev.target)&&ev.target!==anchor&&ev.target!==e.currentTarget){
+      popup.remove();
+      document.removeEventListener('mousedown',close,true);
+    }
+  };
   setTimeout(()=>document.addEventListener('mousedown',close,true),10);
 }
 window.openDlvCal=openDlvCal;
@@ -5601,15 +5608,15 @@ window.openDlvCal=openDlvCal;
         <!-- 操作手順 -->
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
           <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--color-text-secondary)">
-            <span style="background:#533AB7;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:1px">②</span>
+            <span style="background:#533AB7;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:1px">①</span>
             <span>下のボタンを押すと<strong>プロンプトが自動でコピー</strong>され、ChatGPT GPTが新しいタブで開きます。</span>
           </div>
           <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--color-text-secondary)">
-            <span style="background:#10a37f;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:1px">③</span>
+            <span style="background:#10a37f;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:1px">②</span>
             <span>ChatGPTが開いたら、チャット入力欄で <kbd style="background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:10px;padding:1px 6px;border-radius:3px">Ctrl + V</kbd> で貼り付けて送信してください。</span>
           </div>
           <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--color-text-secondary)">
-            <span style="background:#185FA5;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:1px">④</span>
+            <span style="background:#185FA5;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:1px">③</span>
             <span>ChatGPTの返答JSONをSTEP 3 のテキストエリアにペーストします。</span>
           </div>
         </div>
@@ -5631,16 +5638,21 @@ window.openDlvCal=openDlvCal;
 
       <!-- STEP 3: JSONペースト -->
       <div class="dlv-section">
-        <h4>📥 STEP 3 &nbsp; ChatGPTの返答をペースト</h4>
+        <h4>📥 STEP 3 &nbsp; ChatGPTの返答をペースト → プレビュー生成</h4>
         <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">
-          ChatGPTが返したJSONをそのまま貼り付けてください。前後に文章が含まれていても自動で抽出します。
+          ChatGPTが返したJSONをそのまま貼り付け、「プレビューを生成」ボタンを押してください。前後に文章が含まれていても自動で抽出します。
         </div>
         <textarea id="dlvJsonPaste" rows="5"
           style="width:100%;font-family:monospace;font-size:11px;padding:8px 10px;border:1.5px solid var(--color-border-secondary);border-radius:6px;background:var(--color-background-primary);color:var(--color-text-primary);resize:vertical;line-height:1.5"
           placeholder='{"tasks":[{"wbs":"1","title":"...","titleEn":"...","days":5,"level":1,"notes":"成果物"},...]}
-または、ChatGPTの返答テキスト全体をそのままペーストしてもOKです。'
-          oninput="onDlvJsonPaste()"></textarea>
-        <div id="dlvParseStatus" style="margin-top:6px;font-size:11px"></div>
+または、ChatGPTの返答テキスト全体をそのままペーストしてもOKです。'></textarea>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+          <button class="btn primary" onclick="onDlvJsonPaste()"
+            style="background:#533AB7;border-color:#533AB7;font-weight:700;padding:0 18px;height:34px">
+            👁 プレビューを生成
+          </button>
+          <div id="dlvParseStatus" style="font-size:11px"></div>
+        </div>
       </div>
 
       <!-- STEP 4: プレビュー -->
