@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARIAFINA ガントチャート 操作マニュアル v80</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root{
+    --ink:#1a1a2e;
+    --ink-sub:#4a4a6a;
+    --ink-light:#8a8aaa;
+    --surface:#f7f7fc;
+    --white:#ffffff;
+    --border:#e4e4f0;
+    --purple:#533AB7;
+    --purple-light:#7B5DC4;
+    --purple-pale:#F0EAF8;
+    --green:#1D9E75;
+    --green-pale:#EAF7F2;
+    --blue:#185FA5;
+    --blue-pale:#EAF3FB;
+    --red:#A32D2D;
+    --red-pale:#FEF0F0;
+    --amber:#BA7517;
+    --amber-pale:#FFF8E6;
+    --pink:#993556;
+    --pink-pale:#FFF0F5;
+    --radius:10px;
+    --shadow:0 2px 16px rgba(83,58,183,.10);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--surface);color:var(--ink);line-height:1.7;font-size:14px}
+
+  /* ── HEADER ── */
+  .site-head{background:linear-gradient(135deg,#1a1a2e 0%,#2d1f5e 60%,#533AB7 100%);color:#fff;padding:56px 40px 44px}
+  .site-head .eyebrow{font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.6;margin-bottom:10px}
+  .site-head h1{font-size:32px;font-weight:700;line-height:1.2;margin-bottom:8px}
+  .site-head .sub{font-size:14px;opacity:.75;max-width:560px;line-height:1.6}
+  .version-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;letter-spacing:.5px;margin-top:16px}
+
+  /* ── NAV ── */
+  .toc-bar{background:#fff;border-bottom:1px solid var(--border);padding:0 40px;position:sticky;top:0;z-index:100;overflow-x:auto;white-space:nowrap}
+  .toc-bar ul{list-style:none;display:flex;gap:0}
+  .toc-bar li a{display:block;padding:14px 16px;font-size:12px;font-weight:500;color:var(--ink-sub);text-decoration:none;border-bottom:3px solid transparent;transition:all .15s}
+  .toc-bar li a:hover{color:var(--purple);border-bottom-color:var(--purple-light)}
+
+  /* ── LAYOUT ── */
+  .page{max-width:860px;margin:0 auto;padding:40px 24px 80px}
+
+  /* ── SECTION ── */
+  .section{margin-bottom:56px}
+  .section-head{display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:12px;border-bottom:2px solid var(--border)}
+  .section-head .icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .section-head h2{font-size:20px;font-weight:700}
+  .section-head .badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.5px;text-transform:uppercase}
+
+  /* ── STEP CARD ── */
+  .steps{display:flex;flex-direction:column;gap:12px}
+  .step{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .step-head{display:flex;align-items:flex-start;gap:14px;padding:16px 20px;cursor:pointer;user-select:none}
+  .step-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px}
+  .step-head h3{font-size:14px;font-weight:700;flex:1;line-height:1.4}
+  .step-head .arrow{font-size:11px;color:var(--ink-light);transition:transform .2s;flex-shrink:0;margin-top:4px}
+  .step-body{padding:0 20px 16px 62px;display:none}
+  .step-body.open{display:block}
+  .step-body p{font-size:13px;color:var(--ink-sub);margin-bottom:8px;line-height:1.7}
+  .step-body ul{padding-left:16px;margin-bottom:8px}
+  .step-body ul li{font-size:13px;color:var(--ink-sub);margin-bottom:4px;line-height:1.6}
+
+  /* ── FLOW DIAGRAM ── */
+  .flow{display:flex;align-items:stretch;gap:0;margin:16px 0;overflow-x:auto}
+  .flow-item{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:110px}
+  .flow-box{background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;width:100%;font-size:11px;font-weight:600;color:var(--ink);line-height:1.4}
+  .flow-box.active{border-color:var(--purple);background:var(--purple-pale);color:var(--purple)}
+  .flow-box.chatgpt{border-color:#10a37f;background:#F0FBF7;color:#0d8f6f}
+  .flow-arrow{font-size:16px;color:var(--ink-light);align-self:center;flex-shrink:0;padding:0 4px}
+  .flow-num{width:20px;height:20px;border-radius:50%;background:var(--purple);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+
+  /* ── TIPS / ALERTS ── */
+  .tip{display:flex;gap:10px;background:var(--blue-pale);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:12px 14px;margin:12px 0;font-size:12px;color:#1a3a5c;line-height:1.6}
+  .tip .icon{flex-shrink:0;font-size:14px}
+  .warn{display:flex;gap:10px;background:var(--amber-pale);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:12px 14px;margin:12px 0;font-size:12px;color:#5c3a00;line-height:1.6}
+  .note{display:flex;gap:10px;background:var(--purple-pale);border-left:3px solid var(--purple);border-radius:0 8px 8px 0;padding:12px 14px;margin:12px 0;font-size:12px;color:#2d1f5e;line-height:1.6}
+
+  /* ── CODE / KB ── */
+  .kb{display:inline-flex;align-items:center;justify-content:center;background:#2d1f5e;color:#e8d8ff;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;letter-spacing:.3px;vertical-align:middle}
+  code{font-family:'DM Mono',monospace;font-size:11px;background:#f0ebff;color:var(--purple);padding:1px 5px;border-radius:3px}
+
+  /* ── FEATURE GRID ── */
+  .feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin:16px 0}
+  .feature-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .feature-card .icon{font-size:22px;margin-bottom:8px}
+  .feature-card h4{font-size:13px;font-weight:700;margin-bottom:4px}
+  .feature-card p{font-size:11px;color:var(--ink-sub);line-height:1.6}
+
+  /* ── BADGE INLINE ── */
+  .bdg{display:inline-block;font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;vertical-align:middle;letter-spacing:.5px;text-transform:uppercase;margin:0 2px}
+  .bdg.new{background:#E74C3C;color:#fff}
+  .bdg.gpt{background:#10a37f;color:#fff}
+  .bdg.step{background:var(--purple);color:#fff}
+
+  /* ── REPORT SECTION DEMO ── */
+  .report-demo{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:12px 0}
+  .report-demo-head{padding:8px 14px;font-size:11px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px}
+  .report-demo-body{padding:10px 14px;background:#fff;font-size:11px;color:var(--ink-sub);line-height:1.7}
+
+  /* ── TABLE ── */
+  .tbl{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0}
+  .tbl th{background:var(--purple);color:#fff;padding:8px 12px;text-align:left;font-weight:600}
+  .tbl td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  .tbl tr:hover td{background:var(--purple-pale)}
+
+  /* ── FOOTER ── */
+  .foot{text-align:center;padding:32px 24px;color:var(--ink-light);font-size:11px;border-top:1px solid var(--border)}
+
+  @media print{
+    .toc-bar{display:none}
+    .step-body{display:block!important}
+    .step-head .arrow{display:none}
+    body{font-size:12px}
+    .site-head{padding:32px 24px 24px}
+    .site-head h1{font-size:24px}
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-head">
+  <div class="eyebrow">ARIAFINA Project Tools</div>
+  <h1>ガントチャート<br>操作マニュアル</h1>
+  <p class="sub">annual_gantt_schedule_github_v19.html の機能解説。<br>成果物WBS生成・レポート・複数選択など新機能を中心に説明します。</p>
+  <div class="version-pill">📋 v80 &nbsp;·&nbsp; 2026年6月</div>
+</header>
+
+<!-- NAV -->
+<nav class="toc-bar">
+  <ul>
+    <li><a href="#overview">概要</a></li>
+    <li><a href="#deliverable">📦 成果物WBS生成</a></li>
+    <li><a href="#multiselect">複数選択</a></li>
+    <li><a href="#newbadge">NEW・完了バッジ</a></li>
+    <li><a href="#report">レポート</a></li>
+    <li><a href="#shortcuts">ショートカット</a></li>
+  </ul>
+</nav>
+
+<main class="page">
+
+  <!-- ══ 概要 ══ -->
+  <section class="section" id="overview">
+    <div class="section-head">
+      <div class="icon" style="background:#EAF3FB">🗺️</div>
+      <h2>v80 新機能の概要</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="icon">📦</div>
+        <h4>成果物からWBS生成</h4>
+        <p>成果物名と期限を入力するだけで、ChatGPTがタスクセットを自動設計。そのままガントに追加できます。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🖱️</div>
+        <h4>複数タスク選択</h4>
+        <p><span class="kb">Ctrl</span>+クリックで複数行を選択。右クリックから一括完了・一括削除が可能。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🆕</div>
+        <h4>NEWバッジ・完了バッジ</h4>
+        <p>追加後24時間はNEWバッジを表示。完了済みタスクには緑のチェックバッジを表示。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📊</div>
+        <h4>レポート強化</h4>
+        <p>進捗要約バナー・親タスク名表示・成果物未定義タスク抽出・セクション順序変更。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 成果物WBS生成 ══ -->
+  <section class="section" id="deliverable">
+    <div class="section-head">
+      <div class="icon" style="background:var(--purple-pale)">📦</div>
+      <h2>成果物からWBS生成</h2>
+      <span class="badge" style="background:var(--purple-pale);color:var(--purple)">NEW IN v80</span>
+    </div>
+
+    <p style="margin-bottom:16px;color:var(--ink-sub);font-size:13px">
+      従来のWBS作成では「タスクを細かく考えすぎて手が止まる」問題がありました。この機能は<strong>成果物（何を作るか）を先に決め、ChatGPTにタスク分解を任せる</strong>逆転の発想で設計されています。
+    </p>
+
+    <!-- フロー図 -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--ink-light);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">操作フロー</div>
+      <div class="flow">
+        <div class="flow-item">
+          <div class="flow-num">1</div>
+          <div class="flow-box active">成果物名<br>期限を入力</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item">
+          <div class="flow-num">2</div>
+          <div class="flow-box active">プロンプトを<br>コピー</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item">
+          <div class="flow-num">3</div>
+          <div class="flow-box chatgpt">ChatGPT GPTに<br>貼り付け・送信</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item">
+          <div class="flow-num">4</div>
+          <div class="flow-box active">JSONを<br>ペースト</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-item">
+          <div class="flow-num">5</div>
+          <div class="flow-box active">プレビュー確認<br>→ ガントに追加</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip"><span class="icon">💡</span>ChatGPTのAPIキーは不要です。既存の「スケジュールWBS作成GPT」を使用するため、Claudeのトークンも消費しません。</div>
+
+    <!-- ステップ詳細 -->
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-head" onclick="toggleStep(this)">
+          <div class="step-num" style="background:var(--purple);color:#fff">1</div>
+          <h3>📌 STEP 1 — 成果物の情報を入力する</h3>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="step-body open">
+          <p>ツールバーの <code>📦 成果物から作成</code> ボタンをクリックしてモーダルを開きます。</p>
+          <ul>
+            <li><strong>成果物名（必須）</strong>：「ショールーム基本設計書」「発注書Excel」「承認済みサンプル」のように<strong>名詞形</strong>で入力。動詞（〜する）は避ける。</li>
+            <li><strong>期限（必須）</strong>：<code>2026-09-30</code> 形式で入力。この日付から開始日を逆算します。</li>
+            <li><strong>担当者</strong>：既存の担当者から選択。生成後に変更も可能。</li>
+            <li><strong>補足情報（任意）</strong>：「イタリアElicaとの合意が必要」「A4形式でPDF出力」など制約・条件を自由記述。</li>
+            <li><strong>配置する親タスク（任意）</strong>：既存タスクの下に追加する場合に選択。省略するとLv1として追加。</li>
+          </ul>
+          <div class="warn"><span>⚠️</span>成果物名は「〜書」「〜承認」「〜完成」のように<strong>完成形の名詞</strong>にするとChatGPTがより正確なタスクを生成します。</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head" onclick="toggleStep(this)">
+          <div class="step-num" style="background:#10a37f;color:#fff">2</div>
+          <h3>🤖 STEP 2 — プロンプトをコピー＆ChatGPTを開く</h3>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="step-body">
+          <p><code>📋 プロンプトをコピー＆ChatGPTを開く</code> ボタンを押すと：</p>
+          <ul>
+            <li>入力した情報をもとに生成プロンプトが<strong>クリップボードに自動コピー</strong>される</li>
+            <li>スケジュールWBS作成GPTが<strong>新しいタブで自動的に開く</strong></li>
+          </ul>
+          <p>ChatGPTのチャット入力欄に <span class="kb">Ctrl</span>+<span class="kb">V</span> で貼り付けて送信してください。</p>
+          <div class="tip"><span class="icon">👁</span>「▶ 送信するプロンプトを確認する」をクリックするとコピーされる内容をモーダル内でプレビューできます。</div>
+          <div class="note"><span>📋</span>クリップボードへのコピーに失敗した場合（ブラウザの権限設定など）、プロンプトがモーダル内に表示されます。そのテキストを手動でコピーしてChatGPTに貼り付けてください。</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head" onclick="toggleStep(this)">
+          <div class="step-num" style="background:#185FA5;color:#fff">3</div>
+          <h3>💬 STEP 3 — ChatGPTの返答をペーストする</h3>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="step-body">
+          <p>ChatGPTが以下のようなJSON形式で返答します：</p>
+          <pre style="background:#1e1e1e;color:#d4d4d4;font-family:'DM Mono',monospace;font-size:10px;padding:12px;border-radius:6px;margin:8px 0;overflow-x:auto;line-height:1.7">{"tasks":[
+  {"wbs":"1","title":"基本設計書",   "titleEn":"Basic Design Doc","days":1,"level":2,"notes":"成果物一覧表"},
+  {"wbs":"1.1","title":"要件整理",   "titleEn":"Requirements",    "days":3,"level":3,"notes":"ヒアリングシート"},
+  {"wbs":"1.2","title":"初稿作成",   "titleEn":"First Draft",     "days":5,"level":3,"notes":"A4 PDF"},
+  {"wbs":"1.3","title":"レビュー修正","titleEn":"Review & Revise", "days":3,"level":3,"notes":"修正済みPDF"},
+  {"wbs":"1.4","title":"最終承認",   "titleEn":"Final Approval",  "days":1,"level":3,"notes":"承認済みスタンプ"}
+]}</pre>
+          <p>このJSONを <strong>STEP 3 のテキストエリア</strong> にペーストします（前後のテキストが含まれていても自動で抽出します）。</p>
+          <div class="tip"><span class="icon">✅</span>貼り付けが成功すると「✅ ○件のタスクを読み込みました」と表示され、自動でプレビューが展開されます。</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head" onclick="toggleStep(this)">
+          <div class="step-num" style="background:#1D9E75;color:#fff">4</div>
+          <h3>👁 STEP 4 — プレビューを確認してガントに追加</h3>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="step-body">
+          <p>プレビューテーブルで生成されたタスクの内容を確認します。</p>
+          <ul>
+            <li>開始日・終了日は<strong>期限から逆算</strong>して自動設定されます</li>
+            <li>タスクはインデント・レベルに応じて色分けされます</li>
+            <li>成果物・メモ列で各タスクの具体的な成果物を確認</li>
+          </ul>
+          <p>確認後、<code>📥 ガントに追加</code> ボタンを押すと選択した親タスクの末尾に挿入されます。</p>
+          <div class="tip"><span class="icon">🔧</span>追加後はガントチャート上で日付・担当者・タスク名を自由に編集できます。プレビューは目安として使ってください。</div>
+          <div class="warn"><span>⚠️</span>追加にはツールバーの <code>✏️ Start Editing</code> が必要です。編集モードになっていない場合は先に有効にしてください。</div>
+        </div>
+      </div>
+
+    </div><!-- /steps -->
+
+    <!-- よくある質問 -->
+    <div style="margin-top:24px">
+      <div style="font-size:12px;font-weight:700;color:var(--ink-light);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px">よくある質問</div>
+      <table class="tbl">
+        <thead><tr><th>質問</th><th>回答</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>ChatGPTにアカウントが必要？</td>
+            <td>ChatGPT（無料または有料）のアカウントが必要です。GPTへのアクセスには無料プランでも対応しています。</td>
+          </tr>
+          <tr>
+            <td>Claudeのトークンを消費する？</td>
+            <td>この機能ではClaudeのAPIを使用しないため、トークンは消費されません。</td>
+          </tr>
+          <tr>
+            <td>生成されるタスク数は？</td>
+            <td>プロンプトの設定上3〜6件が目安です。補足情報で「8件に分解して」と指示することもできます。</td>
+          </tr>
+          <tr>
+            <td>JSONが正しく読み込まれない</td>
+            <td>ChatGPTの返答全体（JSONの前後にテキストがあっても）をそのまま貼り付けてください。自動抽出します。</td>
+          </tr>
+          <tr>
+            <td>追加後に親タスクを変えたい</td>
+            <td>タスクをダブルクリックしてサイドパネルを開き、親タスクIDを変更してください。WBSは自動採番されます。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 複数選択 ══ -->
+  <section class="section" id="multiselect">
+    <div class="section-head">
+      <div class="icon" style="background:#EAF3FB">🖱️</div>
+      <h2>複数タスク選択</h2>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-head" onclick="toggleStep(this)">
+          <div class="step-num" style="background:var(--blue);color:#fff">①</div>
+          <h3>Ctrl+クリックで複数選択</h3>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="step-body open">
+          <p><span class="kb">Ctrl</span>（Macは <span class="kb">⌘</span>）を押しながらタスク行をクリックすると複数選択できます。</p>
+          <ul>
+            <li>選択された行は<strong>青いハイライト</strong>・<strong>左側の太い青いボーダー</strong>で表示</li>
+            <li>WBS列の右に小さな <code>✔</code> マークも表示</li>
+            <li>同じ行をもう一度Ctrl+クリックすると選択解除</li>
+            <li><span class="kb">Esc</span> キーですべての選択を解除</li>
+          </ul>
+          <div class="tip"><span>💡</span>左パネル・右パネル（ガント側）どちらをCtrl+クリックしても選択できます。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-head" onclick="toggleStep(this)">
+          <div class="step-num" style="background:var(--blue);color:#fff">②</div>
+          <h3>右クリックメニューで一括操作</h3>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="step-body">
+          <p>2件以上選択中に右クリックすると<strong>複数選択専用メニュー</strong>が表示されます：</p>
+          <ul>
+            <li>✅ <strong>選択をすべて完了にする</strong> — 選択したタスクをまとめて完了登録</li>
+            <li>↩️ <strong>選択の完了を取り消す</strong> — まとめて未完了に戻す</li>
+            <li>🗑️ <strong>選択をすべて削除</strong> — 子孫タスクも含めて削除（確認あり）</li>
+          </ul>
+          <div class="warn"><span>⚠️</span>完了・削除操作には <code>✏️ Start Editing</code> が必要です。Undo（↩ Undo）で一括操作を1アクションで元に戻せます。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ NEWバッジ ══ -->
+  <section class="section" id="newbadge">
+    <div class="section-head">
+      <div class="icon" style="background:#FEF0F0">🆕</div>
+      <h2>NEWバッジ・完了バッジ</h2>
+    </div>
+
+    <p style="font-size:13px;color:var(--ink-sub);margin-bottom:16px">WBS列とタスク名の間に専用列を設け、タスクの状態をアイコンで表示します。</p>
+
+    <table class="tbl">
+      <thead><tr><th>表示</th><th>意味</th><th>条件</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span style="background:linear-gradient(135deg,#E74C3C,#FF6B6B);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px">NEW</span></td>
+          <td>新規追加タスク</td>
+          <td>追加から24時間以内。24時間経過後は自動消去。</td>
+        </tr>
+        <tr>
+          <td><span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#1D9E75,#27AE60);color:#fff;font-size:12px;display:inline-flex;align-items:center;justify-content:center">✓</span></td>
+          <td>完了済みタスク</td>
+          <td>「完了にする」操作を行ったタスク。完了取消で消える。</td>
+        </tr>
+        <tr>
+          <td>（空欄）</td>
+          <td>通常タスク</td>
+          <td>新規でも完了でもない状態。</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note"><span>📋</span>NEWと完了が同時に該当する場合（追加直後に完了した等）は<strong>完了バッジが優先</strong>表示されます。</div>
+  </section>
+
+  <!-- ══ レポート ══ -->
+  <section class="section" id="report">
+    <div class="section-head">
+      <div class="icon" style="background:#EAF3FB">📊</div>
+      <h2>レポート機能</h2>
+    </div>
+
+    <p style="font-size:13px;color:var(--ink-sub);margin-bottom:16px">ツールバーの <code>📊 レポート</code> ボタンで開きます。日本語・英語の両形式で生成できます。</p>
+
+    <!-- セクション順序 -->
+    <div style="font-size:12px;font-weight:700;color:var(--ink-light);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">レポートのセクション構成</div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px">
+      <div class="report-demo">
+        <div class="report-demo-head" style="background:linear-gradient(135deg,#185FA5,#378ADD)">📊 進捗要約バナー（最上部）</div>
+        <div class="report-demo-body">完了率・進行中件数・未完了件数・着手予定件数を一目で表示。自動分析された注意点（担当者別の遅延傾向、3日以内の着手予定など）も含みます。</div>
+      </div>
+      <div class="report-demo">
+        <div class="report-demo-head" style="background:linear-gradient(135deg,#A32D2D,#E74C3C)">⚠️ 未完了タスク</div>
+        <div class="report-demo-body">期限超過タスクを遅延日数・担当者・親タスク名付きで一覧表示。クリックでガントにジャンプ＋自動選択＋編集パネル表示。</div>
+      </div>
+      <div class="report-demo">
+        <div class="report-demo-head" style="background:linear-gradient(135deg,#1D9E75,#0E7A5C)">💡 先週の振り返りとアドバイス</div>
+        <div class="report-demo-body">今週の完了タスク一覧・新規追加タスク一覧・長期タスク詳細（業務名・担当者・WBS）・未完了傾向分析・WBSスケジューリングのコツ。</div>
+      </div>
+      <div class="report-demo">
+        <div class="report-demo-head" style="background:linear-gradient(135deg,#BA7517,#EF9F27)">📌 着手前タスク</div>
+        <div class="report-demo-body">2週間以内に開始予定のタスクを緊急度別（3日以内・今週・2週間以内）に表示。</div>
+      </div>
+      <div class="report-demo">
+        <div class="report-demo-head" style="background:linear-gradient(135deg,#185FA5,#378ADD)">👤 担当者別</div>
+        <div class="report-demo-body">担当者ごとに進行中・未完了・着手予定タスクを表示。親タスク名も含む。</div>
+      </div>
+      <div class="report-demo">
+        <div class="report-demo-head" style="background:linear-gradient(135deg,#533AB7,#7B5DC4)">📋 Lv2グループ別</div>
+        <div class="report-demo-body">過去1ヶ月の着手タスクをLv2親タスクでグルーピング。</div>
+      </div>
+      <div class="report-demo">
+        <div class="report-demo-head" style="background:linear-gradient(135deg,#993556,#C0395A)">📦 成果物未定義タスク</div>
+        <div class="report-demo-body">子タスクなし・未完了・着手から2日以上経過したタスクを抽出。Lv別・経過日数別に表示。「📦 成果物から作成」の活用を促します。</div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-head" onclick="toggleStep(this)">
+          <div class="step-num" style="background:var(--purple);color:#fff">！</div>
+          <h3>レポートからガントにジャンプする</h3>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="step-body open">
+          <p>各セクションのタスク行をクリックすると：</p>
+          <ul>
+            <li>レポートが閉じる</li>
+            <li>ガントチャートがそのタスクの位置に<strong>自動スクロール</strong></li>
+            <li>タスク行が<strong>点滅ハイライト</strong>される</li>
+            <li>タスクが<strong>選択状態</strong>（青いハイライト）になる</li>
+            <li><strong>編集サイドパネル</strong>が自動的に開く</li>
+          </ul>
+          <div class="tip"><span>💡</span>折りたたまれた親タスクの下にある場合も、自動で展開してからジャンプします。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ ショートカット ══ -->
+  <section class="section" id="shortcuts">
+    <div class="section-head">
+      <div class="icon" style="background:#EAF7F2">⌨️</div>
+      <h2>ショートカット・操作一覧</h2>
+    </div>
+
+    <table class="tbl">
+      <thead><tr><th>操作</th><th>方法</th></tr></thead>
+      <tbody>
+        <tr><td>複数選択 / 解除</td><td><span class="kb">Ctrl</span>+クリック（Mac: <span class="kb">⌘</span>+クリック）</td></tr>
+        <tr><td>選択をすべて解除</td><td><span class="kb">Esc</span></td></tr>
+        <tr><td>タスクを編集する</td><td>タスク名をダブルクリック → サイドパネルが開く</td></tr>
+        <tr><td>コンテキストメニュー</td><td>タスク名を右クリック</td></tr>
+        <tr><td>Undo（元に戻す）</td><td>ツールバーの <code>↩ Undo</code> ボタン</td></tr>
+        <tr><td>折りたたみ / 展開</td><td>▼ アイコンをクリック</td></tr>
+        <tr><td>全折りたたみ</td><td>タスク名列ヘッダーの ▲ ボタン</td></tr>
+        <tr><td>全展開</td><td>タスク名列ヘッダーの ▼ ボタン</td></tr>
+        <tr><td>日付カレンダーを開く</td><td>開始日・終了日のボタンをクリック</td></tr>
+        <tr><td>成果物WBS生成</td><td>ツールバー <code>📦 成果物から作成</code></td></tr>
+        <tr><td>一括タスク入力</td><td>ツールバー <code>📋 一括入力</code>（Excelからペースト対応）</td></tr>
+        <tr><td>レポートを開く</td><td>ツールバー <code>📊 レポート</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <p>ARIAFINA ガントチャート 操作マニュアル &nbsp;·&nbsp; v80 &nbsp;·&nbsp; annual_gantt_schedule_github_v19.html</p>
+  <p style="margin-top:4px">© Fujioh Group / ARIAFINA事業</p>
+</footer>
+
+<script>
+  function toggleStep(head){
+    const body = head.nextElementSibling;
+    const arrow = head.querySelector('.arrow');
+    const isOpen = body.classList.contains('open');
+    body.classList.toggle('open', !isOpen);
+    arrow.textContent = isOpen ? '▶' : '▼';
+  }
+</script>
+</body>
+</html>
