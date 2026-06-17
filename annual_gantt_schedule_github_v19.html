@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v80</title>
+<title>年度Schedule・ガントチャート v81</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -299,6 +299,36 @@ tr.multi-selected td:first-child::before{
   background:#378ADD;color:#fff;font-size:9px;font-weight:700;
   border-radius:10px;padding:1px 6px;margin-left:4px;
 }
+/* ── タスク検索バー ── */
+.search-wrap{display:flex;align-items:center;gap:4px;position:relative}
+.search-input{
+  width:180px;height:26px;padding:0 28px 0 26px;
+  border:1px solid var(--color-border-secondary);border-radius:13px;
+  background:var(--color-background-secondary);
+  color:var(--color-text-primary);font-size:11px;font-family:inherit;
+  transition:width .2s,border-color .15s,box-shadow .15s;
+  outline:none;
+}
+.search-input:focus{
+  width:220px;border-color:#378ADD;
+  box-shadow:0 0 0 2px rgba(55,138,221,.18);
+  background:var(--color-background-primary);
+}
+.search-input.has-text{border-color:#378ADD;background:var(--color-background-primary)}
+.search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--color-text-tertiary);pointer-events:none}
+.search-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--color-text-tertiary);cursor:pointer;display:none;width:16px;height:16px;display:none;align-items:center;justify-content:center;border-radius:50%;background:var(--color-border-secondary)}
+.search-clear:hover{background:var(--color-border-primary);color:var(--color-text-primary)}
+.search-clear.show{display:flex}
+.search-count{font-size:10px;color:#378ADD;font-weight:600;white-space:nowrap;min-width:36px}
+.search-count.zero{color:#E74C3C}
+/* 検索ヒット行ハイライト */
+tr.search-hit td{background:rgba(255,220,50,.18)!important}
+tr.search-hit.lvl1 td,tr.search-hit.lvl2 td,tr.search-hit.lvl3 td,
+tr.search-hit.lvl4 td,tr.search-hit.lvl5 td,tr.search-hit.lvl6 td{background:rgba(255,220,50,.18)!important}
+/* 検索ジャンプ対象（現在フォーカス行） */
+tr.search-focus td{background:rgba(55,138,221,.25)!important;outline:2px solid #378ADD}
+tr.search-focus.lvl1 td,tr.search-focus.lvl2 td,tr.search-focus.lvl3 td,
+tr.search-focus.lvl4 td,tr.search-focus.lvl5 td,tr.search-focus.lvl6 td{background:rgba(55,138,221,.25)!important}
 /* ── マイルストーントグル ── */
 .ms-toggle-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;user-select:none;transition:background .15s}
 .ms-toggle-row:hover{background:var(--color-background-secondary)}
@@ -610,7 +640,7 @@ tr.multi-selected td:first-child::before{
     <div class="auth-logo">A</div>
     <div class="auth-title">ARIAFINA Annual Schedule</div>
     <div class="auth-subtitle">パスワードを入力してください</div>
-    <div style="font-size:10px;color:#bbb;margin-bottom:12px;margin-top:-18px;letter-spacing:.5px">v80</div>
+    <div style="font-size:10px;color:#bbb;margin-bottom:12px;margin-top:-18px;letter-spacing:.5px">v81</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <input id="auth-pw-input" type="password" placeholder="Password"
         style="flex:1;padding:12px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none"
@@ -686,6 +716,22 @@ tr.multi-selected td:first-child::before{
           <span class="ms-diamond-icon" style="width:10px;height:10px;background:#533AB7;transform:rotate(45deg);border-radius:2px;flex-shrink:0"></span>
           <span class="ms-sw"></span><span id="msFilterTxt">マイルストーンのみ</span>
         </button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <!-- 🔍 タスク検索 -->
+      <div class="tg" style="gap:4px">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" id="searchInput"
+            placeholder="タスクを検索... (Ctrl+F)"
+            oninput="onSearchInput(this.value)"
+            onkeydown="onSearchKey(event)"
+            autocomplete="off" spellcheck="false">
+          <span class="search-clear" id="searchClear" onclick="clearSearch()" title="クリア">✕</span>
+        </div>
+        <span class="search-count" id="searchCount" style="display:none"></span>
       </div>
 
       <div class="tb-sep"></div>
@@ -1205,7 +1251,7 @@ async function bulkTranslateAll(){
 }
 
 let currentYear=today.getFullYear();
-let filt={month:0,assignee:'',parent:'',milestoneOnly:false};
+let filt={month:0,assignee:'',parent:'',milestoneOnly:false,search:''};
 let assignees=['山田 太郎','佐藤 花子','鈴木 一郎','田中 美咲','伊藤 健二'];
 let tasks=[];
 let sideMode=null,editId=null;
@@ -1683,7 +1729,7 @@ function getVisibleTasks(){
     while(cur.parentId!=null){
       const parent=getTaskById(cur.parentId);
       if(!parent)break;
-      if((parent.level===1||parent.level===2||parent.level===3)&&collapsedIds.has(parent.id))return true;
+      if((parent.level>=1&&parent.level<=5)&&collapsedIds.has(parent.id))return true;
       cur=parent;
     }
     return false;
@@ -1700,6 +1746,32 @@ function getVisibleTasks(){
     }
     if(afilt&&t.assignee!==afilt)return false;
     if(filt.milestoneOnly&&!(t.start&&t.end&&t.start===t.end))return false;
+    // 検索フィルター：ヒットしたタスクと、その祖先タスクを表示
+    if(filt.search){
+      const q=filt.search.toLowerCase();
+      const hit=(t.title||'').toLowerCase().includes(q)
+        ||(t.titleEn||'').toLowerCase().includes(q)
+        ||(t.wbs||'').toLowerCase().includes(q)
+        ||(t.assignee||'').toLowerCase().includes(q)
+        ||(t.notes||'').toLowerCase().includes(q)
+        ||(t.description||'').toLowerCase().includes(q);
+      if(hit) return true;
+      // 自分の子孫にヒットがあれば親として表示
+      function hasHitDescendant(id){
+        return tasks.some(c=>{
+          if(c.parentId!==id) return false;
+          const ch=(c.title||'').toLowerCase().includes(q)
+            ||(c.titleEn||'').toLowerCase().includes(q)
+            ||(c.wbs||'').toLowerCase().includes(q)
+            ||(c.assignee||'').toLowerCase().includes(q)
+            ||(c.notes||'').toLowerCase().includes(q)
+            ||(c.description||'').toLowerCase().includes(q);
+          return ch||hasHitDescendant(c.id);
+        });
+      }
+      if(hasHitDescendant(t.id)) return true;
+      return false;
+    }
     return true;
   });
 }
@@ -1715,7 +1787,7 @@ function toggleCollapse(id,event){
 // ── すべて折りたたむ（Lv2以下：1.1, 1.2... 2.1, 2.2...） ──
 function collapseAll(){
   // 子を持つタスクのうちLv2以上（Lv1は除外）を折りたたむ
-  tasks.filter(t=>(t.level||1)>=2&&tasks.some(c=>c.parentId===t.id))
+  tasks.filter(t=>(t.level||1)>=1&&(t.level||1)<=4&&tasks.some(c=>c.parentId===t.id))
        .forEach(t=>collapsedIds.add(t.id));
   localStorage.setItem('gt5_col',JSON.stringify([...collapsedIds]));
   renderOnly();
@@ -1838,7 +1910,7 @@ function renderOnly(){
     const pad=(lv-1)*12;
     const _taskHasChildren=hasChildrenFast(task.id);
     const isCollapsed=collapsedIds.has(task.id);
-    const toggleHtml=((lv===1||lv===2||lv===3)&&_taskHasChildren)
+    const toggleHtml=((lv>=1&&lv<=5)&&_taskHasChildren)
       ?`<span class="toggle-btn${isCollapsed?' collapsed':''}" onclick="toggleCollapse(${task.id},event)">▼</span>`
       :`<span style="width:19px;display:inline-block;flex-shrink:0"></span>`;
     const depIcon=hasPred?`<span title="Has Predecessor" style="font-size:9px;color:#533AB7;margin-left:2px">⇢</span>`:'';
@@ -1918,6 +1990,8 @@ function renderOnly(){
   document.getElementById('rightBody').innerHTML=rbArr.join('')+`</tbody></table><svg id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:5;overflow:visible"></svg>`;
   syncScroll();
   drawDepArrows();
+  // 検索ハイライト更新
+  _updateSearchHighlight();
 }
 
 function render(){
@@ -2009,7 +2083,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v80</div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v81</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
@@ -3367,7 +3441,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v80.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v81.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
@@ -5125,7 +5199,137 @@ function execBulkImport(){
 // ── 一括入力モーダルここまで ──
 
 // ════════════════════════════════════════════════════
-// 📦 成果物WBS生成モーダル（ChatGPT連携方式）
+// 🔍 タスク検索
+// ════════════════════════════════════════════════════
+let _searchJumpIdx = -1; // Enterキーでのジャンプ位置
+
+function onSearchInput(val){
+  filt.search = val.trim();
+  _searchJumpIdx = -1;
+  // クリアボタン表示制御
+  const clr = document.getElementById('searchClear');
+  const inp = document.getElementById('searchInput');
+  if(clr) clr.classList.toggle('show', !!val);
+  if(inp) inp.classList.toggle('has-text', !!val);
+  // 検索中は折りたたみを全展開
+  if(filt.search) _expandAllForSearch();
+  renderOnly();
+}
+
+function clearSearch(){
+  filt.search = '';
+  _searchJumpIdx = -1;
+  const inp = document.getElementById('searchInput');
+  const clr = document.getElementById('searchClear');
+  const cnt = document.getElementById('searchCount');
+  if(inp){inp.value='';inp.classList.remove('has-text');}
+  if(clr) clr.classList.remove('show');
+  if(cnt){cnt.style.display='none';}
+  renderOnly();
+  if(inp) inp.focus();
+}
+
+function onSearchKey(e){
+  if(e.key==='Escape'){ clearSearch(); return; }
+  if(e.key==='Enter'){
+    e.preventDefault();
+    _jumpToNextSearchHit(e.shiftKey ? -1 : 1);
+  }
+}
+
+// Ctrl+F で検索バーにフォーカス
+document.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key==='f'){
+    const inp = document.getElementById('searchInput');
+    if(!inp) return;
+    e.preventDefault();
+    inp.focus();
+    inp.select();
+  }
+});
+
+// 検索中は全タスクを展開してヒットを見えるようにする
+function _expandAllForSearch(){
+  collapsedIds.clear();
+  localStorage.setItem('gt5_col','[]');
+}
+
+// ハイライト適用 + 件数更新
+function _updateSearchHighlight(){
+  const cnt = document.getElementById('searchCount');
+  if(!filt.search){
+    if(cnt) cnt.style.display = 'none';
+    return;
+  }
+  const q = filt.search.toLowerCase();
+  // ヒットタスクID（直接マッチのみ、祖先は除く）
+  const hitIds = new Set(tasks.filter(t=>{
+    return (t.title||'').toLowerCase().includes(q)
+      ||(t.titleEn||'').toLowerCase().includes(q)
+      ||(t.wbs||'').toLowerCase().includes(q)
+      ||(t.assignee||'').toLowerCase().includes(q)
+      ||(t.notes||'').toLowerCase().includes(q)
+      ||(t.description||'').toLowerCase().includes(q);
+  }).map(t=>t.id));
+
+  // leftTable・rightTableのtr行にクラス付与
+  document.querySelectorAll('#leftTable tr[data-tid], #rightTable tr[data-tid]').forEach(row=>{
+    const tid = parseInt(row.dataset.tid);
+    row.classList.toggle('search-hit', hitIds.has(tid));
+    if(row.classList.contains('search-focus') && !hitIds.has(tid)){
+      row.classList.remove('search-focus');
+    }
+  });
+
+  // 件数表示
+  if(cnt){
+    cnt.style.display = '';
+    cnt.textContent = hitIds.size > 0 ? `${hitIds.size}件` : '0件';
+    cnt.classList.toggle('zero', hitIds.size === 0);
+  }
+
+  // ジャンプインデックスが範囲外なら初期化
+  const hitArr = [...hitIds];
+  if(_searchJumpIdx >= hitArr.length) _searchJumpIdx = 0;
+}
+
+// Enter でヒット行を順番にジャンプ
+function _jumpToNextSearchHit(dir){
+  if(!filt.search) return;
+  const q = filt.search.toLowerCase();
+  const hitTasks = tasks.filter(t=>{
+    return (t.title||'').toLowerCase().includes(q)
+      ||(t.titleEn||'').toLowerCase().includes(q)
+      ||(t.wbs||'').toLowerCase().includes(q)
+      ||(t.assignee||'').toLowerCase().includes(q)
+      ||(t.notes||'').toLowerCase().includes(q)
+      ||(t.description||'').toLowerCase().includes(q);
+  });
+  if(!hitTasks.length) return;
+
+  _searchJumpIdx = (_searchJumpIdx + dir + hitTasks.length) % hitTasks.length;
+  const target = hitTasks[_searchJumpIdx];
+
+  // フォーカスクラスを更新
+  document.querySelectorAll('.search-focus').forEach(r=>r.classList.remove('search-focus'));
+  document.querySelectorAll(`#leftTable tr[data-tid="${target.id}"], #rightTable tr[data-tid="${target.id}"]`)
+    .forEach(r=>r.classList.add('search-focus'));
+
+  // 件数を「現在/合計」で更新
+  const cnt = document.getElementById('searchCount');
+  if(cnt) cnt.textContent = `${_searchJumpIdx+1}/${hitTasks.length}件`;
+
+  // スクロール
+  const rb = document.getElementById('rightBody');
+  const row = document.querySelector(`#rightTable tr[data-tid="${target.id}"]`);
+  if(rb && row){
+    const targetTop = row.offsetTop - rb.clientHeight/2 + ROW_H/2;
+    rb.scrollTo({top:Math.max(0,targetTop), behavior:'smooth'});
+  }
+}
+window.onSearchInput = onSearchInput;
+window.clearSearch   = clearSearch;
+window.onSearchKey   = onSearchKey;
 // ════════════════════════════════════════════════════
 const GPT_WBS_URL = 'https://chatgpt.com/g/g-6a17c0659a5c8191b5d783a52e817483-sukesiyuruwbszuo-cheng-gpt';
 let _dlvParsed = [];
@@ -5265,15 +5469,21 @@ function onDlvJsonPaste(){
     const parentTask= parentId ? tasks.find(t=>t.id===parseInt(parentId)) : null;
     const baseLv    = parentTask ? (parentTask.level||1)+1 : 1;
 
-    _dlvParsed = parsed.tasks.map((t,i)=>({
-      ...t,
-      id: 9000+i,
-      assignee,
-      parentId: parentId ? parseInt(parentId) : null,
-      _relWbs: t.wbs,
-      level: t.level || baseLv,
-      color: ['#533AB7','#7B5DC4','#9B7ED4','#B8A0E0','#D0C0F0'][Math.min((t.level||baseLv)-baseLv,4)]
-    }));
+    _dlvParsed = parsed.tasks.map((t,i)=>{
+      // relWbsから相対的な深さを計算（"1"→depth0, "1.1"→depth1, "1.1.1"→depth2）
+      const relWbs = t.wbs||String(i+1);
+      const depth = relWbs.split('.').filter(Boolean).length - 1;
+      const calcLevel = baseLv + depth;
+      return {
+        ...t,
+        id: 9000+i,
+        assignee,
+        parentId: parentId ? parseInt(parentId) : null,
+        _relWbs: relWbs,
+        level: calcLevel, // baseLv+相対深さで正確に計算
+        color: ['#533AB7','#7B5DC4','#9B7ED4','#B8A0E0','#D0C0F0'][Math.min(depth,4)]
+      };
+    });
 
     // 期限から逆算して日付設定
     const deadline = document.getElementById('dlvDeadline').value.trim();
