@@ -4328,16 +4328,21 @@ function rptJumpToTask(taskId,isEn){
     document.getElementById('monthSel').value='0';
     _headerCache.year=null; _bgCacheKey='';
   }
-  // 3) ジャンプ先タスクの祖先を全て展開（折りたたまれていると行がDOMに存在しない）
+  // 3) ジャンプ先タスクの祖先を全て展開
   _expandAncestors(taskId);
+  // 4) 複数選択をクリアしてこのタスクを選択状態に
+  selectedIds.clear();
+  selectedIds.add(taskId);
   render();
-  // 4) スクロール
+  // 5) スクロール＆フラッシュ
   setTimeout(()=>{ _rptScrollToTask(taskId); }, 150);
-  // 5) トースト
+  // 6) サイドパネルを開く（editTask）— スクロール完了後に開く
+  setTimeout(()=>{ openSide('editTask', taskId); }, 300);
+  // 7) トースト
   const msg=isEn
-    ?`📍 Jumped to: ${t.titleEn||t.title} — Press "Start Editing" to mark complete`
-    :`📍 「${t.title}」へジャンプしました — Start Editing で完了登録できます`;
-  _showRptToast(msg, 4000);
+    ?`📍 Jumped to: ${t.titleEn||t.title}`
+    :`📍 「${t.title}」へジャンプしました`;
+  _showRptToast(msg, 3000);
 }
 
 // ジャンプ先タスクの祖先チェーンを全て展開
