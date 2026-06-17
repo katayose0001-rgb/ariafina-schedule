@@ -1671,7 +1671,7 @@ function setTitleColW(w){
   localStorage.setItem('gt5_titleW',String(titleColW));
 }
 
-const LEFT_COLS=[{k:'wbs',lk:'colWbs',w:56},{k:'newbadge',lk:'colNew',w:38},{k:'title',lk:'colTaskName',w:148},{k:'assignee',lk:'colAssignee',w:86},{k:'days',lk:'colDays',w:46},{k:'start',lk:'colStart',w:84},{k:'end',lk:'colEnd',w:84}];
+const LEFT_COLS=[{k:'wbs',lk:'colWbs',w:80},{k:'newbadge',lk:'colNew',w:38},{k:'title',lk:'colTaskName',w:148},{k:'assignee',lk:'colAssignee',w:86},{k:'days',lk:'colDays',w:46},{k:'start',lk:'colStart',w:84},{k:'end',lk:'colEnd',w:84}];
 function getLeftW(){return LEFT_COLS.reduce((s,c)=>s+(c.k==='title'?titleColW:c.w),0);}
 const LEFT_W=500;// 後方互換用・実際はgetLeftW()を使用
 function getParents(){return tasks.filter(t=>t.parentId===null)}
@@ -1852,7 +1852,7 @@ function renderOnly(){
       :isNew?`<span class="new-badge">NEW</span>`
       :'';
     lbArr.push(`<tr class="${lvClass}${isHL?' parent-highlight':''}${isSel?' multi-selected':''}" data-tid="${task.id}" style="height:${ROW_H}px">`);
-    lbArr.push(`<td style="width:52px;text-align:left;padding-left:4px;height:${ROW_H}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:left;cursor:pointer;background:transparent;border:none;width:100%"></td>`);
+    lbArr.push(`<td style="width:78px;text-align:left;padding-left:4px;height:${ROW_H}px"><input class="cell-input" value="${escH(task.wbs)}" readonly ondblclick="openSide('editTask',${task.id})" style="text-align:left;cursor:pointer;background:transparent;border:none;width:100%"></td>`);
     lbArr.push(`<td style="width:38px;text-align:center;height:${ROW_H}px;padding:0 2px">${newColHtml}</td>`);
     lbArr.push(`<td style="width:${titleColW}px;padding-left:${pad+2}px;overflow:hidden;height:34px;position:relative;max-height:34px"><div style="display:flex;align-items:center;height:34px;overflow:hidden;max-height:34px">${toggleHtml}<div style="flex:1;min-width:0;overflow:hidden;position:relative;height:34px;max-height:34px"><div style="display:flex;align-items:center;height:22px"><input class="cell-input" value="${escH(task.title)}" onblur="uTaskTitle(${task.id},this.value)" ondblclick="openSide('editTask',${task.id})" oncontextmenu="showCtxMenu(event,${task.id})" style="flex:1;min-width:0;cursor:pointer;font-weight:${lv<=2?'500':'400'};font-size:${lv===1?'11px':'10px'}">${depIcon}</div>${enSub}</div></div></td>`);
     lbArr.push(`<td style="width:86px;height:${ROW_H}px"><select class="assignee-sel" onchange="uTask(${task.id},'assignee',this.value)">${assignees.map(a=>`<option${a===task.assignee?' selected':''}>${escH(a)}</option>`).join('')}</select></td>`);
@@ -5334,33 +5334,46 @@ function execDeliverableImport(){
   const parentId  = document.getElementById('dlvParent').value;
   const pId       = parentId ? parseInt(parentId) : null;
   const assignee  = document.getElementById('dlvAssignee').value;
-  const h         = hs(currentYear);
   const name      = document.getElementById('dlvName').value.trim();
 
   pushUndo(`成果物WBS追加「${name}」`);
 
   const baseId = getNextId();
-  const wbsToTmpId = {};
+
+  // パス1：全タスクに新IDを割り当て、相対WBS→新IDのマップを作成
+  const wbsToNewId = {};
+  _dlvParsed.forEach((t,i)=>{
+    wbsToNewId[t._relWbs||String(i+1)] = baseId+i;
+  });
+
+  // パス2：parentIdを確実に解決してタスクを生成
   const newTasks = _dlvParsed.map((t,i)=>{
     const newId = baseId+i;
-    wbsToTmpId[t._relWbs||String(i+1)] = newId;
-    const relParts = (t._relWbs||'').split('.');
-    let resolvedParentId = pId;
+    const relParts = (t._relWbs||'').split('.').filter(Boolean);
+    let resolvedParentId = pId; // デフォルトは選択中の親タスク
     if(relParts.length>1){
+      // 相対WBSの親部分（末尾1セグメントを除いたもの）
       const parentRelWbs = relParts.slice(0,-1).join('.');
-      resolvedParentId = wbsToTmpId[parentRelWbs] ?? pId;
+      const mappedId = wbsToNewId[parentRelWbs];
+      resolvedParentId = (mappedId!=null) ? mappedId : pId;
     }
+    // levelはreNumberWbsが再計算するが、正しい親子関係を渡すために設定
+    const baseLv = pId ? (tasks.find(t=>t.id===pId)?.level||0)+1 : 1;
+    const depth = relParts.length - 1; // 相対的な深さ
+    const calcLevel = baseLv + depth;
+
     return {
       id:newId, wbs:'', title:t.title, titleEn:t.titleEn||'',
       description:'', enSummary:'', notes:t.notes||'',
       assignee, days:+t.days||3,
       start:t.start||fmt(t0), end:t.end||fmt(t0),
-      level:t.level||1, color:t.color||'#533AB7',
+      level:calcLevel, color:t.color||'#533AB7',
       parentId:resolvedParentId, predecessorId:null,
       addedAt:new Date().toISOString()
     };
   });
 
+  // 挿入位置：親タスクの末尾
   let insertIdx = tasks.length;
   if(pId!=null){
     let last = tasks.findIndex(t=>t.id===pId);
