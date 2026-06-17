@@ -5382,6 +5382,60 @@ window.closeDeliverableModal   = closeDeliverableModal;
 window.copyDlvPromptAndOpenGPT = copyDlvPromptAndOpenGPT;
 window.onDlvJsonPaste          = onDlvJsonPaste;
 window.execDeliverableImport   = execDeliverableImport;
+
+// ── 成果物モーダル専用カレンダー ──
+function openDlvCal(e){
+  e.stopPropagation();
+  document.querySelectorAll('.cal-popup').forEach(p=>p.remove());
+  const inp=document.getElementById('dlvDeadline');
+  const initD=parseD(inp.value)||t0;
+  const anchor=e.currentTarget;
+  let vY=initD.getFullYear(),vM=initD.getMonth();
+  const popup=document.createElement('div');
+  popup.className='cal-popup';
+  document.body.appendChild(popup);
+
+  function pos(){
+    const r=anchor.getBoundingClientRect();
+    let top=r.bottom+4,left=r.left;
+    if(top+300>window.innerHeight)top=r.top-300;
+    if(left+210>window.innerWidth)left=window.innerWidth-215;
+    if(left<4)left=4;
+    popup.style.top=top+'px';popup.style.left=left+'px';
+  }
+  function draw(){
+    const hset=hs(currentYear);
+    const first=new Date(vY,vM,1),last=new Date(vY,vM+1,0);
+    const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const selDs=inp.value||'';
+    let html=`<div class="cal-nav"><button id="dcprev">‹</button><span>${vY} ${MN[vM]}</span><button id="dcnext">›</button></div>`;
+    html+=`<div class="cal-grid-full">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<div class="cal-dow${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('')}`;
+    for(let i=0;i<first.getDay();i++)html+=`<div class="cal-day other"></div>`;
+    for(let d=1;d<=last.getDate();d++){
+      const dt=new Date(vY,vM,d),ds=fmt(dt),w=dt.getDay(),hol=isHol(dt,hset);
+      let cls='cal-day';
+      if(ds===selDs)cls+=' sel';
+      else if(ds===fmt(t0))cls+=' tod';
+      if(hol||w===0)cls+=' hol';else if(w===6)cls+=' sat';
+      html+=`<div class="${cls}" data-ds="${ds}">${d}</div>`;
+    }
+    html+=`</div>`;
+    popup.innerHTML=html;
+    popup.querySelector('#dcprev').onclick=e2=>{e2.stopPropagation();vM--;if(vM<0){vM=11;vY--}draw();pos()};
+    popup.querySelector('#dcnext').onclick=e2=>{e2.stopPropagation();vM++;if(vM>11){vM=0;vY++}draw();pos()};
+    popup.querySelectorAll('.cal-day[data-ds]').forEach(el=>{
+      el.onclick=e2=>{
+        e2.stopPropagation();
+        inp.value=el.dataset.ds;
+        popup.remove();
+      };
+    });
+  }
+  draw();pos();
+  const close=ev=>{if(!popup.contains(ev.target)&&ev.target!==anchor){popup.remove();document.removeEventListener('mousedown',close,true)}};
+  setTimeout(()=>document.addEventListener('mousedown',close,true),10);
+}
+window.openDlvCal=openDlvCal;
 </script>
 <!-- ── Report Modal ── -->
 <div class="rpt-overlay" id="rptOverlay" style="display:none" onclick="if(event.target===this)closeReportModal()">
@@ -5511,33 +5565,58 @@ window.execDeliverableImport   = execDeliverableImport;
         <div class="dlv-row">
           <div class="dlv-field">
             <label>期限 <span style="color:#E74C3C">*</span></label>
-            <input id="dlvDeadline" type="text" placeholder="例：2026-09-30">
+            <div style="display:flex;gap:6px;align-items:center">
+              <input id="dlvDeadline" type="text" placeholder="2026-09-30"
+                style="flex:1"
+                readonly
+                onclick="openDlvCal(event)">
+              <button onclick="openDlvCal(event)"
+                style="height:32px;padding:0 10px;border:1px solid var(--color-border-secondary);border-radius:6px;background:var(--color-background-secondary);cursor:pointer;font-size:14px;color:var(--color-text-secondary);flex-shrink:0"
+                title="カレンダーを開く">📅</button>
+            </div>
           </div>
           <div class="dlv-field">
             <label>担当者</label>
-            <select id="dlvAssignee"></select>
+            <select id="dlvAssignee"
+              style="height:34px;padding:0 8px;font-size:12px;border:1px solid var(--color-border-secondary);border-radius:6px;background:var(--color-background-primary);color:var(--color-text-primary);width:100%;cursor:pointer"></select>
           </div>
         </div>
         <div class="dlv-field">
-          <label>補足情報（任意）</label>
+          <label style="display:flex;align-items:center;gap:6px">
+            プロンプト生成に使用する補足条件
+            <span style="font-size:10px;font-weight:400;color:#888">（任意）— ここに書いた内容がそのままChatGPTへの指示に組み込まれます</span>
+          </label>
           <textarea id="dlvContext" rows="2" placeholder="例：イタリアElicaとの合意が必要、A4形式でPDF出力、社内承認フロー3段階..."></textarea>
         </div>
         <div class="dlv-field">
           <label>配置する親タスク（任意）</label>
-          <select id="dlvParent"></select>
+          <select id="dlvParent"
+            style="height:34px;padding:0 8px;font-size:12px;border:1px solid var(--color-border-secondary);border-radius:6px;background:var(--color-background-primary);color:var(--color-text-primary);width:100%;cursor:pointer"></select>
         </div>
       </div>
 
       <!-- STEP 2: ChatGPTへ -->
       <div class="dlv-section">
         <h4>🤖 STEP 2 &nbsp; ChatGPTでWBSを生成</h4>
-        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:10px;line-height:1.7">
-          ① プロンプトをコピー　② ChatGPT GPTが開く　③ 貼り付けて送信　④ 返答のJSONをSTEP3にペースト
+        <!-- 操作手順 -->
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+          <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--color-text-secondary)">
+            <span style="background:#533AB7;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:1px">②</span>
+            <span>下のボタンを押すと<strong>プロンプトが自動でコピー</strong>され、ChatGPT GPTが新しいタブで開きます。</span>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--color-text-secondary)">
+            <span style="background:#10a37f;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:1px">③</span>
+            <span>ChatGPTが開いたら、チャット入力欄で <kbd style="background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:10px;padding:1px 6px;border-radius:3px">Ctrl + V</kbd> で貼り付けて送信してください。</span>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--color-text-secondary)">
+            <span style="background:#185FA5;color:#fff;font-size:9px;font-weight:800;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:1px">④</span>
+            <span>ChatGPTの返答JSONをSTEP 3 のテキストエリアにペーストします。</span>
+          </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn primary" id="dlvCopyBtn" onclick="copyDlvPromptAndOpenGPT()"
-            style="background:linear-gradient(135deg,#10a37f,#0d8f6f);border-color:#0d8f6f;font-weight:700;padding:0 18px;height:32px">
-            📋 プロンプトをコピー＆ChatGPTを開く
+            style="background:linear-gradient(135deg,#10a37f,#0d8f6f);border-color:#0d8f6f;font-weight:700;padding:0 20px;height:36px;font-size:13px;letter-spacing:.2px">
+            🚀 ChatGPTを開く（プロンプト自動コピー済み）
           </button>
           <span id="dlvCopyMsg" style="font-size:11px;color:#1D9E75;font-weight:600"></span>
         </div>
@@ -5554,7 +5633,7 @@ window.execDeliverableImport   = execDeliverableImport;
       <div class="dlv-section">
         <h4>📥 STEP 3 &nbsp; ChatGPTの返答をペースト</h4>
         <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">
-          ChatGPTが返したJSONをそのまま貼り付けてください。
+          ChatGPTが返したJSONをそのまま貼り付けてください。前後に文章が含まれていても自動で抽出します。
         </div>
         <textarea id="dlvJsonPaste" rows="5"
           style="width:100%;font-family:monospace;font-size:11px;padding:8px 10px;border:1.5px solid var(--color-border-secondary);border-radius:6px;background:var(--color-background-primary);color:var(--color-text-primary);resize:vertical;line-height:1.5"
