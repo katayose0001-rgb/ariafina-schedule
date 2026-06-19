@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v81</title>
+<title>年度Schedule・ガントチャート v82</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -640,7 +640,7 @@ tr.search-focus.lvl4 td,tr.search-focus.lvl5 td,tr.search-focus.lvl6 td{backgrou
     <div class="auth-logo">A</div>
     <div class="auth-title">ARIAFINA Annual Schedule</div>
     <div class="auth-subtitle">パスワードを入力してください</div>
-    <div style="font-size:10px;color:#bbb;margin-bottom:12px;margin-top:-18px;letter-spacing:.5px">v81</div>
+    <div style="font-size:10px;color:#bbb;margin-bottom:12px;margin-top:-18px;letter-spacing:.5px">v82</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <input id="auth-pw-input" type="password" placeholder="Password"
         style="flex:1;padding:12px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none"
@@ -826,6 +826,7 @@ const DAY_W=18,ROW_H=34;
 let collapsedIds=new Set(); // 折りたたみ中のLv1タスクID（localStorageのみ管理）
 // ── 複数選択 ──
 let selectedIds=new Set(); // Ctrl+クリックで複数選択中のタスクID
+let selectedOrder=[]; // 選択順序を記録（依存関係設定用）
 const today=new Date();
 const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
 // ── 32色パレット ──
@@ -2083,7 +2084,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v81</div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v82</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
@@ -2846,7 +2847,7 @@ window._deleteDep=_deleteDep;
 // Escキーでの複数選択解除（依存関係モード外でも有効）
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&!_depFromId&&selectedIds.size>0){
-    selectedIds.clear();
+    selectedIds.clear();selectedOrder=[];
     document.querySelectorAll('.multi-selected').forEach(r=>r.classList.remove('multi-selected'));
   }
 });
@@ -2870,8 +2871,13 @@ document.addEventListener('mousedown',function(e){
   if(!taskId) return;
   e.preventDefault();
   // トグル
-  if(selectedIds.has(taskId)) selectedIds.delete(taskId);
-  else selectedIds.add(taskId);
+  if(selectedIds.has(taskId)){
+    selectedIds.delete(taskId);
+    selectedOrder=selectedOrder.filter(id=>id!==taskId);
+  } else {
+    selectedIds.add(taskId);
+    selectedOrder.push(taskId);
+  }
   // 両テーブルの対応行を即時更新
   const allRows=document.querySelectorAll(`#leftTable tr[data-tid="${taskId}"], #rightTable tr[data-tid="${taskId}"]`);
   allRows.forEach(r=>{
@@ -2891,11 +2897,16 @@ function showCtxMenu(e, taskId){
   closeCtxMenu();
   // Ctrl+右クリックの場合は右クリックしたタスクを選択に追加
   if(e.ctrlKey||e.metaKey){
-    selectedIds.add(taskId);
+    if(!selectedIds.has(taskId)){
+      selectedIds.add(taskId);
+      selectedOrder.push(taskId);
+    }
   } else if(!selectedIds.has(taskId)){
     // 右クリックしたタスクが選択中でなければ単一選択に変更
     selectedIds.clear();
+    selectedOrder=[];
     selectedIds.add(taskId);
+    selectedOrder.push(taskId);
   }
   const t=tasks.find(t=>t.id===taskId);if(!t)return;
   const lv=t.level||1;
@@ -2907,6 +2918,33 @@ function showCtxMenu(e, taskId){
   const isMulti=multiCount>1;
 
   if(isMulti){
+    // 2件選択時：依存関係セクション生成
+    let depSection='';
+    if(multiCount===2){
+      const [fromId,toId]=selectedOrder.length===2?selectedOrder:[...selectedIds];
+      const fromTask=tasks.find(t=>t.id===fromId);
+      const toTask2=tasks.find(t=>t.id===toId);
+      if(fromTask&&toTask2){
+        const alreadyLinked=(toTask2.predecessorId===fromId);
+        const fromLabel=fromTask.wbs+' '+escH(fromTask.title);
+        const toLabel=toTask2.wbs+' '+escH(toTask2.title);
+        if(alreadyLinked){
+          depSection=`
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" onclick="multiRemoveDep(${fromId},${toId});closeCtxMenu()" style="color:#A32D2D">
+        <span class="ctx-icon">✂️</span>依存関係を削除
+        <div style="font-size:9px;opacity:.6;margin-top:2px;line-height:1.4">${fromLabel} → ${toLabel}</div>
+      </div>`;
+        } else {
+          depSection=`
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" onclick="multiAddDep(${fromId},${toId});closeCtxMenu()" style="color:#533AB7;font-weight:600">
+        <span class="ctx-icon">🔗</span>依存関係を追加
+        <div style="font-size:9px;opacity:.6;margin-top:2px;line-height:1.4">${fromLabel} → ${toLabel}</div>
+      </div>`;
+        }
+      }
+    }
     // 複数選択メニュー
     menu.innerHTML=`
       <div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:#888;letter-spacing:.5px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:2px">
@@ -2921,9 +2959,9 @@ function showCtxMenu(e, taskId){
       <div class="ctx-sep"></div>
       <div class="ctx-item" onclick="multiDelete();closeCtxMenu()" style="color:#A32D2D">
         <span class="ctx-icon">🗑️</span>選択をすべて削除
-      </div>
+      </div>${depSection}
       <div class="ctx-sep"></div>
-      <div class="ctx-item" onclick="selectedIds.clear();document.querySelectorAll('.multi-selected').forEach(r=>r.classList.remove('multi-selected'));closeCtxMenu()" style="color:#888;font-size:11px">
+      <div class="ctx-item" onclick="selectedIds.clear();selectedOrder=[];document.querySelectorAll('.multi-selected').forEach(r=>r.classList.remove('multi-selected'));closeCtxMenu()" style="color:#888;font-size:11px">
         <span class="ctx-icon">✕</span>選択解除
       </div>`;
   } else {
@@ -3012,6 +3050,43 @@ function multiDelete(){
   showSyncNotice(`🗑️ ${toDelete.size}件を削除しました`);
 }
 window.multiDelete=multiDelete;
+
+// ── 複数選択：依存関係を追加（2件選択時：fromId → toId） ──
+function multiAddDep(fromId, toId){
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
+  const fromTask=tasks.find(t=>t.id===fromId);
+  const toTask=tasks.find(t=>t.id===toId);
+  if(!fromTask||!toTask){showSyncNotice('タスクが見つかりません');return;}
+  if(toTask.predecessorId===fromId){showSyncNotice('すでに依存関係が設定されています');return;}
+  pushUndo(`依存関係追加「${fromTask.wbs} ${fromTask.title} → ${toTask.wbs} ${toTask.title}」`);
+  toTask.predecessorId=fromId;
+  selectedIds.clear();selectedOrder=[];
+  document.querySelectorAll('.multi-selected').forEach(r=>r.classList.remove('multi-selected'));
+  saveToFirebase();draw();
+  showSyncNotice(`🔗 依存関係を追加しました：${fromTask.wbs}→${toTask.wbs}`);
+}
+window.multiAddDep=multiAddDep;
+
+// ── 複数選択：依存関係を削除（2件選択時：fromId → toId） ──
+function multiRemoveDep(fromId, toId){
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
+  const fromTask=tasks.find(t=>t.id===fromId);
+  const toTask=tasks.find(t=>t.id===toId);
+  if(!fromTask||!toTask){showSyncNotice('タスクが見つかりません');return;}
+  if(toTask.predecessorId!==fromId){showSyncNotice('この2つのタスクに依存関係はありません');return;}
+  if(!confirm(`依存関係を削除しますか？
+${fromTask.wbs} ${fromTask.title}
+↓
+${toTask.wbs} ${toTask.title}`))return;
+  pushUndo(`依存関係削除「${fromTask.wbs} ${fromTask.title} → ${toTask.wbs} ${toTask.title}」`);
+  toTask.predecessorId=null;
+  selectedIds.clear();selectedOrder=[];
+  document.querySelectorAll('.multi-selected').forEach(r=>r.classList.remove('multi-selected'));
+  saveToFirebase();draw();
+  showSyncNotice(`✂️ 依存関係を削除しました：${fromTask.wbs}→${toTask.wbs}`);
+}
+window.multiRemoveDep=multiRemoveDep;
+
 function insertBeforeTask(id){
   if(!_isEditing){alert('Please press "Start Editing" first.');return;}
   const idx=tasks.findIndex(t=>t.id===id);if(idx<0)return;
@@ -3441,7 +3516,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v81.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v82.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
