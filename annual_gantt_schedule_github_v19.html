@@ -3058,11 +3058,12 @@ function multiAddDep(fromId, toId){
   const toTask=tasks.find(t=>t.id===toId);
   if(!fromTask||!toTask){showSyncNotice('タスクが見つかりません');return;}
   if(toTask.predecessorId===fromId){showSyncNotice('すでに依存関係が設定されています');return;}
+  if(hasCircle(fromId,toId)){showSyncNotice('⚠️ 循環依存になるため設定できません');return;}
   pushUndo(`依存関係追加「${fromTask.wbs} ${fromTask.title} → ${toTask.wbs} ${toTask.title}」`);
   toTask.predecessorId=fromId;
   selectedIds.clear();selectedOrder=[];
   document.querySelectorAll('.multi-selected').forEach(r=>r.classList.remove('multi-selected'));
-  saveToFirebase();draw();
+  propagateDeps(fromId);recalcAllParents();saveData();render();
   showSyncNotice(`🔗 依存関係を追加しました：${fromTask.wbs}→${toTask.wbs}`);
 }
 window.multiAddDep=multiAddDep;
@@ -3082,7 +3083,7 @@ ${toTask.wbs} ${toTask.title}`))return;
   toTask.predecessorId=null;
   selectedIds.clear();selectedOrder=[];
   document.querySelectorAll('.multi-selected').forEach(r=>r.classList.remove('multi-selected'));
-  saveToFirebase();draw();
+  recalcAllParents();saveData();render();
   showSyncNotice(`✂️ 依存関係を削除しました：${fromTask.wbs}→${toTask.wbs}`);
 }
 window.multiRemoveDep=multiRemoveDep;
