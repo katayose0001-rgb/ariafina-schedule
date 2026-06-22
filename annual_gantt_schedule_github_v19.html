@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v82</title>
+<title>年度Schedule・ガントチャート v83</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -640,7 +640,7 @@ tr.search-focus.lvl4 td,tr.search-focus.lvl5 td,tr.search-focus.lvl6 td{backgrou
     <div class="auth-logo">A</div>
     <div class="auth-title">ARIAFINA Annual Schedule</div>
     <div class="auth-subtitle">パスワードを入力してください</div>
-    <div style="font-size:10px;color:#bbb;margin-bottom:12px;margin-top:-18px;letter-spacing:.5px">v82</div>
+    <div style="font-size:10px;color:#bbb;margin-bottom:12px;margin-top:-18px;letter-spacing:.5px">v83</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <input id="auth-pw-input" type="password" placeholder="Password"
         style="flex:1;padding:12px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none"
@@ -972,7 +972,7 @@ function doUndo(){
 const HOL={
   2025:new Set(['2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24','2025-03-20','2025-04-29','2025-05-03','2025-05-04','2025-05-05','2025-05-06','2025-07-21','2025-08-11','2025-09-15','2025-09-22','2025-09-23','2025-10-13','2025-11-03','2025-11-23','2025-11-24','2025-12-23']),
   2026:new Set(['2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06','2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-09-23','2026-10-12','2026-11-03','2026-11-23','2026-12-23']),
-  2027:new Set(['2027-01-01','2027-01-11','2027-02-11','2027-02-23','2027-03-21','2027-04-29','2027-05-03','2027-05-04','2027-05-05','2027-07-19','2027-08-11','2027-09-20','2027-09-23','2027-10-11','2027-11-03','2027-11-23','2027-12-23']),
+  2027:new Set(['2027-01-01','2027-01-11','2027-02-11','2027-02-23','2027-03-21','2027-03-22','2027-04-29','2027-05-03','2027-05-04','2027-05-05','2027-07-19','2027-08-11','2027-09-20','2027-09-23','2027-10-11','2027-11-03','2027-11-23']),
   2028:new Set(['2028-01-01','2028-01-10','2028-02-11','2028-02-23','2028-03-20','2028-04-29','2028-05-03','2028-05-04','2028-05-05','2028-07-17','2028-08-11','2028-09-18','2028-09-22','2028-10-09','2028-11-03','2028-11-23','2028-12-23']),
 };
 function hs(y){return HOL[y]||new Set()}
@@ -2084,7 +2084,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v82</div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v83</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
@@ -3517,7 +3517,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v82.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v83.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
