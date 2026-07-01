@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>年度Schedule・ガントチャート v85</title>
+<title>年度Schedule・ガントチャート v86</title>
 <!-- html2canvas (PNG/JPEG出力) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- SheetJS (Excel出力) -->
@@ -655,7 +655,7 @@ tr.search-focus.lvl4 td,tr.search-focus.lvl5 td,tr.search-focus.lvl6 td{backgrou
     <div class="auth-logo">A</div>
     <div class="auth-title">ARIAFINA Annual Schedule</div>
     <div class="auth-subtitle">パスワードを入力してください</div>
-    <div style="font-size:10px;color:#bbb;margin-bottom:12px;margin-top:-18px;letter-spacing:.5px">v85</div>
+    <div style="font-size:10px;color:#bbb;margin-bottom:12px;margin-top:-18px;letter-spacing:.5px">v86</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <input id="auth-pw-input" type="password" placeholder="Password"
         style="flex:1;padding:12px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none"
@@ -2100,7 +2100,7 @@ function renderStats(){
   const work=all.filter(d=>isWork(d,h)).length,hols=all.filter(d=>isHol(d,h)).length;
   const depCount=tasks.filter(t=>t.predecessorId!=null).length;
   const _ni=uiLang==='en'?' days':'日';const _ke=uiLang==='en'?' items':'件';
-  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v85</div>`;
+  document.getElementById('statsBar').innerHTML=`<div class="si">${t('statsYear')} <span class="sv">${currentYear}</span></div><div class="si">${t('statsWorkDays')} <span class="sv">${work}${_ni}</span></div><div class="si">${t('statsHolidays')} <span class="sv">${hols}${_ni}</span></div><div class="si">${t('statsTasks')} <span class="sv">${tasks.length}${_ke}</span></div><div class="si">${t('statsDeps')} <span class="sv">${depCount}${_ke}</span></div><div style="margin-left:auto;font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.3px;padding-right:4px">v86</div>`;
 }
 function buildFilterSels(){
   const sa=document.getElementById('filterAsgn'),pa=sa.value;
@@ -2231,10 +2231,15 @@ function openSide(mode,id){
     return;
   }
   sideMode=mode;editId=id||null;
-  // editTask開時は複数選択を解除（ズレ防止）
+  // editTask開時：複数選択解除 & 編集行ハイライトをDOM直接更新
   if(mode==='editTask'){
     selectedIds.clear();selectedOrder=[];
     document.querySelectorAll('.multi-selected').forEach(r=>r.classList.remove('multi-selected'));
+    // edit-activeを全行リセットしてから該当行に付与（左・右テーブル両方）
+    document.querySelectorAll('tr.edit-active').forEach(r=>r.classList.remove('edit-active'));
+    if(id!=null){
+      document.querySelectorAll(`tr[data-tid="${id}"]`).forEach(r=>r.classList.add('edit-active'));
+    }
   }
   document.getElementById('sidePanel').classList.add('open');
   const titles={addTask:'タスクAdd',addSub:'サブタスクAdd',editTask:'タスク編集',assignees:'Manage Assignees'};
@@ -3538,7 +3543,7 @@ function exportCSV(){
   const rows=[['WBS','Task Name','Assignee','Days','Start','End','PredecessorID'],
     ...tasks.map(t=>[t.wbs,t.title,t.assignee,t.days,t.start,t.end,t.predecessorId||''])];
   const blob=new Blob([bom+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v85.csv`;a.click();URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`schedule_${currentYear}_v86.csv`;a.click();URL.revokeObjectURL(url);
 }
 // ══════════════════════════════════════════════
 // ── CSV インポート機能 ──
