@@ -2996,10 +2996,14 @@ function showCtxMenu(e, taskId){
       <div class="ctx-item" onclick="openSide('editTask',${taskId});closeCtxMenu()">
         <span class="ctx-icon">✏️</span>Edit Task
       </div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" onclick="insertAfterTask(${taskId});closeCtxMenu()" style="color:#1D9E75;font-weight:600">
+        <span class="ctx-icon">➕</span>Add New Task <span style="font-size:10px;opacity:.7;margin-left:4px">次の行へ同レベルで追加</span>
+      </div>
       ${canAddChild?`
       <div class="ctx-sep"></div>
       <div class="ctx-item" onclick="addChildTask(${taskId});closeCtxMenu()">
-        <span class="ctx-icon">➕</span>Add Subtask <span style="font-size:10px;opacity:.6;margin-left:4px">Lv${lv+1}</span>
+        <span class="ctx-icon">↳</span>Add Subtask <span style="font-size:10px;opacity:.6;margin-left:4px">Lv${lv+1}</span>
       </div>`:''}
       <div class="ctx-sep"></div>
       <div class="ctx-item" onclick="insertBeforeTask(${taskId});closeCtxMenu()">
@@ -3133,6 +3137,33 @@ function insertBeforeTask(id){
   reNumberWbs();saveData();render();
   openSide('editTask',newId);
 }
+
+// ── 選択行の次に同レベルのタスクを追加（＋タスク追加と同等）──
+function insertAfterTask(id){
+  if(!_isEditing){alert('Please press "Start Editing" first.');return;}
+  const idx=tasks.findIndex(t=>t.id===id);if(idx<0)return;
+  const ref=tasks[idx];
+  const newId=Math.max(0,...tasks.map(t=>t.id))+1;
+  // 挿入位置：自分の子孫を飛ばした直後
+  let insertIdx=idx+1;
+  while(insertIdx<tasks.length&&isDescendantOf(tasks[insertIdx].id,id)){
+    insertIdx++;
+  }
+  const newTask={
+    id:newId,wbs:'',title:'New Task',titleEn:'',
+    assignee:ref.assignee||assignees[0]||'',
+    days:1,start:ref.end||fmt(t0),
+    end:ref.end||fmt(t0),
+    level:ref.level||1,color:ref.color||COLORS[0],
+    parentId:ref.parentId??null,predecessorId:null,
+    addedAt:new Date().toISOString()
+  };
+  pushUndo(`Add Task After「${ref.title}」`);
+  tasks.splice(insertIdx,0,newTask);
+  reNumberWbs();saveData();render();
+  openSide('editTask',newId);
+}
+window.insertAfterTask=insertAfterTask;
 
 function closeCtxOnOutside(e){
   const m=document.getElementById('ctxMenu');
